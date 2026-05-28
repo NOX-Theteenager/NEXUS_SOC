@@ -84,6 +84,12 @@ services:
       - indexer_data:/var/lib/wazuh-indexer
       - ./config/wazuh_indexer/opensearch.yml:/usr/share/wazuh-indexer/opensearch.yml:ro
       - ./config/wazuh_indexer_ssl_certs:/usr/share/wazuh-indexer/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk -u admin:admin https://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
     networks: [nexus]
 
   # ---------------------------------------------------------------------------
@@ -93,16 +99,23 @@ services:
     image: wazuh/wazuh-manager:4.9.0
     container_name: nexus-wazuh-manager
     hostname: wazuh.manager
-    depends_on: [wazuh.indexer]
+    depends_on:
+      wazuh.indexer: { condition: service_healthy }
     ports:
-      - "1514:1514"              # communication agents
-      - "1515:1515"              # enrôlement des agents
-      - "55000:55000"            # API Wazuh
+      - "1514:1514"
+      - "1515:1515"
+      - "55000:55000"
     ulimits:
       memlock: { soft: -1, hard: -1 }
     volumes:
       - manager_data:/var/ossec
       - ./config/wazuh_indexer_ssl_certs:/etc/ssl/certs/wazuh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk -u admin:admin https://localhost:55000/ | grep -q 'title' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 60s
     networks: [nexus]
 
   # ---------------------------------------------------------------------------
@@ -111,39 +124,57 @@ services:
   wazuh.dashboard:
     image: wazuh/wazuh-dashboard:4.9.0
     container_name: nexus-wazuh-dashboard
-    depends_on: [wazuh.indexer]
+    depends_on:
+      wazuh.indexer: { condition: service_healthy }
     ports:
-      - "5601:5601"              # https://localhost:5601
+      - "5601:5601"
     environment:
       - INDEXER_URL=https://wazuh.indexer:9200
       - DASHBOARD_USERNAME=kibanaserver
       - DASHBOARD_PASSWORD=kibanaserver
     volumes:
       - ./config/wazuh_indexer_ssl_certs:/usr/share/wazuh-dashboard/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk https://localhost:5601/api/status | grep -q 'available' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
     networks: [nexus]
 
   # ---------------------------------------------------------------------------
-  # 6. SERVICE DE SCORING IA — branche les modèles (1 & 2) + alimente le SOAR
-  #    Consomme la télémétrie sur Kafka, score, et publie les alertes.
+  # 6. SERVICE DE SCORING IA v2 — HMAC validé, rate limiting, healthcheck
   # ---------------------------------------------------------------------------
   scoring-service:
     build: ./scoring-service
     container_name: nexus-scoring
     depends_on:
-      kafka: { condition: service_healthy }
+      kafka:    { condition: service_healthy }
       postgres: { condition: service_healthy }
     ports:
-      - "8000:8000"              # API REST de scoring → http://localhost:8000/docs
+      - "8000:8000"
     environment:
-      KAFKA_BOOTSTRAP: kafka:9092
-      TELEMETRY_TOPIC: nexus.telemetry
-      ALERTS_TOPIC: nexus.alerts
-      DB_DSN: postgresql://${POSTGRES_USER:-nexus}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-nexus_soc}
-      MODEL1_PATH: /models/model1_isoforest.joblib
-      MODEL2_PATH: /models/model2_isoforest.joblib
-      RISK_THRESHOLD: "70"
+      KAFKA_BOOTSTRAP:    kafka:9092
+      TELEMETRY_TOPIC:    nexus.telemetry
+      ALERTS_TOPIC:       nexus.alerts
+      DB_DSN:             postgresql://${POSTGRES_USER:-nexus}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-nexus_soc}
+      MODEL1_PATH:        /models/model1_isoforest.joblib
+      MODEL2_PATH:        /models/model2_isoforest.joblib
+      RISK_THRESHOLD:     "70"
+      JWT_SECRET:         ${JWT_SECRET:-CHANGE_ME_IN_PRODUCTION}
+      PSEUDO_SECRET:      ${PSEUDO_SECRET:-CHANGE_ME_PSEUDO_SECRET}
+      RATE_LIMIT_REQ:     "100"
+      RATE_LIMIT_WIN:     "60"
+      INGEST_LIMIT_REQ:   "30"
+      INGEST_LIMIT_WIN:   "60"
     volumes:
-      - ./models:/models:ro      # y déposer model1_isoforest.joblib et model2_isoforest.joblib
+      - ./models:/models:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health | grep -q '\"status\":\"ok\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks: [nexus]
 
 volumes:

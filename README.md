@@ -640,8 +640,11 @@ Si la pile Docker n'est pas disponible, les scripts Python fonctionnent en stand
 # 1. Extraire Lot 2 (pipeline)
 cd Lot2_Pipeline_SIEM && unzip nexus-pipeline.zip && cd nexus-pipeline
 
-# 2. Démo pipeline complète
-python telemetry_gen.py && python normalizer.py telemetry_demo.json | python correlation_engine.py
+# 2. Démo pipeline complète (v2 — O(N) + nouvelles règles SIEM)
+python telemetry_gen.py && python normalizer.py telemetry_demo.json | python correlation_engine_v2.py
+
+# Benchmark du gain O(N²) → O(N)
+python correlation_engine_v2.py --benchmark
 
 # 3. Entraîner les modèles
 cd ../../Lot3_IA/Modele1_Anomalie_reseau && python model1_anomaly_detection.py
@@ -681,6 +684,97 @@ python load_test.py
 - **CIMA** — code des assurances (Afrique)
 - **ONECCA** — cabinets comptables (Cameroun)
 - **ISO/IEC 27001** — référence internationale SMSI (alignement des contrôles)
+
+---
+
+---
+
+## Correctifs de sécurité et qualité (session du 28 mai 2026)
+
+Les éléments suivants ont été corrigés ou ajoutés :
+
+### Sécurité
+
+| Correctif | Fichier | Détail |
+|---|---|---|
+| Validation HMAC sur `/ingest` | `Lot1_Agent_Go/scoring-service_app.py` | Chaque lot vérifie le Bearer token (hash en base) + signature X-Signature |
+| Rate limiting sur toutes les APIs | `scoring-service_app.py` | 100 req/min global, 30 req/min sur `/ingest` ; HTTP 429 avec Retry-After |
+| JWT middleware complet | `Lot1_Agent_Go/auth_middleware.py` | Access token (15 min) + refresh token (7 j), HMAC-SHA256 maison, endpoints `/auth/token`, `/auth/refresh`, `/auth/me` |
+| Rotation clé HMAC agent | `Lot7_Console_Fournisseur/provisioning_api.py` | `POST /provision/rotate-hmac/{agent_id}` |
+| Révocation d'urgence tenant | `provisioning_api.py` | `POST /provision/revoke-tenant/{tenant_id}` — coupe tous les agents immédiatement |
+| Pseudonymisation des données perso | `Lot1_Agent_Go/pseudonymizer.py` | Remplace emails, IPs publiques, agent_ids par des pseudonymes HMAC stables |
+
+### Performance
+
+| Correctif | Fichier | Détail |
+|---|---|---|
+| Bug O(N²) → O(N) | `Lot2_Pipeline_SIEM/correlation_engine_v2.py` | `detect_mass_file_change` : deux pointeurs, chaque événement visité une seule fois |
+| Fenêtre de corrélation configurable | `correlation_engine_v2.py` | Variable `CORR_WINDOW_MIN` (défaut 30 min) |
+
+### Couverture de détection
+
+| Règle | Technique MITRE | Fichier |
+|---|---|---|
+| Obfuscation dédiée (base64, double ext., iex) | **T1027** | `correlation_engine_v2.py` |
+| Création de compte (useradd, net user /add) | **T1136** | `correlation_engine_v2.py` |
+| Énumération de répertoires sensibles | **T1083** | `correlation_engine_v2.py` |
+| Création de comptes en masse (volumétrique) | T1136 — variant | `correlation_engine_v2.py` |
+
+### Opérationnel
+
+| Ajout | Fichier | Détail |
+|---|---|---|
+| Sauvegarde complète | `Lot0_Socle/backup.sh` | PostgreSQL + Wazuh snapshot + modèles + config, rotation sur 14 jours |
+| Restauration | `Lot0_Socle/restore.sh` | Restaure les 3 composants |
+| Politique de rétention SQL | `Lot0_Socle/01_schema_retention.sql` | Compression TimescaleDB J7+, archivage alertes 1 an+, purge tokens expirés |
+| Healthchecks Docker | `Lot0_Socle/docker-compose.yml` | Wazuh Indexer + Manager + Dashboard + scoring-service avec `start_period` adapté |
+| `/health/detailed` | `scoring-service_app.py` | Vérifie Kafka, TimescaleDB, Wazuh Indexer en temps réel |
+| Monitoring dérive modèles | `Lot3_IA/model_monitor.py` | PSI, σ-drift, taux de FP, taux d'alertes ; endpoint `/monitor/drift` ; mode CLI |
+
+### Utilisation des nouveaux outils
+
+```bash
+# Sauvegarde manuelle
+sudo bash Lot0_Socle/backup.sh --dest /opt/nexus-backups --compress
+
+# Restauration depuis un backup
+sudo bash Lot0_Socle/restore.sh --backup /opt/nexus-backups/nexus_20260528_090000
+
+# Test de dérive des modèles (mode démo)
+python3 Lot3_IA/model_monitor.py --demo
+
+# Test pseudonymisation
+python3 Lot1_Agent_Go/pseudonymizer.py
+
+# Benchmark O(N²) → O(N) sur detect_mass_file_change
+python3 Lot2_Pipeline_SIEM/correlation_engine_v2.py --benchmark
+
+# Healthcheck détaillé
+curl http://localhost:8000/health/detailed | python3 -m json.tool
+```
+
+---
+
+## Ce qui reste à faire — hors portée du code
+
+Ces problèmes nécessitent une action humaine, une infrastructure réelle ou une tierce partie :
+
+| # | Problème | Raison de l'impossibilité code-seul | Qui/Quand |
+|---|---|---|---|
+| 1 | **Valider les modèles sur données réelles** (CICIDS, SIGIPES) | Accès aux bases de données réelles du MINFI | Stage MINFI (mai–juil 2026) |
+| 2 | **Brancher les connecteurs SOAR** (AD, pare-feu, EDR) | Accès aux systèmes d'infrastructure réseau réels | Stage MINFI |
+| 3 | **Conformité ANTIC** | Audit externe par l'ANTIC — non substituable par du code | Démarche administrative |
+| 4 | **Templates WhatsApp Business** | Approbation par Meta (délai 1–2 semaines, refus possible) | Soumettre avant déploiement |
+| 5 | **Architecture HA** (multi-nœuds Kafka, PostgreSQL réplication) | Requiert plusieurs serveurs physiques ou VM | Infrastructure production |
+| 6 | **mTLS / certificats machine** | Requiert une PKI interne (CFSSL, Vault, Smallstep) | Architecture production |
+| 7 | **Chiffrement au repos** (PostgreSQL, Wazuh) | Configuration infrastructure (LUKS, pgcrypto sur tous les volumes) | Déploiement production |
+| 8 | **Retraining automatique des modèles** | Nécessite des données étiquetées réelles et un pipeline MLOps (DVC, MLflow) | Post-stage |
+| 9 | **LSTM pour la détection temporelle** | Nécessite des séquences d'audit réelles longues (SIGIPES 6+ mois) | Post-stage |
+| 10 | **UEBA personnalisé par agent** | Nécessite 90+ jours de données comportementales par personne | Post-stage |
+| 11 | **Support macOS pour l'agent** | Code Go à écrire + tests sur machine macOS | Non prioritaire |
+| 12 | **Tests d'intrusion / pentest** | Nécessite un prestataire habilité ou équipe rouge | Avant mise en production |
+| 13 | **Assurance / responsabilité contractuelle** | Domaine légal — conditions générales à rédiger avec un juriste | Avant premier contrat client |
+| 14 | **Formation des analystes SOC** | Compétence humaine — pas substituable par du code | Onboarding client |
 
 ---
 

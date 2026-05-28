@@ -1,0 +1,141 @@
+---
+# =============================================================================
+# NEXUS SOC — Playbook Ansible : déploiement de l'agent sur un parc Linux
+# Usage :
+#   ansible-playbook -i inventaire.ini ansible_nexus_agent.yml \
+#     -e "nexus_server=https://nexussoc.cm" \
+#     -e "nexus_token=nexus_xxx" \
+#     -e "nexus_tenant_id=11111111-1111-1111-1111-111111111111"
+#
+# Variables obligatoires :
+#   nexus_server    — URL du serveur NEXUS SOC (ex. https://nexussoc.cm)
+#   nexus_token     — Bearer token d'enrôlement (commun ou individuel par hôte)
+#   nexus_hmac_key  — Clé HMAC-SHA256
+#   nexus_tenant_id — UUID du tenant client
+#
+# Variables optionnelles :
+#   nexus_version   — version de l'agent (défaut : "1.0.0")
+#   nexus_interval  — intervalle de collecte en secondes (défaut : 30)
+#   nexus_watch_dirs — répertoires surveillés (défaut : ["/home","/tmp","/var/log"])
+# =============================================================================
+- name: Déployer l'agent NEXUS SOC
+  hosts: all
+  become: yes
+  vars:
+    nexus_version:   "{{ nexus_version   | default('1.0.0') }}"
+    nexus_interval:  "{{ nexus_interval  | default(30) }}"
+    nexus_watch_dirs: "{{ nexus_watch_dirs | default(['/home', '/tmp', '/var/log', '/etc']) }}"
+    install_dir:  /usr/local/bin
+    config_dir:   /etc/nexusagent
+    data_dir:     /var/lib/nexusagent/queue
+    log_dir:      /var/log/nexusagent
+    service_user: nexusagent
+
+  tasks:
+
+    # ── Pré-requis ──────────────────────────────────────────────────────────
+    - name: Vérifier que curl est disponible
+      package:
+        name: curl
+        state: present
+
+    # ── Utilisateur système ─────────────────────────────────────────────────
+    - name: Créer l'utilisateur système '{{ service_user }}'
+      user:
+        name: "{{ service_user }}"
+        system: yes
+        create_home: no
+        shell: /usr/sbin/nologin
+        comment: "NEXUS SOC Agent"
+
+    # ── Répertoires ─────────────────────────────────────────────────────────
+    - name: Créer les répertoires de l'agent
+      file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ service_user }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: "{{ config_dir }}", owner: root,               mode: "0750" }
+        - { path: "{{ data_dir }}",   owner: "{{ service_user }}", mode: "0750" }
+        - { path: "{{ log_dir }}",    owner: "{{ service_user }}", mode: "0750" }
+
+    # ── Binaire ─────────────────────────────────────────────────────────────
+    - name: Détecter l'architecture
+      set_fact:
+        arch_tag: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+    - name: Télécharger le binaire nexusagent
+      get_url:
+        url: "{{ nexus_server }}/agent/download/{{ nexus_version }}/linux/{{ arch_tag }}/nexusagent"
+        dest: "{{ install_dir }}/nexusagent"
+        mode: "0755"
+        owner: root
+        group: root
+        headers:
+          Authorization: "Bearer {{ nexus_token }}"
+        timeout: 30
+        validate_certs: yes
+
+    # ── Configuration ───────────────────────────────────────────────────────
+    - name: Déployer config.json
+      template:
+        src: config.json.j2
+        dest: "{{ config_dir }}/config.json"
+        owner: "{{ service_user }}"
+        group: "{{ service_user }}"
+        mode: "0600"
+      notify: Redémarrer nexusagent
+
+    # ── Service systemd ─────────────────────────────────────────────────────
+    - name: Déployer l'unité systemd
+      template:
+        src: nexusagent.service.j2
+        dest: /etc/systemd/system/nexusagent.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Recharger systemd
+        - Redémarrer nexusagent
+
+    - name: Activer et démarrer le service nexusagent
+      systemd:
+        name: nexusagent
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    # ── Vérification ────────────────────────────────────────────────────────
+    - name: Vérifier que le service est actif
+      systemd:
+        name: nexusagent
+      register: svc_status
+      failed_when: svc_status.status.ActiveState != 'active'
+
+    - name: Confirmer la connexion au serveur NEXUS SOC
+      uri:
+        url: "{{ nexus_server }}/health"
+        headers:
+          Authorization: "Bearer {{ nexus_token }}"
+        timeout: 10
+        validate_certs: yes
+      register: health_check
+      retries: 6
+      delay: 10
+      until: health_check.status == 200
+
+    - name: Afficher le résultat
+      debug:
+        msg: "Agent NEXUS SOC déployé avec succès sur {{ inventory_hostname }}."
+
+  handlers:
+    - name: Recharger systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Redémarrer nexusagent
+      systemd:
+        name: nexusagent
+        state: restarted

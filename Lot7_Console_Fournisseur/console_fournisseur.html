@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 /* =========================================================
    NEXUS SOC — Console Fournisseur / Operator Console
@@ -392,6 +394,80 @@ select.filter-select:focus { border-color: var(--accent); }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+/* =========================================================
+   PROVISIONING — UI enrichie
+   ========================================================= */
+.os-selector { display: flex; gap: 8px; margin-bottom: 4px; }
+.os-btn {
+  flex: 1; padding: 9px 8px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border-2); background: var(--bg-2);
+  color: var(--text-2); font-family: var(--body); font-size: 13px;
+  text-align: center; transition: all 0.15s;
+}
+.os-btn:hover { border-color: var(--accent); color: var(--text); }
+.os-btn.selected { border-color: var(--accent); background: rgba(94,170,255,0.1); color: var(--accent); font-weight: 600; }
+.os-btn .os-icon { font-size: 18px; display: block; margin-bottom: 3px; }
+
+.expiry-group { display: flex; gap: 6px; }
+.expiry-chip {
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border-2); background: var(--bg-2);
+  font-family: var(--mono); font-size: 11.5px; color: var(--text-2);
+  transition: all 0.15s;
+}
+.expiry-chip:hover { border-color: var(--amber); color: var(--amber); }
+.expiry-chip.selected { border-color: var(--amber); background: rgba(245,165,36,0.1); color: var(--amber); }
+
+.security-opts { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.security-opt { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.security-opt input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--teal); cursor: pointer; }
+.security-opt .opt-label { flex: 1; }
+.security-opt .opt-hint { font-size: 11px; color: var(--text-3); }
+
+.token-lifecycle {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: rgba(245,165,36,0.06); border: 1px solid rgba(245,165,36,0.2);
+  border-radius: 8px; margin-top: 10px;
+}
+.token-lifecycle .tl-expiry { font-family: var(--mono); font-size: 11px; color: var(--amber); flex: 1; }
+.token-lifecycle .tl-badge { font-family: var(--mono); font-size: 9.5px; }
+
+.download-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.dl-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border-2); background: var(--surface-2);
+  color: var(--text-2); font-size: 12.5px; transition: all 0.15s;
+  text-align: left;
+}
+.dl-btn:hover { border-color: var(--accent); color: var(--text); background: var(--surface); }
+.dl-btn .dl-icon { font-size: 16px; flex-shrink: 0; }
+.dl-btn .dl-label { font-weight: 600; font-size: 12px; }
+.dl-btn .dl-sub   { font-size: 10.5px; color: var(--text-3); }
+
+.oneliner-box {
+  background: var(--bg); border: 1px solid var(--border-2); border-radius: 8px;
+  padding: 10px 12px; margin-top: 10px;
+}
+.oneliner-label { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 5px; }
+.oneliner-cmd { font-family: var(--mono); font-size: 11px; color: var(--teal); word-break: break-all; line-height: 1.6; }
+.oneliner-copy { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-family: var(--mono); font-size: 11px; color: var(--text-3); cursor: pointer; }
+.oneliner-copy:hover { color: var(--accent); }
+
+.qr-container { text-align: center; padding: 14px 0; }
+.qr-container canvas { border-radius: 8px; background: white; padding: 10px; }
+.qr-caption { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); margin-top: 6px; }
+
+/* Colonne token statut dans la table agents */
+.ts-actif   { color: var(--teal); }
+.ts-utilise { color: var(--text-3); }
+.ts-expire  { color: var(--red); }
+.ts-aucun   { color: var(--text-3); font-style: italic; }
+
+/* bulk import */
+.bulk-result-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.bulk-result-item:last-child { border-bottom: 0; }
 
 /* =========================================================
    MODULE B — Analyste SOC
@@ -789,6 +865,7 @@ select.filter-select:focus { border-color: var(--accent); }
           <div class="sec-title"><span data-i18n="agentsTitle">Agents <em>surveillés</em></span></div>
         </div>
         <div class="sec-header-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openBulkModal()" data-i18n="btnImportCSV">⬆ Import CSV</button>
           <button class="btn btn-primary btn-sm" onclick="openModal('modal-token', null)" data-i18n="btnGenToken">+ Générer un jeton</button>
         </div>
       </div>
@@ -1116,46 +1193,175 @@ select.filter-select:focus { border-color: var(--accent); }
   </div>
 </div>
 
-<!-- =================== MODAL : Token agent =================== -->
+<!-- =================== MODAL : Provisioning Agent (enrichi) =================== -->
 <div class="modal-overlay" id="modal-token" onclick="closeModalOutside(event, 'modal-token')">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:540px">
     <div class="modal-header">
-      <div class="modal-title" data-i18n="modalTokenTitle">Générer un jeton d'enrôlement</div>
+      <div class="modal-title" data-i18n="modalTokenTitle">Provisionnement d'agent</div>
       <button class="modal-close" onclick="closeModal('modal-token')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" data-i18n="formTenantFor">Tenant destinataire</label>
-        <select class="form-select" id="f-token-tenant"></select>
+      <!-- Étape 1 : Configuration -->
+      <div id="prov-step-1">
+        <div class="form-group">
+          <label class="form-label" data-i18n="formTenantFor">Tenant destinataire</label>
+          <select class="form-select" id="f-token-tenant"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hostname</label>
+          <input class="form-input" id="f-token-hostname" type="text" placeholder="Ex. POSTE-COMPTA-08, SRV-BUDGET-02" />
+          <div class="form-hint" data-i18n="formHostnameHint">Identifie le poste dans la console. Utilisé pour le binding du token.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="formOSTarget">OS cible</label>
+          <div class="os-selector">
+            <div class="os-btn selected" id="os-linux" onclick="selectOS('linux')">
+              <span class="os-icon">🐧</span> Linux
+            </div>
+            <div class="os-btn" id="os-windows" onclick="selectOS('windows')">
+              <span class="os-icon">🪟</span> Windows
+            </div>
+            <div class="os-btn" id="os-auto" onclick="selectOS('auto')">
+              <span class="os-icon">⚙</span> <span data-i18n="osAuto">Auto</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" data-i18n="formExpiry">Expiration</label>
+            <div class="expiry-group">
+              <div class="expiry-chip" id="exp-1h" onclick="selectExpiry(1)">1 h</div>
+              <div class="expiry-chip selected" id="exp-24h" onclick="selectExpiry(24)">24 h</div>
+              <div class="expiry-chip" id="exp-7d" onclick="selectExpiry(168)">7 j</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="formSecurity">Sécurité</label>
+            <div class="security-opts">
+              <label class="security-opt">
+                <input type="checkbox" id="opt-one-time" checked>
+                <span class="opt-label" data-i18n="optOneTime">Usage unique</span>
+              </label>
+              <label class="security-opt">
+                <input type="checkbox" id="opt-bind-hostname" checked>
+                <span class="opt-label" data-i18n="optBindHostname">Lier au hostname</span>
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Hostname</label>
-        <input class="form-input" id="f-token-hostname" type="text" placeholder="EX. SRV-COMPTA-08" />
-        <div class="form-hint" data-i18n="formHostnameHint">Identifie le poste dans le portail. Peut être modifié après enrôlement.</div>
-      </div>
+
+      <!-- Étape 2 : Résultat -->
       <div id="token-result" style="display:none;">
-        <div class="token-box">
-          <div class="token-label" data-i18n="tokenEnrollLabel">Jeton d'enrôlement (Bearer token)</div>
-          <div class="token-value" id="t-bearer">—</div>
-          <div class="token-copy" onclick="copyToken('t-bearer')">
-            ⧉ <span data-i18n="tokenCopy">Copier</span>
+        <div class="oneliner-box" id="oneliner-linux-box">
+          <div class="oneliner-label">Linux — curl | bash</div>
+          <div class="oneliner-cmd" id="t-oneliner-linux">—</div>
+          <div class="oneliner-copy" onclick="copyById('t-oneliner-linux')">⧉ <span data-i18n="tokenCopy">Copier</span></div>
+        </div>
+        <div class="oneliner-box" id="oneliner-win-box" style="display:none;margin-top:8px">
+          <div class="oneliner-label">Windows PowerShell (Admin)</div>
+          <div class="oneliner-cmd" id="t-oneliner-win">—</div>
+          <div class="oneliner-copy" onclick="copyById('t-oneliner-win')">⧉ <span data-i18n="tokenCopy">Copier</span></div>
+        </div>
+        <details style="margin-top:10px">
+          <summary style="font-family:var(--mono);font-size:10.5px;color:var(--text-3);cursor:pointer;letter-spacing:0.1em;text-transform:uppercase" data-i18n="tokenSecretsLabel">Voir les secrets bruts</summary>
+          <div class="token-box" style="margin-top:8px">
+            <div class="token-label" data-i18n="tokenEnrollLabel">Bearer token</div>
+            <div class="token-value" id="t-bearer">—</div>
+            <div class="token-copy" onclick="copyById('t-bearer')">⧉ <span data-i18n="tokenCopy">Copier</span></div>
+          </div>
+          <div class="token-box">
+            <div class="token-label" data-i18n="tokenHMACLabel">Clé HMAC-SHA256</div>
+            <div class="token-value" id="t-hmac">—</div>
+            <div class="token-copy" onclick="copyById('t-hmac')">⧉ <span data-i18n="tokenCopy">Copier</span></div>
+          </div>
+        </details>
+        <div class="token-lifecycle" id="token-lifecycle-info">
+          <span class="tl-expiry" id="tl-expiry-text">—</span>
+          <span class="badge badge-amber" id="tl-one-time-badge" style="font-size:9.5px;padding:2px 8px;display:none"></span>
+          <span class="badge badge-blue"  id="tl-bind-badge"     style="font-size:9.5px;padding:2px 8px;display:none"></span>
+        </div>
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--text-3);letter-spacing:0.14em;text-transform:uppercase;margin-top:14px;margin-bottom:8px" data-i18n="downloadLabel">Téléchargements</div>
+        <div class="download-grid">
+          <div class="dl-btn" onclick="downloadInstaller('linux')">
+            <span class="dl-icon">🐧</span>
+            <div><div class="dl-label" data-i18n="dlLinux">Script Linux</div><div class="dl-sub">.sh — systemd</div></div>
+          </div>
+          <div class="dl-btn" onclick="downloadInstaller('windows')">
+            <span class="dl-icon">🪟</span>
+            <div><div class="dl-label" data-i18n="dlWindows">Script Windows</div><div class="dl-sub">.ps1 — Service</div></div>
+          </div>
+          <div class="dl-btn" onclick="downloadOfflinePack()">
+            <span class="dl-icon">📦</span>
+            <div><div class="dl-label" data-i18n="dlOffline">Pack offline</div><div class="dl-sub">.zip — air-gap</div></div>
+          </div>
+          <div class="dl-btn" onclick="toggleQRCode()">
+            <span class="dl-icon">◻</span>
+            <div><div class="dl-label" data-i18n="dlQR">QR Code</div><div class="dl-sub" data-i18n="dlQRSub">Scanner pour installer</div></div>
           </div>
         </div>
-        <div class="token-box">
-          <div class="token-label" data-i18n="tokenHMACLabel">Clé HMAC-SHA256 (secret agent)</div>
-          <div class="token-value" id="t-hmac">—</div>
-          <div class="token-copy" onclick="copyToken('t-hmac')">
-            ⧉ <span data-i18n="tokenCopy">Copier</span>
-          </div>
+        <div class="qr-container" id="qr-container" style="display:none">
+          <canvas id="qr-canvas"></canvas>
+          <div class="qr-caption" data-i18n="qrCaption">Scanner pour obtenir la commande d'installation</div>
         </div>
-        <div class="token-warning">
-          ⚠ <span data-i18n="tokenWarning">Ces valeurs ne sont affichées qu'une seule fois. Copiez-les avant de fermer.</span>
+        <div class="token-warning" style="margin-top:10px">
+          ⚠ <span data-i18n="tokenWarning">Ces valeurs ne sont affichées qu'une seule fois.</span>
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-token')" data-i18n="btnClose">Fermer</button>
       <button class="btn btn-primary" id="btn-gen-token" onclick="generateToken()" data-i18n="btnGenerate">Générer</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== MODAL : Import CSV bulk provisioning =================== -->
+<div class="modal-overlay" id="modal-bulk" onclick="closeModalOutside(event,'modal-bulk')">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title" data-i18n="modalBulkTitle">Import CSV — Provisioning en masse</div>
+      <button class="modal-close" onclick="closeModal('modal-bulk')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" data-i18n="formTenantFor">Tenant destinataire</label>
+        <select class="form-select" id="f-bulk-tenant"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="formBulkCSV">Contenu CSV</label>
+        <div style="font-size:11.5px;color:var(--text-3);margin-bottom:6px;" data-i18n="formBulkHint">En-tête obligatoire : hostname,os,description</div>
+        <textarea class="form-input" id="f-bulk-csv" rows="7"
+          placeholder="hostname,os,description&#10;POSTE-COMPTA-01,windows,Comptabilité&#10;SRV-BUDGET-02,linux,Serveur budgétaire"
+          style="resize:vertical;font-family:var(--mono);font-size:12px"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" data-i18n="formExpiry">Expiration</label>
+          <select class="form-select" id="f-bulk-expiry">
+            <option value="1">1 heure</option>
+            <option value="24" selected>24 heures</option>
+            <option value="168">7 jours</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:4px">
+          <label class="security-opt">
+            <input type="checkbox" id="f-bulk-onetime" checked>
+            <span class="opt-label" data-i18n="optOneTime">Usage unique</span>
+          </label>
+        </div>
+      </div>
+      <div id="bulk-result" style="display:none">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-3);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px" data-i18n="bulkResultLabel">Résultats</div>
+        <div id="bulk-result-list" style="max-height:180px;overflow-y:auto"></div>
+        <div style="margin-top:10px">
+          <button class="btn btn-ghost btn-sm" onclick="downloadBulkCSV()" data-i18n="btnDownloadBulk">↓ Télécharger le récapitulatif (.csv)</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-bulk')" data-i18n="btnCancel">Annuler</button>
+      <button class="btn btn-primary" onclick="runBulkProvision()" data-i18n="btnBulkGenerate">Générer les tokens</button>
     </div>
   </div>
 </div>
@@ -1449,10 +1655,25 @@ const STRINGS = {
     modalTokenTitle: "Générer un jeton d'enrôlement",
     formTenantFor: 'Tenant destinataire',
     formHostnameHint: 'Identifie le poste dans le portail.',
-    tokenEnrollLabel: "Jeton d'enrôlement (Bearer token)",
+    tokenEnrollLabel: "Bearer token",
     tokenHMACLabel: 'Clé HMAC-SHA256 (secret agent)',
     tokenCopy: 'Copier',
     tokenWarning: "Ces valeurs ne sont affichées qu'une seule fois.",
+    tokenSecretsLabel: 'Voir les secrets bruts',
+    formOSTarget: 'OS cible', osAuto: 'Auto-detect',
+    formExpiry: 'Expiration', formSecurity: 'Sécurité',
+    optOneTime: 'Usage unique', optBindHostname: 'Lier au hostname',
+    downloadLabel: 'Téléchargements',
+    dlLinux: 'Script Linux', dlWindows: 'Script Windows',
+    dlOffline: 'Pack offline', dlQR: 'QR Code', dlQRSub: 'Scanner pour installer',
+    qrCaption: 'Scanner pour obtenir la commande d\'installation',
+    btnImportCSV: '⬆ Import CSV',
+    modalBulkTitle: 'Import CSV — Provisioning en masse',
+    formBulkCSV: 'Contenu CSV',
+    formBulkHint: 'En-tête obligatoire : hostname,os,description',
+    bulkResultLabel: 'Résultats',
+    btnDownloadBulk: '↓ Télécharger le récapitulatif (.csv)',
+    btnBulkGenerate: 'Générer les tokens',
     modalConfirmTitle: 'Suspendre le tenant',
     modalConfirmText: "Les agents de ce tenant ne pourront plus envoyer de télémétrie. Les données restent conservées.",
     btnCancel: 'Annuler', btnCreate: 'Créer le tenant', btnCreate2: 'Créer',
@@ -1564,10 +1785,25 @@ const STRINGS = {
     modalTokenTitle: 'Generate enrollment token',
     formTenantFor: 'Target tenant',
     formHostnameHint: 'Identifies the host in the portal.',
-    tokenEnrollLabel: 'Enrollment token (Bearer token)',
+    tokenEnrollLabel: 'Bearer token',
     tokenHMACLabel: 'HMAC-SHA256 key (agent secret)',
     tokenCopy: 'Copy',
     tokenWarning: 'These values are shown only once.',
+    tokenSecretsLabel: 'Show raw secrets',
+    formOSTarget: 'Target OS', osAuto: 'Auto-detect',
+    formExpiry: 'Expiration', formSecurity: 'Security',
+    optOneTime: 'One-time use', optBindHostname: 'Bind to hostname',
+    downloadLabel: 'Downloads',
+    dlLinux: 'Linux script', dlWindows: 'Windows script',
+    dlOffline: 'Offline pack', dlQR: 'QR Code', dlQRSub: 'Scan to install',
+    qrCaption: 'Scan to get the installation command',
+    btnImportCSV: '⬆ Import CSV',
+    modalBulkTitle: 'CSV Import — Bulk provisioning',
+    formBulkCSV: 'CSV content',
+    formBulkHint: 'Required header: hostname,os,description',
+    bulkResultLabel: 'Results',
+    btnDownloadBulk: '↓ Download summary (.csv)',
+    btnBulkGenerate: 'Generate tokens',
     modalConfirmTitle: 'Suspend tenant',
     modalConfirmText: 'Agents for this tenant will no longer be able to send telemetry. Data is retained.',
     btnCancel: 'Cancel', btnCreate: 'Create tenant', btnCreate2: 'Create',
@@ -1892,11 +2128,22 @@ function openModal(id, data) {
     document.getElementById(id).classList.add('open');
     return;
   }
-  if (id === 'modal-token' && data) {
-    const sel = document.getElementById('f-token-tenant');
-    if (sel) sel.value = data;
+  if (id === 'modal-token') {
+    // Réinitialiser le formulaire
+    _prov_token = null;
+    _prov_os = 'linux'; selectOS('linux');
+    _prov_expiry = 24;  selectExpiry(24);
+    const step1 = document.getElementById('prov-step-1');
+    if (step1) step1.style.opacity = '1';
     document.getElementById('token-result').style.display = 'none';
     document.getElementById('btn-gen-token').style.display = '';
+    document.getElementById('qr-container').style.display = 'none';
+    const host = document.getElementById('f-token-hostname');
+    if (host) host.value = '';
+    if (data) {
+      const sel = document.getElementById('f-token-tenant');
+      if (sel) sel.value = data;
+    }
   }
   document.getElementById(id).classList.add('open');
 }
@@ -1962,22 +2209,364 @@ function saveUser() {
   toast('success', STRINGS.fr.toastUserCreated, STRINGS.en.toastUserCreated);
 }
 
-function generateToken() {
-  const hostname = document.getElementById('f-token-hostname').value.trim() || 'AGENT-NEW';
-  document.getElementById('t-bearer').textContent = `nexus_${randUUID()}`;
-  document.getElementById('t-hmac').textContent = randHex(64);
-  document.getElementById('token-result').style.display = 'block';
-  document.getElementById('btn-gen-token').style.display = 'none';
-  // Add agent to demo list
-  const tenantId = document.getElementById('f-token-tenant').value;
-  AGENTS_DATA.push({ id: 'A' + (AGENTS_DATA.length+1), tenant_id: tenantId, hostname: hostname.toUpperCase(), os: 'unknown', statut: 'hors_ligne', vu_le: null });
+/* =========================================================
+   Provisioning — état local
+   ========================================================= */
+let _prov_os      = 'linux';
+let _prov_expiry  = 24;
+let _prov_token   = null; // token généré en cours
+let _bulk_results = [];
+
+function selectOS(os) {
+  _prov_os = os;
+  ['linux','windows','auto'].forEach(o => {
+    const el = document.getElementById('os-' + o);
+    if (el) el.classList.toggle('selected', o === os);
+  });
+}
+function selectExpiry(h) {
+  _prov_expiry = h;
+  ['1h','24h','7d'].forEach(id => {
+    const el = document.getElementById('exp-' + id);
+    if (el) el.classList.remove('selected');
+  });
+  const map = { 1:'1h', 24:'24h', 168:'7d' };
+  const el = document.getElementById('exp-' + (map[h] || '24h'));
+  if (el) el.classList.add('selected');
 }
 
-function copyToken(elId) {
-  const val = document.getElementById(elId).textContent;
-  navigator.clipboard?.writeText(val).then(() => {
-    toast('success', STRINGS.fr.toastTokenCopied, STRINGS.en.toastTokenCopied);
+/* =========================================================
+   Génération de token — enrichie
+   ========================================================= */
+function generateToken() {
+  const hostname = (document.getElementById('f-token-hostname')?.value || '').trim().toUpperCase() || 'AGENT-NEW';
+  const tenantId = document.getElementById('f-token-tenant')?.value || '';
+  const oneTime  = document.getElementById('opt-one-time')?.checked ?? true;
+  const bindHost = document.getElementById('opt-bind-hostname')?.checked ?? true;
+  const os       = _prov_os;
+  const expiry   = _prov_expiry;
+
+  const bearer = `nexus_${randUUID()}`;
+  const hmac   = randHex(64);
+  const server = 'https://nexussoc.cm';
+
+  _prov_token = { bearer, hmac, hostname, tenantId, os, expiry, oneTime, bindHost, server };
+
+  // One-liners
+  const oneLinuxCmd  = `curl -fsSL ${server}/provision/oneliner?token=${bearer}\\&hostname=${hostname}\\&os=linux | bash`;
+  const oneWinCmd    = `irm "${server}/provision/oneliner?token=${bearer}&hostname=${hostname}&os=windows" | iex`;
+
+  document.getElementById('t-oneliner-linux').textContent = oneLinuxCmd;
+  document.getElementById('t-oneliner-win').textContent   = oneWinCmd;
+  document.getElementById('t-bearer').textContent = bearer;
+  document.getElementById('t-hmac').textContent   = hmac;
+
+  // Affichage one-liners selon l'OS sélectionné
+  const lbox = document.getElementById('oneliner-linux-box');
+  const wbox = document.getElementById('oneliner-win-box');
+  if (os === 'windows') {
+    if (lbox) lbox.style.display = 'none';
+    if (wbox) wbox.style.display = '';
+  } else if (os === 'linux') {
+    if (lbox) lbox.style.display = '';
+    if (wbox) wbox.style.display = 'none';
+  } else {
+    if (lbox) lbox.style.display = '';
+    if (wbox) wbox.style.display = '';
+  }
+
+  // Cycle de vie
+  const expiryDate = new Date(Date.now() + expiry * 3600 * 1000);
+  const expLabel = LANG === 'fr'
+    ? `Expire le ${expiryDate.toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`
+    : `Expires ${expiryDate.toLocaleString('en-GB', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
+  const expEl = document.getElementById('tl-expiry-text');
+  if (expEl) expEl.textContent = expLabel;
+
+  const otb = document.getElementById('tl-one-time-badge');
+  const bdb = document.getElementById('tl-bind-badge');
+  if (otb) { otb.textContent = LANG === 'fr' ? 'Usage unique' : 'One-time'; otb.style.display = oneTime ? '' : 'none'; }
+  if (bdb) { bdb.textContent = LANG === 'fr' ? `Lié à ${hostname}` : `Bound to ${hostname}`; bdb.style.display = bindHost ? '' : 'none'; }
+
+  // Ajouter à la liste des agents
+  AGENTS_DATA.push({
+    id: 'A' + (AGENTS_DATA.length + 1),
+    tenant_id: tenantId, hostname, os,
+    statut: 'hors_ligne', vu_le: null,
+    _token_statut: 'actif', _token_expiry: expLabel,
   });
+
+  // Afficher le résultat
+  document.getElementById('prov-step-1').style.opacity = '0.4';
+  document.getElementById('token-result').style.display = 'block';
+  document.getElementById('btn-gen-token').style.display = 'none';
+
+  toast('success', 'Token généré avec succès.', 'Token generated successfully.');
+}
+
+function copyById(elId) {
+  const val = document.getElementById(elId)?.textContent || '';
+  navigator.clipboard?.writeText(val).then(() =>
+    toast('success', STRINGS.fr.toastTokenCopied, STRINGS.en.toastTokenCopied)
+  );
+}
+function copyToken(elId) { copyById(elId); }
+
+/* =========================================================
+   Téléchargements
+   ========================================================= */
+function _scriptLinux(t) {
+  const { bearer, hmac, hostname, tenantId, server } = t;
+  return `#!/usr/bin/env bash
+# NEXUS SOC — Script d'installation agent Linux
+# Généré le : ${new Date().toISOString().slice(0,16)}
+# Tenant : ${tenantId}  |  Hostname : ${hostname}
+set -euo pipefail
+
+NEXUS_SERVER="${server}"
+NEXUS_TOKEN="${bearer}"
+NEXUS_HMAC_KEY="${hmac}"
+NEXUS_TENANT_ID="${tenantId}"
+NEXUS_HOSTNAME="${hostname}"
+NEXUS_VERSION="1.0.0"
+INSTALL_DIR="/usr/local/bin"
+CONFIG_DIR="/etc/nexusagent"
+DATA_DIR="/var/lib/nexusagent/queue"
+LOG_DIR="/var/log/nexusagent"
+SERVICE_USER="nexusagent"
+
+[[ $EUID -ne 0 ]] && echo "Exécuter en tant que root (sudo)." && exit 1
+
+echo "[NEXUS] Création de l'utilisateur système..."
+id -u "$SERVICE_USER" &>/dev/null || useradd --system --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER"
+
+echo "[NEXUS] Création des répertoires..."
+mkdir -p "$CONFIG_DIR" "$DATA_DIR" "$LOG_DIR"
+chown -R "$SERVICE_USER:$SERVICE_USER" "$DATA_DIR" "$LOG_DIR"
+
+echo "[NEXUS] Téléchargement du binaire..."
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -fsSL -H "Authorization: Bearer $NEXUS_TOKEN" \\
+  -o "$INSTALL_DIR/nexusagent" \\
+  "$NEXUS_SERVER/agent/download/$NEXUS_VERSION/linux/$ARCH/nexusagent" \\
+  || cp "$(dirname "$0")/nexusagent" "$INSTALL_DIR/" 2>/dev/null \\
+  || (echo "[✗] Binaire introuvable." && exit 1)
+chmod 755 "$INSTALL_DIR/nexusagent"
+
+echo "[NEXUS] Écriture de la configuration..."
+cat > "$CONFIG_DIR/config.json" <<CFG
+{
+  "server_url": "$NEXUS_SERVER/ingest",
+  "enroll_token": "$NEXUS_TOKEN",
+  "hmac_key": "$NEXUS_HMAC_KEY",
+  "agent_id": "$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)",
+  "tenant_id": "$NEXUS_TENANT_ID",
+  "hostname": "$NEXUS_HOSTNAME",
+  "interval_sec": 30,
+  "watch_dirs": ["/home", "/tmp", "/var/log", "/etc"],
+  "queue_dir": "$DATA_DIR",
+  "queue_max_mb": 50,
+  "tls_verify": true
+}
+CFG
+chmod 600 "$CONFIG_DIR/config.json"
+chown "$SERVICE_USER:$SERVICE_USER" "$CONFIG_DIR/config.json"
+
+echo "[NEXUS] Installation du service systemd..."
+cat > /etc/systemd/system/nexusagent.service <<UNIT
+[Unit]
+Description=NEXUS SOC Agent
+After=network-online.target
+[Service]
+Type=simple
+User=$SERVICE_USER
+ExecStart=$INSTALL_DIR/nexusagent -config $CONFIG_DIR/config.json
+Restart=on-failure
+RestartSec=30
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=$DATA_DIR $LOG_DIR
+PrivateTmp=yes
+StandardOutput=append:$LOG_DIR/agent.log
+StandardError=append:$LOG_DIR/agent.log
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now nexusagent
+echo "[✓] Agent NEXUS SOC installé. Logs : $LOG_DIR/agent.log"
+`;
+}
+
+function _scriptWindows(t) {
+  const { bearer, hmac, hostname, tenantId, server } = t;
+  return `#Requires -RunAsAdministrator
+# NEXUS SOC — Script d'installation agent Windows
+# Généré le : ${new Date().toISOString().slice(0,16)}
+# Tenant : ${tenantId}  |  Hostname : ${hostname}
+$NexusServer="${server}"; $NexusToken="${bearer}"; $NexusHmac="${hmac}"
+$NexusTenant="${tenantId}"; $NexusHostname="${hostname}"
+$InstallDir="$env:ProgramFiles\\NexusSOC"
+$ConfigDir="$env:ProgramData\\NexusSOC"
+$ServiceName="NexusSOCAgent"
+
+New-Item -ItemType Directory -Force -Path $InstallDir,$ConfigDir,"$ConfigDir\\queue","$ConfigDir\\logs" | Out-Null
+
+try {
+  $h=@{Authorization="Bearer $NexusToken"}
+  Invoke-WebRequest "$NexusServer/agent/download/1.0.0/windows/amd64/nexusagent.exe" -Headers $h -OutFile "$InstallDir\\nexusagent.exe.tmp" -UseBasicParsing -TimeoutSec 30
+  Move-Item "$InstallDir\\nexusagent.exe.tmp" "$InstallDir\\nexusagent.exe" -Force
+} catch {
+  $offline=Join-Path (Split-Path $MyInvocation.MyCommand.Path) "nexusagent.exe"
+  if(Test-Path $offline){Copy-Item $offline "$InstallDir\\nexusagent.exe" -Force}else{Write-Error "Binaire introuvable.";exit 1}
+}
+
+@{server_url="$NexusServer/ingest";enroll_token=$NexusToken;hmac_key=$NexusHmac;tenant_id=$NexusTenant;hostname=$NexusHostname;interval_sec=30;queue_dir="$ConfigDir\\queue";queue_max_mb=50;tls_verify=$true} | ConvertTo-Json | Set-Content "$ConfigDir\\config.json" -Encoding UTF8
+icacls "$ConfigDir\\config.json" /inheritance:r /grant "SYSTEM:F" /grant "Administrators:F" | Out-Null
+
+if(Get-Service $ServiceName -ErrorAction SilentlyContinue){Stop-Service $ServiceName -Force; sc.exe delete $ServiceName | Out-Null; Start-Sleep 2}
+sc.exe create $ServiceName binPath= "\\"$InstallDir\\nexusagent.exe\\" -config \\"$ConfigDir\\config.json\\"" start= auto DisplayName= "NEXUS SOC Agent" | Out-Null
+sc.exe failure $ServiceName reset= 86400 actions= restart/30000/restart/60000 | Out-Null
+Start-Service $ServiceName
+Write-Host "[✓] Agent NEXUS SOC installé. Service : $ServiceName" -ForegroundColor Green
+`;
+}
+
+function downloadInstaller(os) {
+  if (!_prov_token) { toast('error', 'Générer un token d\'abord.', 'Generate a token first.'); return; }
+  const t = _prov_token;
+  const content  = os === 'windows' ? _scriptWindows(t) : _scriptLinux(t);
+  const filename = os === 'windows'
+    ? `Install-NexusAgent_${t.hostname}.ps1`
+    : `install_nexus_${t.hostname.toLowerCase()}.sh`;
+  _downloadBlob(content, filename, 'text/plain');
+}
+
+function downloadOfflinePack() {
+  if (!_prov_token) { toast('error', 'Générer un token d\'abord.', 'Generate a token first.'); return; }
+  if (typeof JSZip === 'undefined') {
+    toast('error', 'JSZip non chargé (requiert internet).', 'JSZip not loaded (requires internet).'); return;
+  }
+  const t = _prov_token;
+  const zip = new JSZip();
+  zip.file('install.sh',  _scriptLinux(t));
+  zip.file('install.ps1', _scriptWindows(t));
+  const cfg = {
+    server_url: `${t.server}/ingest`, enroll_token: t.bearer, hmac_key: t.hmac,
+    tenant_id: t.tenantId, hostname: t.hostname,
+    interval_sec: 30, watch_dirs: ['/home','/tmp','/var/log'], queue_dir: './queue', queue_max_mb: 50, tls_verify: true,
+  };
+  zip.file('config.json', JSON.stringify(cfg, null, 2));
+  zip.file('README_INSTALLATION.txt',
+    `NEXUS SOC — Pack offline\nTenant : ${t.tenantId}\nHostname : ${t.hostname}\nOS : ${t.os}\n\nLinux  : sudo bash install.sh\nWindows: .\\install.ps1 (PowerShell Admin)\n\n⚠ Token à usage unique.`);
+  zip.generateAsync({ type: 'blob' }).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `nexus-agent-${t.hostname.toLowerCase()}-${t.os}.zip`; a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+function toggleQRCode() {
+  const c = document.getElementById('qr-container');
+  if (!c) return;
+  if (c.style.display !== 'none') { c.style.display = 'none'; return; }
+  if (!_prov_token) return;
+  const t = _prov_token;
+  const payload = t.os === 'windows'
+    ? `${t.server}/provision/oneliner?token=${t.bearer}&hostname=${t.hostname}&os=windows`
+    : `curl -fsSL "${t.server}/provision/oneliner?token=${t.bearer}&hostname=${t.hostname}" | bash`;
+  if (typeof QRCode !== 'undefined') {
+    const canvas = document.getElementById('qr-canvas');
+    QRCode.toCanvas(canvas, payload, { width: 200, color: { dark: '#000', light: '#fff' } });
+    c.style.display = 'block';
+  } else {
+    toast('error', 'QRCode.js non chargé (requiert internet).', 'QRCode.js not loaded.');
+  }
+}
+
+function _downloadBlob(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* =========================================================
+   Bulk provisioning (import CSV)
+   ========================================================= */
+function openBulkModal() {
+  buildAgentTenantFilter();
+  const sel = document.getElementById('f-bulk-tenant');
+  if (sel) sel.innerHTML = TENANTS.map(t => `<option value="${t.id}">${t.nom}</option>`).join('');
+  document.getElementById('bulk-result').style.display = 'none';
+  document.getElementById('f-bulk-csv').value = '';
+  _bulk_results = [];
+  document.getElementById('modal-bulk').classList.add('open');
+}
+
+function runBulkProvision() {
+  const csv     = document.getElementById('f-bulk-csv')?.value.trim();
+  const tenantId = document.getElementById('f-bulk-tenant')?.value;
+  const expiry  = parseInt(document.getElementById('f-bulk-expiry')?.value || '24');
+  const oneTime = document.getElementById('f-bulk-onetime')?.checked ?? true;
+  if (!csv) { toast('error', 'CSV vide.', 'Empty CSV.'); return; }
+
+  const lines  = csv.split('\n').map(l => l.trim()).filter(Boolean);
+  const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+  const hiHost = header.indexOf('hostname');
+  const hiOS   = header.indexOf('os');
+  if (hiHost < 0) { toast('error', 'Colonne hostname manquante.', 'Missing hostname column.'); return; }
+
+  _bulk_results = [];
+  const expDate = new Date(Date.now() + expiry * 3600 * 1000);
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols  = lines[i].split(',');
+    const host  = (cols[hiHost] || '').trim().toUpperCase();
+    const os    = hiOS >= 0 ? (cols[hiOS] || 'linux').trim().toLowerCase() : 'linux';
+    if (!host) continue;
+
+    const bearer = `nexus_${randUUID()}`;
+    const hmac   = randHex(64);
+    AGENTS_DATA.push({
+      id: 'A' + (AGENTS_DATA.length + 1), tenant_id: tenantId,
+      hostname: host, os, statut: 'hors_ligne', vu_le: null,
+      _token_statut: 'actif',
+    });
+    _bulk_results.push({ hostname: host, os, bearer, hmac, expiry: expDate.toISOString() });
+  }
+
+  // Afficher les résultats
+  const listEl = document.getElementById('bulk-result-list');
+  listEl.innerHTML = _bulk_results.map((r, i) => `
+    <div class="bulk-result-item">
+      <span class="badge badge-green" style="font-size:9.5px">${i+1}</span>
+      <span style="font-weight:600;font-family:var(--mono);font-size:12px">${r.hostname}</span>
+      <span class="badge badge-gray" style="font-size:9.5px">${r.os}</span>
+      <span style="flex:1;font-family:var(--mono);font-size:10.5px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.bearer.slice(0,24)}…</span>
+      <span class="oneliner-copy" style="margin-left:4px" onclick="navigator.clipboard?.writeText('${r.bearer}').then(()=>toast('success','Copié','Copied'))">⧉</span>
+    </div>`).join('');
+  document.getElementById('bulk-result').style.display = 'block';
+
+  const S = STRINGS[LANG];
+  toast('success',
+    `${_bulk_results.length} agents provisionnés.`,
+    `${_bulk_results.length} agents provisioned.`
+  );
+  renderAgents();
+}
+
+function downloadBulkCSV() {
+  if (!_bulk_results.length) return;
+  const header = 'hostname,os,bearer_token,hmac_key,expires_at,oneliner_linux\n';
+  const rows = _bulk_results.map(r => {
+    const ol = `curl -fsSL "https://nexussoc.cm/provision/oneliner?token=${r.bearer}&hostname=${r.hostname}&os=linux" | bash`;
+    return `${r.hostname},${r.os},${r.bearer},${r.hmac},${r.expiry},"${ol}"`;
+  }).join('\n');
+  _downloadBlob(header + rows, `nexus-bulk-provision-${Date.now()}.csv`, 'text/csv');
 }
 
 function isolateAgent(agentId) {

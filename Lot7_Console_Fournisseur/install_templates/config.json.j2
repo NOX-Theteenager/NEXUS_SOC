@@ -1,0 +1,13 @@
+{
+  "server_url":   "{{ nexus_server }}/ingest",
+  "enroll_token": "{{ nexus_token }}",
+  "hmac_key":     "{{ nexus_hmac_key }}",
+  "agent_id":     "{{ hostvars[inventory_hostname]['nexus_agent_id'] | default(inventory_hostname) }}",
+  "tenant_id":    "{{ nexus_tenant_id }}",
+  "hostname":     "{{ inventory_hostname }}",
+  "interval_sec": {{ nexus_interval }},
+  "watch_dirs":   {{ nexus_watch_dirs | to_json }},
+  "queue_dir":    "{{ data_dir }}",
+  "queue_max_mb": 50,
+  "tls_verify":   true
+}

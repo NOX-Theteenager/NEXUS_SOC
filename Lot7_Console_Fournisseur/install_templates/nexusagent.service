@@ -1,0 +1,63 @@
+# =============================================================================
+# NEXUS SOC — Unité systemd pour l'agent
+# Copier dans /etc/systemd/system/nexusagent.service
+# Puis : systemctl daemon-reload && systemctl enable --now nexusagent
+# =============================================================================
+[Unit]
+Description=NEXUS SOC Agent
+Documentation=https://nexussoc.cm/docs/agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nexusagent
+Group=nexusagent
+ExecStart=/usr/local/bin/nexusagent -config /etc/nexusagent/config.json
+
+# Redémarrage automatique
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=20
+StartLimitIntervalSec=120
+StartLimitBurst=3
+
+# Journaux
+StandardOutput=append:/var/log/nexusagent/agent.log
+StandardError=append:/var/log/nexusagent/agent.log
+
+# ── Durcissement de sécurité ────────────────────────────────────────────────
+# Pas de nouveaux privilèges après démarrage
+NoNewPrivileges=yes
+
+# Système de fichiers en lecture seule sauf les chemins explicites
+ProtectSystem=strict
+ReadWritePaths=/var/lib/nexusagent /var/log/nexusagent
+
+# Home inaccessible (l'agent n'en a pas besoin)
+ProtectHome=yes
+
+# Espace /tmp privé
+PrivateTmp=yes
+
+# Pas d'accès aux périphériques
+PrivateDevices=yes
+
+# Pas de capabilities
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Réseau : uniquement sortant (egress-only) — pas de sockets de service
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Protection du noyau
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+# ────────────────────────────────────────────────────────────────────────────
+
+[Install]
+WantedBy=multi-user.target
