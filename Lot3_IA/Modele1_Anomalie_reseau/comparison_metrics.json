@@ -1,0 +1,68 @@
+{
+  "isolation_forest": {
+    "roc_auc": 0.9867,
+    "pr_auc": 0.9428,
+    "detection_rate": 0.9306,
+    "false_positive_rate": 0.0505,
+    "precision": 0.8019,
+    "f1": 0.8614,
+    "cm": {
+      "TN": 14015,
+      "FP": 745,
+      "FN": 225,
+      "TP": 3015
+    },
+    "detection_par_type": {
+      "BENIGN": {
+        "flux": 14760,
+        "taux_faux_positifs": 0.0505
+      },
+      "Bot/C2": {
+        "flux": 1051,
+        "taux_detection": 0.9581
+      },
+      "DDoS": {
+        "flux": 1090,
+        "taux_detection": 0.9954
+      },
+      "PortScan": {
+        "flux": 1099,
+        "taux_detection": 0.8399
+      }
+    }
+  },
+  "autoencodeur": {
+    "roc_auc": 0.9915,
+    "pr_auc": 0.981,
+    "detection_rate": 0.9636,
+    "false_positive_rate": 0.0522,
+    "precision": 0.8022,
+    "f1": 0.8755,
+    "cm": {
+      "TN": 13990,
+      "FP": 770,
+      "FN": 118,
+      "TP": 3122
+    },
+    "detection_par_type": {
+      "BENIGN": {
+        "flux": 14760,
+        "taux_faux_positifs": 0.0522
+      },
+      "Bot/C2": {
+        "flux": 1051,
+        "taux_detection": 0.999
+      },
+      "DDoS": {
+        "flux": 1090,
+        "taux_detection": 0.9138
+      },
+      "PortScan": {
+        "flux": 1099,
+        "taux_detection": 0.9791
+      }
+    }
+  },
+  "n_test": 18000,
+  "n_features": 12
+}

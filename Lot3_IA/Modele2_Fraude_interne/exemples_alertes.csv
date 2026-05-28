@@ -1,0 +1,13 @@
+type_reel,score_risque,raisons
+Faux mandatement,69,montant total modifié (FCFA) anormalement élevé (4.9σ); modifications de montants anormalement élevé (3.5σ); connexions anormalement élevé (2.8σ)
+Fonctionnaire fantôme,63,créations de comptes agents anormalement élevé (23.7σ); actions au total anormalement élevé (2.5σ)
+Exfiltration,87,exports de données anormalement élevé (20.5σ); volume de données exportées anormalement élevé (13.0σ); accès à des dossiers sensibles anormalement élevé (12.1σ)
+Faux mandatement,89,montant total modifié (FCFA) anormalement élevé (9.2σ); actions hors heures ouvrables anormalement élevé (5.9σ); modifications de montants anormalement élevé (2.2σ)
+Fonctionnaire fantôme,65,créations de comptes agents anormalement élevé (9.6σ); actions au total anormalement élevé (3.0σ); transactions budgétaires anormalement élevé (1.7σ)
+Faux mandatement,72,montant total modifié (FCFA) anormalement élevé (17.5σ); actions hors heures ouvrables anormalement élevé (5.9σ); modifications de montants anormalement élevé (1.6σ)
+Faux mandatement,76,montant total modifié (FCFA) anormalement élevé (7.8σ); modifications de montants anormalement élevé (6.0σ); actions hors heures ouvrables anormalement élevé (2.3σ)
+Exfiltration,63,exports de données anormalement élevé (19.0σ); accès à des dossiers sensibles anormalement élevé (10.2σ); volume de données exportées anormalement élevé (2.4σ)
+Fonctionnaire fantôme,62,créations de comptes agents anormalement élevé (13.8σ); actions au total anormalement élevé (2.8σ); transactions budgétaires anormalement élevé (1.6σ)
+Fonctionnaire fantôme,70,créations de comptes agents anormalement élevé (11.0σ); actions au total anormalement élevé (2.5σ); transactions budgétaires anormalement élevé (1.6σ)
+Fonctionnaire fantôme,61,créations de comptes agents anormalement élevé (12.4σ); transactions budgétaires anormalement élevé (2.0σ)
+Exfiltration,88,exports de données anormalement élevé (15.1σ); volume de données exportées anormalement élevé (14.2σ); accès à des dossiers sensibles anormalement élevé (12.4σ)

@@ -1,0 +1,157 @@
+# =============================================================================
+#  NEXUS SOC — Socle technique (Lot 0)
+#  Plateforme intégrée de développement : SIEM (Wazuh) + pipeline (Kafka)
+#  + stockage chaud (indexeur Wazuh, compatible Elasticsearch) + base relationnelle
+#  et séries temporelles (TimescaleDB) + service de scoring IA (branche les modèles
+#  et le SOAR sur le pipeline).
+#
+#  Prérequis : voir README_Lot0.md (génération des certificats Wazuh, vm.max_map_count,
+#  ~8 Go de RAM recommandés). Les versions d'images sont à confirmer avec la doc Wazuh.
+# =============================================================================
+name: nexus-soc
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # 1. PIPELINE TEMPS RÉEL — Apache Kafka (mode KRaft, sans Zookeeper)
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: apache/kafka:3.7.1
+    container_name: nexus-kafka
+    hostname: kafka
+    ports:
+      - "29092:29092"            # accès depuis l'hôte (outils de dev) → localhost:29092
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks: [nexus]
+
+  # ---------------------------------------------------------------------------
+  # 2. BASE RELATIONNELLE + SÉRIES TEMPORELLES — TimescaleDB (PostgreSQL 16)
+  #    Rôle : config, utilisateurs, tenants, alertes (relationnel) + métriques (séries).
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: timescale/timescaledb:2.15.3-pg16
+    container_name: nexus-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nexus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-nexus_soc}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexus} -d ${POSTGRES_DB:-nexus_soc}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [nexus]
+
+  # ---------------------------------------------------------------------------
+  # 3. STOCKAGE CHAUD + MOTEUR DE RECHERCHE — Indexeur Wazuh (compatible Elasticsearch)
+  # ---------------------------------------------------------------------------
+  wazuh.indexer:
+    image: wazuh/wazuh-indexer:4.9.0
+    container_name: nexus-wazuh-indexer
+    hostname: wazuh.indexer
+    ports:
+      - "9200:9200"              # API compatible Elasticsearch/OpenSearch
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"   # léger (matériel limité)
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile:  { soft: 65536, hard: 65536 }
+    volumes:
+      - indexer_data:/var/lib/wazuh-indexer
+      - ./config/wazuh_indexer/opensearch.yml:/usr/share/wazuh-indexer/opensearch.yml:ro
+      - ./config/wazuh_indexer_ssl_certs:/usr/share/wazuh-indexer/certs:ro
+    networks: [nexus]
+
+  # ---------------------------------------------------------------------------
+  # 4. SIEM — Wazuh Manager (collecte, règles de corrélation)
+  # ---------------------------------------------------------------------------
+  wazuh.manager:
+    image: wazuh/wazuh-manager:4.9.0
+    container_name: nexus-wazuh-manager
+    hostname: wazuh.manager
+    depends_on: [wazuh.indexer]
+    ports:
+      - "1514:1514"              # communication agents
+      - "1515:1515"              # enrôlement des agents
+      - "55000:55000"            # API Wazuh
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    volumes:
+      - manager_data:/var/ossec
+      - ./config/wazuh_indexer_ssl_certs:/etc/ssl/certs/wazuh:ro
+    networks: [nexus]
+
+  # ---------------------------------------------------------------------------
+  # 5. INTERFACE SIEM — Tableau de bord Wazuh
+  # ---------------------------------------------------------------------------
+  wazuh.dashboard:
+    image: wazuh/wazuh-dashboard:4.9.0
+    container_name: nexus-wazuh-dashboard
+    depends_on: [wazuh.indexer]
+    ports:
+      - "5601:5601"              # https://localhost:5601
+    environment:
+      - INDEXER_URL=https://wazuh.indexer:9200
+      - DASHBOARD_USERNAME=kibanaserver
+      - DASHBOARD_PASSWORD=kibanaserver
+    volumes:
+      - ./config/wazuh_indexer_ssl_certs:/usr/share/wazuh-dashboard/certs:ro
+    networks: [nexus]
+
+  # ---------------------------------------------------------------------------
+  # 6. SERVICE DE SCORING IA — branche les modèles (1 & 2) + alimente le SOAR
+  #    Consomme la télémétrie sur Kafka, score, et publie les alertes.
+  # ---------------------------------------------------------------------------
+  scoring-service:
+    build: ./scoring-service
+    container_name: nexus-scoring
+    depends_on:
+      kafka: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    ports:
+      - "8000:8000"              # API REST de scoring → http://localhost:8000/docs
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      TELEMETRY_TOPIC: nexus.telemetry
+      ALERTS_TOPIC: nexus.alerts
+      DB_DSN: postgresql://${POSTGRES_USER:-nexus}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-nexus_soc}
+      MODEL1_PATH: /models/model1_isoforest.joblib
+      MODEL2_PATH: /models/model2_isoforest.joblib
+      RISK_THRESHOLD: "70"
+    volumes:
+      - ./models:/models:ro      # y déposer model1_isoforest.joblib et model2_isoforest.joblib
+    networks: [nexus]
+
+volumes:
+  kafka_data:
+  postgres_data:
+  indexer_data:
+  manager_data:
+
+networks:
+  nexus:
+    driver: bridge

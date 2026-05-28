@@ -1,0 +1,606 @@
+{
+  "agent_id": "agent-poste-001",
+  "tenant_id": "11111111-1111-1111-1111-111111111111",
+  "host": "vm",
+  "os": "linux",
+  "sent_at": "2026-05-27T14:13:04Z",
+  "events": [
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "/process_api",
+        "name": "process_api",
+        "pid": "1",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/0:0H-events_highpri",
+        "pid": "10",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/u4:2-ext4-rsv-conversion",
+        "pid": "100",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/0:1-pm",
+        "pid": "11",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "hwrng",
+        "pid": "115",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/u4:0-events_unbound",
+        "pid": "12",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-mm_percpu_wq",
+        "pid": "13",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "ksoftirqd/0",
+        "pid": "14",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-iscsi_conn_cleanup",
+        "pid": "145",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "rcu_preempt",
+        "pid": "15",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "rcu_exp_par_gp_kthread_worker/0",
+        "pid": "16",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "rcu_exp_gp_kthread_worker",
+        "pid": "17",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-kstrp",
+        "pid": "175",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "migration/0",
+        "pid": "18",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "cpuhp/0",
+        "pid": "19",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kthreadd",
+        "pid": "2",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/u4:1-ext4-rsv-conversion",
+        "pid": "21",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kdevtmpfs",
+        "pid": "22",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-inet_frag_wq",
+        "pid": "23",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "rcu_tasks_kthread",
+        "pid": "24",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "rcu_tasks_trace_kthread",
+        "pid": "25",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kauditd",
+        "pid": "26",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "/usr/bin/dash",
+        "name": "sh",
+        "pid": "2699",
+        "sha256": "86d31f6fb799e91fa21bad341484564510ca287703a16e9e46c53338776f4f42"
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "khungtaskd",
+        "pid": "27",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "/home/claude/nexus/agent/nexus-agent/nexusagent",
+        "name": "nexusagent",
+        "pid": "2700",
+        "sha256": "06e35ec8bcb0efbbdc289a6994f2ae65519f3cd351a428cf0a2f0917f2b5aa45"
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "oom_reaper",
+        "pid": "28",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-writeback",
+        "pid": "29",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "pool_workqueue_release",
+        "pid": "3",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kcompactd0",
+        "pid": "30",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "ksmd",
+        "pid": "31",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "khugepaged",
+        "pid": "32",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-kblockd",
+        "pid": "33",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-kintegrityd",
+        "pid": "34",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "watchdogd",
+        "pid": "35",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-quota_events_unbound",
+        "pid": "36",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-rpciod",
+        "pid": "37",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/0:1H-kblockd",
+        "pid": "38",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-xprtiod",
+        "pid": "39",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-rcu_gp",
+        "pid": "4",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kswapd0",
+        "pid": "46",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/u5:0",
+        "pid": "477",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-ext4-rsv-conversion",
+        "pid": "487",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "/opt/rclone/rclone-filestore",
+        "name": "rclone-filestor",
+        "pid": "489",
+        "sha256": "cb45dd301cd33eaff0ad1b92f12cdacb92d50b00bd6b02ac9c08d44eb1853e0f"
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-sync_wq",
+        "pid": "5",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-nfsiod",
+        "pid": "59",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-kvfree_rcu_reclaim",
+        "pid": "6",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-xfsalloc",
+        "pid": "63",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-xfs_mru_cache",
+        "pid": "65",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-kthrotld",
+        "pid": "66",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "irq/24-ACPI:Ged",
+        "pid": "68",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-slub_flushwq",
+        "pid": "7",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "irq/25-ACPI:Ged",
+        "pid": "70",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/R-netns",
+        "pid": "8",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "process",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "exe": "",
+        "name": "kworker/0:0-events",
+        "pid": "9",
+        "sha256": ""
+      }
+    },
+    {
+      "kind": "connection",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "local": "0.0.0.0:2025",
+        "proto": "tcp",
+        "remote": "0.0.0.0:0",
+        "state": "LISTEN"
+      }
+    },
+    {
+      "kind": "connection",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "local": "0.0.0.0:2024",
+        "proto": "tcp",
+        "remote": "0.0.0.0:0",
+        "state": "LISTEN"
+      }
+    },
+    {
+      "kind": "connection",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "local": "192.0.2.2:2024",
+        "proto": "tcp",
+        "remote": "192.0.2.1:35836",
+        "state": "ESTABLISHED"
+      }
+    },
+    {
+      "kind": "connection",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "local": "192.0.2.2:2024",
+        "proto": "tcp",
+        "remote": "192.0.2.1:55928",
+        "state": "TIME_WAIT"
+      }
+    },
+    {
+      "kind": "system",
+      "time": "2026-05-27T14:13:04Z",
+      "data": {
+        "arch": "amd64",
+        "hostname": "vm",
+        "loadavg": [
+          "0.55",
+          "0.19",
+          "0.06",
+          "1/82",
+          "2703"
+        ],
+        "os": "linux",
+        "uptime_s": "255.61"
+      }
+    }
+  ]
+}

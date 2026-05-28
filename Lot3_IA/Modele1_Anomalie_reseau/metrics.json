@@ -1,0 +1,18 @@
+{
+  "roc_auc": 0.9867,
+  "pr_auc": 0.9428,
+  "precision": 0.8019,
+  "recall_detection_rate": 0.9306,
+  "f1": 0.8614,
+  "false_positive_rate": 0.0505,
+  "threshold": 0.499473,
+  "confusion_matrix": {
+    "TN": 14015,
+    "FP": 745,
+    "FN": 225,
+    "TP": 3015
+  },
+  "n_test": 18000,
+  "n_features": 12,
+  "contamination": 0.05
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "type": "Ransomware",
+    "entity": "POSTE-COMPTA-07",
+    "entity_kind": "poste",
+    "risque": 100,
+    "source": "Corrélation SIEM",
+    "activite_hors_heures": true,
+    "mitre": [
+      "T1005",
+      "T1059",
+      "T1071",
+      "T1204",
+      "T1486"
+    ],
+    "tactiques": [
+      "Initial Access",
+      "Execution",
+      "Collection",
+      "Command and Control",
+      "Impact"
+    ],
+    "chaine": [
+      {
+        "heure": "20:02:00",
+        "tactique": "Initial Access",
+        "technique": "T1204 User Execution: Malicious File",
+        "detail": "/home/user/Downloads/facture_2026.exe"
+      },
+      {
+        "heure": "20:03:00",
+        "tactique": "Execution",
+        "technique": "T1059 Command and Scripting Interpreter",
+        "detail": "processus cmd.exe"
+      },
+      {
+        "heure": "20:03:20",
+        "tactique": "Execution",
+        "technique": "T1059 Exécution depuis un répertoire temporaire",
+        "detail": "/tmp/svch0st"
+      },
+      {
+        "heure": "20:04:00",
+        "tactique": "Collection",
+        "technique": "T1005 Data from Local System",
+        "detail": "/etc/shadow"
+      },
+      {
+        "heure": "20:05:00",
+        "tactique": "Command and Control",
+        "technique": "T1071 Application Layer Protocol",
+        "detail": "connexion vers 185.220.101.45:4444"
+      },
+      {
+        "heure": "20:06:17",
+        "tactique": "Impact",
+        "technique": "T1486 Data Encrypted for Impact",
+        "detail": "32 fichiers modifiés en moins de 5 min"
+      }
+    ]
+  }
+]

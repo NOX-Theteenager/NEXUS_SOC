@@ -1,0 +1,20 @@
+horodatage,incident,type,entite,risque,action,impact,decision,statut,detail,acteur
+2026-05-27T09:54:00,ALT-DDAE0E,Exfiltration,agent_DGI_4233,100,Journaliser pour enquête,faible,auto,EXÉCUTÉE,Activité de « agent_DGI_4233 » figée et journalisée (preuve conservée pour enquête),SOAR (auto)
+2026-05-27T09:54:00,ALT-DDAE0E,Exfiltration,agent_DGI_4233,100,Geler le compte,fort,validation,EN ATTENTE DE VALIDATION,Action à fort impact mise en file d'attente d'approbation,—
+2026-05-27T09:54:00,ALT-DDAE0E,Exfiltration,agent_DGI_4233,100,Bloquer l'IP malveillante,moyen,auto,EXÉCUTÉE,IP/destination malveillante bloquée au pare-feu,SOAR (auto)
+2026-05-27T09:54:00,ALT-DDAE0E,Exfiltration,agent_DGI_4233,100,Notifier par SMS,faible,auto,EXÉCUTÉE,SMS envoyé au DSI et au responsable hiérarchique,SOAR (auto)
+2026-05-27T09:54:00,ALT-6C4A10,Fraude interne,agent_DGI_0321,94,Journaliser pour enquête,faible,auto,EXÉCUTÉE,Activité de « agent_DGI_0321 » figée et journalisée (preuve conservée pour enquête),SOAR (auto)
+2026-05-27T09:54:00,ALT-6C4A10,Fraude interne,agent_DGI_0321,94,Notifier par SMS,faible,auto,EXÉCUTÉE,SMS envoyé au DSI et au responsable hiérarchique,SOAR (auto)
+2026-05-27T09:54:00,ALT-6C4A10,Fraude interne,agent_DGI_0321,94,Geler le compte,fort,validation,EN ATTENTE DE VALIDATION,Action à fort impact mise en file d'attente d'approbation,—
+2026-05-27T09:54:00,ALT-6C4A10,Fraude interne,agent_DGI_0321,94,Archiver les journaux,faible,auto,EXÉCUTÉE,Journaux d'audit liés archivés (chaîne de preuve),SOAR (auto)
+2026-05-27T09:54:00,ALT-E60DC6,Fraude interne,agent_DGI_0585,83,Journaliser pour enquête,faible,auto,EXÉCUTÉE,Activité de « agent_DGI_0585 » figée et journalisée (preuve conservée pour enquête),SOAR (auto)
+2026-05-27T09:54:00,ALT-E60DC6,Fraude interne,agent_DGI_0585,83,Notifier par SMS,faible,auto,EXÉCUTÉE,SMS envoyé au DSI et au responsable hiérarchique,SOAR (auto)
+2026-05-27T09:54:00,ALT-E60DC6,Fraude interne,agent_DGI_0585,83,Geler le compte,fort,validation,EN ATTENTE DE VALIDATION,Action à fort impact mise en file d'attente d'approbation,—
+2026-05-27T09:54:00,ALT-E60DC6,Fraude interne,agent_DGI_0585,83,Archiver les journaux,faible,auto,EXÉCUTÉE,Journaux d'audit liés archivés (chaîne de preuve),SOAR (auto)
+2026-05-27T09:54:00,ALT-82A5CC,Ransomware,DESKTOP-COMPTA-01,96,Capturer la mémoire,moyen,auto,EXÉCUTÉE,Capture mémoire/état de « DESKTOP-COMPTA-01 » réalisée,SOAR (auto)
+2026-05-27T09:54:00,ALT-82A5CC,Ransomware,DESKTOP-COMPTA-01,96,Isoler le poste,fort,validation,EN ATTENTE DE VALIDATION,Action à fort impact mise en file d'attente d'approbation,—
+2026-05-27T09:54:00,ALT-82A5CC,Ransomware,DESKTOP-COMPTA-01,96,Bloquer l'IP malveillante,moyen,auto,EXÉCUTÉE,IP/destination malveillante bloquée au pare-feu,SOAR (auto)
+2026-05-27T09:54:00,ALT-82A5CC,Ransomware,DESKTOP-COMPTA-01,96,Notifier par SMS,faible,auto,EXÉCUTÉE,SMS envoyé au DSI et au responsable hiérarchique,SOAR (auto)
+2026-05-27T09:54:00,ALT-DDAE0E,Exfiltration,agent_DGI_4233,100,Geler le compte,fort,validation (DSI),EXÉCUTÉE (après validation),Compte « agent_DGI_4233 » gelé (accès suspendus),—
+2026-05-27T09:54:00,ALT-DDAE0E,Exfiltration,agent_DGI_4233,100,Bloquer l'IP malveillante,moyen,rollback (DSI),ANNULÉE,Débloquer l'IP au pare-feu,—
+2026-05-27T09:54:00,ALT-DDAE0E,Exfiltration,agent_DGI_4233,100,Geler le compte,fort,rollback (DSI),ANNULÉE,Réactiver le compte « agent_DGI_4233 »,—
