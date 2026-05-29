@@ -52,23 +52,38 @@ def get_db():
         conn.close()
 
 
+# --- Validation JWT unifiée (même schéma HS256 que auth_middleware.py) --------
+try:
+    from auth_middleware import decode_token as _decode_jwt  # type: ignore
+except Exception:  # pragma: no cover - fallback autonome
+    import hmac as _hmac, hashlib as _hashlib, json as _json, base64 as _b64, time as _time
+
+    _JWT_SECRET = os.getenv("JWT_SECRET", "CHANGE_ME_IN_PRODUCTION_USE_32_RANDOM_BYTES")
+
+    def _decode_jwt(token: str) -> dict:
+        parts = token.split(".")
+        if len(parts) != 3:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token malformé")
+        h, p, sig = parts
+        expected = _b64.urlsafe_b64encode(
+            _hmac.new(_JWT_SECRET.encode(), f"{h}.{p}".encode(), _hashlib.sha256).digest()
+        ).rstrip(b"=").decode()
+        if not _hmac.compare_digest(expected, sig):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Signature invalide")
+        payload = _json.loads(_b64.urlsafe_b64decode(p + "=" * (-len(p) % 4)))
+        if payload.get("exp", 0) < int(_time.time()):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token expiré")
+        return payload
+
+
 def require_admin(authorization: str = Header(...)):
+    """Valide le JWT Bearer (admin_plateforme ou analyste_soc)."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token manquant")
-    # Simplification démo : vérification en base
-    conn = psycopg2.connect(DB_DSN, cursor_factory=psycopg2.extras.RealDictCursor)
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT role FROM users WHERE mot_de_passe = crypt(%s, mot_de_passe) AND actif = TRUE",
-                (authorization.removeprefix("Bearer "),)
-            )
-            row = cur.fetchone()
-    finally:
-        conn.close()
-    if not row or row["role"] not in ("admin_plateforme", "analyste_soc"):
+    payload = _decode_jwt(authorization.removeprefix("Bearer "))
+    if payload.get("role") not in ("admin_plateforme", "analyste_soc"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Rôle insuffisant")
-    return row
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -673,6 +688,25 @@ def rotate_hmac(agent_id: str, db=Depends(get_db), _=Depends(require_admin)):
 
 
 # ---------------------------------------------------------------------------
+# I-bis. Révoquer un seul agent (par son id)
+# ---------------------------------------------------------------------------
+@router.post("/revoke/{agent_id}", summary="Révoquer le token d'un agent précis")
+def revoke_agent_token(agent_id: str, db=Depends(get_db), _=Depends(require_admin)):
+    """Coupe l'authentification d'un agent : token marqué utilisé + statut hors ligne."""
+    now = datetime.now(timezone.utc)
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE agents SET token_used_at = %s, statut = 'hors_ligne' "
+            "WHERE id = %s RETURNING id",
+            (now, agent_id)
+        )
+        row = cur.fetchone()
+        db.commit()
+    if not row:
+        raise HTTPException(404, detail="Agent introuvable")
+    return {"agent_id": agent_id, "revoked_at": now.isoformat(), "message": "Agent révoqué."}
+
+
 # J. Révoquer tous les tokens d'un tenant (urgence — incident en cours)
 # ---------------------------------------------------------------------------
 @router.post("/revoke-tenant/{tenant_id}",

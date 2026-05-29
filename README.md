@@ -12,14 +12,31 @@ Plateforme de détection, corrélation et réponse aux incidents — multi-tenan
 
 ## Navigation rapide
 
-| Interface | Type | Commande de lancement |
+### Frontend connecté (Lot 9 — recommandé)
+
+> Démarrer d'abord le serveur : `uvicorn run:app --host 0.0.0.0 --port 8000 --reload`
+
+| Interface | Rôle | URL |
 |---|---|---|
-| **Landing page PLG** | HTML standalone | `xdg-open Lot8_PLG/landing_page.html` |
-| **Portail DSI client** | HTML standalone | `xdg-open Lot5_Restitution/portail/portal/index.html` |
-| **Console Fournisseur** | HTML standalone | `xdg-open Lot7_Console_Fournisseur/console_fournisseur.html` |
-| **API REST (Swagger)** | Web (FastAPI) | `http://localhost:8000/docs` *(pile Docker démarrée)* |
-| **Wazuh Dashboard** | Web (SIEM) | `https://localhost:5601` *(pile Docker démarrée)* |
-| **Déploiement Souverain** | Terraform | `cd Lot8_PLG/terraform-souverain && terraform apply` |
+| **Login** | Authentification (tous rôles) | `http://localhost:8000/app/login.html` |
+| **Console Opérateur** | Admin + Analyste SOC — données réelles | `http://localhost:8000/app/console.html` |
+| **Portail DSI** | Vue client — alertes + agents + trial | `http://localhost:8000/app/portail.html` |
+| **Landing page PLG** | Vitrine + inscription SaaS | `http://localhost:8000/app/../Lot8_PLG/landing_page.html` |
+| **API REST (Swagger)** | Documentation interactive | `http://localhost:8000/docs` |
+| **Wazuh Dashboard** | Interface SIEM | `https://localhost:5601` |
+
+### Interfaces standalone (Lot 5 / Lot 7 — maquettes statiques)
+
+| Interface | Commande |
+|---|---|
+| Portail DSI (maquette) | `xdg-open Lot5_Restitution/portail/portal/index.html` |
+| Console (maquette) | `xdg-open Lot7_Console_Fournisseur/console_fournisseur.html` |
+
+### Déploiement Souverain
+
+```bash
+cd Lot8_PLG/terraform-souverain && terraform apply
+```
 
 ---
 
@@ -27,7 +44,7 @@ Plateforme de détection, corrélation et réponse aux incidents — multi-tenan
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                     NEXUS SOC — Architecture complète (Lots 0–8)                │
+│                     NEXUS SOC — Architecture complète (Lots 0–9)                │
 │                                                                                  │
 │  ┌───────────────────────────────────────────────────────────────────────────┐  │
 │  │  Lot 8 — PLG (Product-Led Growth)                                         │  │
@@ -111,19 +128,32 @@ NEXUS_SOC/
 │   ├── provisioning_api.py              ← tokens · scripts · QR · bulk · one-liner
 │   └── rls_analyst_test.py              ← 8/8 assertions RLS nexus_app + nexus_analyst
 │
-└── Lot8_PLG/                            ← Product-Led Growth + Déploiement Souverain
-    ├── landing_page.html                ← vitrine duale (SaaS trial + Souverain)
-    ├── plg_api.py                       ← API inscription · filtre email · quotas · suspension
-    ├── 01_schema_plg.sql                ← tables trial_quotas, subscriptions, plg_registrations
-    ├── build_agent.py                   ← compilation garble + watermark HMAC par tenant
-    ├── nexus-agent-plg/                 ← agent "coquille vide" (config dynamique + watermark)
-    │   ├── watermark.go
-    │   ├── config_fetcher.go
-    │   └── main_plg.go
-    └── terraform-souverain/             ← déploiement souverain sur serveur institution
-        ├── providers.tf / variables.tf / main.tf / outputs.tf
-        ├── terraform.tfvars.example
-        └── templates/                   ← env.tpl · docker-compose.tpl · Dockerfile.scoring.tpl
+├── Lot8_PLG/                            ← Product-Led Growth + Déploiement Souverain
+│   ├── landing_page.html                ← vitrine duale (SaaS trial + Souverain)
+│   ├── plg_api.py                       ← API inscription · filtre email · quotas · suspension
+│   ├── 01_schema_plg.sql                ← tables trial_quotas, subscriptions, plg_registrations
+│   ├── build_agent.py                   ← compilation garble + watermark HMAC par tenant
+│   ├── nexus-agent-plg/                 ← agent "coquille vide" (config dynamique + watermark)
+│   │   ├── watermark.go
+│   │   ├── config_fetcher.go
+│   │   └── main_plg.go
+│   └── terraform-souverain/             ← déploiement souverain sur serveur institution
+│       ├── providers.tf / variables.tf / main.tf / outputs.tf
+│       ├── terraform.tfvars.example
+│       └── templates/                   ← env.tpl · docker-compose.tpl · Dockerfile.scoring.tpl
+│
+├── Lot9_Frontend/                       ← ★ Frontend connecté (PWA, dynamique, responsive)
+│   ├── login.html                       ← authentification (JWT, redirect par rôle)
+│   ├── console.html                     ← console opérateur connectée (admin + analyste SOC)
+│   ├── portail.html                     ← portail DSI connecté (bilingue FR/EN, trial banner)
+│   ├── offline.html                     ← page hors ligne (PWA)
+│   ├── manifest.json                    ← manifest PWA (shortcuts, icônes, standalone)
+│   ├── sw.js                            ← service worker (Cache First + Network First + push)
+│   ├── js/api.js                        ← client API universel (JWT auto-refresh, 40+ endpoints)
+│   └── icons/                           ← icônes PWA (SVG)
+│
+└── run.py                               ← ★ Point d'entrée principal (tous routers + frontend statique)
+                                            uvicorn run:app --host 0.0.0.0 --port 8000
 ```
 
 ---
@@ -142,11 +172,15 @@ sudo sysctl -w vm.max_map_count=262144
 echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
 ```
 
-### Python (scripts standalone)
+### Python (scripts standalone + frontend connecté)
 
 ```bash
+# Dépendances de base (scoring, modèles, pipeline)
 pip install scikit-learn joblib numpy pandas matplotlib fastapi uvicorn \
             kafka-python psycopg2-binary asyncpg pydantic httpx
+
+# Dépendances supplémentaires pour run.py (frontend + static files)
+pip install "fastapi[standard]" aiofiles python-multipart
 ```
 
 ### Go (compilation de l'agent)
@@ -178,7 +212,43 @@ terraform version  # ≥ 1.6
 
 ---
 
-## 1 — Démarrage rapide : pile complète (Docker)
+## 1 — Démarrage rapide : frontend connecté (recommandé)
+
+Le mode le plus simple pour utiliser toutes les interfaces dynamiques **sans Docker**.
+
+```bash
+# 1. Installer les dépendances Python
+pip install "fastapi[standard]" uvicorn aiofiles scikit-learn joblib numpy \
+            kafka-python psycopg2-binary asyncpg pydantic httpx python-multipart
+
+# 2. Entraîner les modèles IA (si pas encore fait)
+python3 Lot3_IA/Modele1_Anomalie_reseau/model1_anomaly_detection.py
+python3 Lot3_IA/Modele2_Fraude_interne/model2_fraud_detection.py
+
+# 3. Lancer le serveur (tous routers + frontend sur /app/)
+uvicorn run:app --host 0.0.0.0 --port 8000 --reload
+
+# 4. Ouvrir le navigateur
+http://localhost:8000/app/login.html
+```
+
+**Comptes de démonstration :**
+
+| E-mail | Mot de passe | Rôle | Redirect |
+|---|---|---|---|
+| `admin@nexussoc.cm` | `admin` | admin_plateforme | Console (tous modules) |
+| `soc@nexussoc.cm` | `admin` | analyste_soc | Console (alertes + SOAR) |
+| `dsi@minfi.cm` | `admin` | dsi_client | Portail DSI |
+
+> **Note :** Pour que les données soient réelles, PostgreSQL + Kafka doivent tourner (voir section 2 ci-dessous). Sans eux, l'API répond en mode dégradé avec des erreurs claires.
+
+**PWA — Installer sur mobile ou desktop :**
+- Chrome/Edge : icône "Installer" dans la barre d'adresse
+- Android : "Ajouter à l'écran d'accueil" → lance en standalone sans barre navigateur
+
+---
+
+## 2 — Démarrage complet : pile Docker (données réelles)
 
 ```bash
 # Étape 1 — Extraire le socle
@@ -221,6 +291,14 @@ psql $DB -f ../Lot0_Socle/01_schema_retention.sql
 psql $DB -f ../Lot8_PLG/01_schema_plg.sql
 ```
 
+### Puis lancer le frontend connecté par-dessus la pile Docker
+
+```bash
+# Dans un second terminal, depuis la racine du projet :
+uvicorn run:app --host 0.0.0.0 --port 8000 --reload
+# → http://localhost:8000/app/login.html (frontend connecté à la pile Docker)
+```
+
 ### Ports exposés
 
 | Service | Port | URL |
@@ -234,13 +312,36 @@ psql $DB -f ../Lot8_PLG/01_schema_plg.sql
 
 ---
 
-## 2 — Guide des interfaces
+## 3 — Guide des interfaces
+
+> **Lot 9 (connecté)** → démarrer `uvicorn run:app --port 8000 --reload` puis ouvrir les URLs ci-dessous.
+> **Lot 5/7 (statiques)** → `xdg-open` sur les fichiers HTML, aucun serveur requis mais données hardcodées.
+
+---
+
+### Interface 0 — Login (Lot 9 — nouveau)
+
+Point d'entrée unique pour tous les utilisateurs. Détecte le rôle et redirige automatiquement.
+
+```
+http://localhost:8000/app/login.html
+```
+
+- Saisir e-mail + mot de passe → `POST /auth/token`
+- Redirect automatique selon le rôle : `admin_plateforme` / `analyste_soc` → **Console**, `dsi_client` / `lecteur` → **Portail**
+- JWT stocké en `localStorage` (access 15 min + refresh 7 j, auto-renouvelé)
+
+---
 
 ### Interface 1 — Landing Page PLG (Lot 8)
 
 Vitrine publique avec deux flux : essai SaaS automatisé et contact déploiement souverain.
 
 ```bash
+# Version connectée (via run.py)
+http://localhost:8000/app/../Lot8_PLG/landing_page.html
+
+# Version standalone (aucun serveur requis pour la navigation visuelle)
 xdg-open Lot8_PLG/landing_page.html
 ```
 
@@ -255,23 +356,27 @@ xdg-open Lot8_PLG/landing_page.html
 
 ---
 
-### Interface 2 — Portail DSI Client (Lot 5)
+### Interface 2 — Portail DSI Client
 
-Vue client : l'organisation surveille **uniquement ses propres données** (isolation RLS).
+**Lot 9 (connecté, recommandé) :**
+
+```
+http://localhost:8000/app/portail.html
+```
+
+- Score de sécurité calculé dynamiquement depuis les alertes réelles du tenant
+- **Trial banner** : si le tenant est en période d'essai, affiche les jours restants + barre de quota (agents / événements)
+- Alertes réelles du tenant (polling 60 s) avec kill-chain MITRE cliquable
+- Modal détail bilingue FR/EN (explication LLM Analyst depuis la base de données)
+- Agents du tenant avec statut temps réel
+- Bouton "Passer à un plan" renvoyant vers la landing page PLG
+- Bascule FR/EN instantanée
+
+**Lot 5 (maquette statique, standalone) :**
 
 ```bash
 xdg-open Lot5_Restitution/portail/portal/index.html
-# ou, après extraction :
-cd Lot5_Restitution && unzip nexus-portail.zip
-xdg-open portail/portal/index.html
 ```
-
-**Ce que vous verrez :**
-- Score de sécurité global (0–100)
-- Incidents actifs avec kill-chain MITRE ATT&CK colorée par tactique
-- Citations LLM Analyst en serif italique (Fraunces)
-- Agents surveillés et leur statut
-- Bascule FR/EN instantanée (bouton en haut à droite)
 
 **Générer les notifications (LLM Analyst) :**
 
@@ -294,31 +399,33 @@ OLLAMA_BASE_URL=http://localhost:11434/v1 python notifier.py --mode llm --lang f
 
 ---
 
-### Interface 3 — Console Fournisseur (Lot 7)
+### Interface 3 — Console Opérateur
 
-Vue opérateur NEXUS SOC : supervise **tous les tenants simultanément**. Deux modules intégrés.
+**Lot 9 (connectée, recommandée) :**
+
+```
+http://localhost:8000/app/console.html
+```
+
+Toutes les données sont chargées depuis l'API. Polling 30 s sur les alertes et les actions SOAR en attente.
+
+| Section | Données source | Actions connectées |
+|---|---|---|
+| Tableau de bord | `/admin/tenants`, `/admin/agents`, `/analyst/alerts`, `/health` | Vue globale temps réel |
+| Tenants | `GET /admin/tenants` | Créer · Suspendre · Réactiver |
+| Agents | `GET /admin/agents` | Générer token → one-liner · Rotation HMAC · Révoquer |
+| Alertes | `GET /analyst/alerts` (polling 30s) | Voir détail + kill-chain · Marquer FP |
+| Approbation SOAR | `GET /analyst/pending` | Approuver · Refuser · Rollback |
+| Santé système | `GET /health/detailed` | Vérification à la demande |
+| Facturation PLG | `GET /admin/billing`, `POST /plg/run-expiry-check` | Suspendre · Vérifier essais expirés |
+
+**Badge alertes** dans la sidebar : se met à jour automatiquement toutes les 30 secondes.
+
+**Lot 7 (maquette statique, standalone) :**
 
 ```bash
 xdg-open Lot7_Console_Fournisseur/console_fournisseur.html
 ```
-
-**Module A — Administration (`admin_plateforme`)**
-
-Accessible depuis la sidebar gauche → icône clé.
-
-| Section | Ce que vous pouvez faire |
-|---|---|
-| Tableau de bord | KPIs cross-tenants (tenants actifs, agents en ligne, incidents ouverts, disponibilité) |
-| Tenants | CRUD complet · créer · suspendre · réactiver · filtrer par type |
-| Utilisateurs | Liste RBAC cross-tenants · créer un utilisateur DSI |
-| Agents | Provisioning enrichi : générer un token · one-liner curl\|bash · QR code · pack offline |
-| Santé système | 6 cartes services avec métriques 24h |
-| Facturation | ARR/MRR estimés · détail abonnements FCFA par tenant |
-
-**Actions clés à tester :**
-1. Section **Agents** → "Générer un jeton" → token Bearer + clé HMAC + one-liner Linux/Windows
-2. Section **Tenants** → "Suspendre" → bloque l'ingestion de ce tenant
-3. Copier le **one-liner curl|bash** sur un poste à surveiller
 
 **Module B — Analyste SOC (`analyste_soc`)**
 
@@ -435,7 +542,7 @@ xdg-open https://localhost:5601
 
 ---
 
-## 3 — Démarrage standalone (sans Docker)
+## 4 — Démarrage standalone (sans Docker)
 
 Pour les démonstrations rapides sans infrastructure Docker.
 
@@ -472,7 +579,7 @@ python load_test.py
 
 ---
 
-## 4 — Agent Go : compilation et déploiement
+## 5 — Agent Go : compilation et déploiement
 
 ### Compiler l'agent standard (Lot 1)
 
@@ -543,7 +650,7 @@ python3 build_agent.py \
 
 ---
 
-## 5 — Module PLG (Product-Led Growth) — Lot 8
+## 6 — Module PLG (Product-Led Growth) — Lot 8
 
 Flux d'acquisition automatisé pour les microfinances et cabinets comptables.
 
@@ -591,7 +698,7 @@ curl http://localhost:8000/plg/plans | python3 -m json.tool
 
 ---
 
-## 6 — Déploiement Souverain (Terraform) — Lot 8
+## 7 — Déploiement Souverain (Terraform) — Lot 8
 
 Déploie la pile complète NEXUS SOC directement sur les serveurs de l'institution souveraine.
 
@@ -682,7 +789,7 @@ terraform apply
 
 ---
 
-## 7 — Tests complets
+## 8 — Tests complets
 
 ### Vue d'ensemble
 
@@ -694,6 +801,25 @@ terraform apply
 | Isolation RLS étendue (Lot 7) | `Lot7_Console_Fournisseur/rls_analyst_test.py` | **8/8** assertions | PostgreSQL local |
 | Dérive modèles | `Lot3_IA/model_monitor.py --demo` | PSI + σ-drift calculés | Python, joblib |
 | Pseudonymisation | `Lot1_Agent_Go/pseudonymizer.py` | IPs + emails pseudonymisés | Python |
+| **API de fumée (Lot 9)** | `Lot6_Tests/test_api.py` | **16 tests** : auth multi-rôles, RBAC, analyste, PLG, cycle tenant | Serveur lancé + PostgreSQL + seed |
+
+### Tests API de fumée (frontend connecté)
+
+Valident le parcours REST de bout en bout. Skip propre si le serveur est injoignable.
+
+```bash
+# Terminal 1 — serveur (depuis la racine)
+uvicorn run:app --port 8000
+
+# Terminal 2 — tests
+pip install pytest httpx
+pytest Lot6_Tests/test_api.py -v
+```
+
+Couverture : login des 3 rôles, rejet d'un JWT invalide, cloisonnement RBAC
+(un `dsi_client` reçoit 403 sur `/admin/*`), routes `/analyst/*`, filtres PLG
+(email jetable bloqué, domaine `.gov.cm` redirigé), cycle de vie tenant
+(créer → suspendre → réactiver → supprimer).
 
 ### Simulation d'attaques
 
@@ -742,7 +868,7 @@ python3 Lot7_Console_Fournisseur/rls_analyst_test.py
 
 ---
 
-## 8 — Commandes d'exploitation
+## 9 — Commandes d'exploitation
 
 ### Sauvegarde et restauration
 
@@ -812,7 +938,7 @@ curl -X POST http://localhost:8000/plg/run-expiry-check \
 
 ---
 
-## 9 — Résultats mesurés
+## 10 — Résultats mesurés
 
 | Dimension | Chiffre mesuré | Source |
 |---|---|---|
@@ -834,7 +960,7 @@ curl -X POST http://localhost:8000/plg/run-expiry-check \
 
 ---
 
-## 10 — Limites documentées
+## 11 — Limites documentées
 
 | Limite | Impact | Perspective |
 |---|---|---|
@@ -862,6 +988,39 @@ curl -X POST http://localhost:8000/plg/run-expiry-check \
 ---
 
 ## Changelog
+
+### Session du 29 mai 2026 — Intégration end-to-end + durcissement
+
+Correction des décalages frontend↔backend et améliorations transverses.
+
+| Fichier | Ajout / Correctif |
+|---|---|
+| `run.py` | **Fix montage routeurs** : `auth_router` (login) et `analyst_router` (`/analyst/*`) n'étaient pas montés ; `sys.path` des Lots ajouté pour les imports croisés. **CORS durci** : origines via `NEXUS_CORS_ORIGINS`, plus de wildcard+credentials |
+| `Lot7_Console_Fournisseur/admin_api.py` | **Auth unifiée JWT** (remplace « mot de passe = token ») ; endpoints ajoutés : `/analyst/pending`, `/analyst/approve/{id}`, `/analyst/reject/{id}`, `/analyst/false-positive/{id}`, `/analyst/alerts/{id}`, `/admin/tenants/{id}/suspend`, `/activate` |
+| `Lot7_Console_Fournisseur/provisioning_api.py` | Auth unifiée JWT + `/provision/revoke/{agent_id}` (révocation d'un agent unique) |
+| `Lot9_Frontend/console.html` | Alignement des payloads `generateToken` (`expires_in_hours`) et `createTenant` (`offre`/`email_admin`) |
+| `Lot0_Socle/02_seed_demo.sql` | Seed idempotent : comptes démo (admin/soc/dsi, mdp « admin »), 3 tenants, 5 agents, 4 alertes, 3 actions SOAR en attente |
+| `Lot9_Frontend/icons/` | Icônes PWA générées (192, 512, badge-72, 2 screenshots) — plus de 404 à l'installation |
+| `Lot6_Tests/test_api.py` | 16 tests de fumée httpx/pytest (auth, RBAC, analyste, PLG, cycle tenant) |
+| `00_Documents/Architecture_NEXUS_SOC.drawio` | Diagramme d'architecture logique complet pour le rapport |
+
+### Session du 29 mai 2026 — Lot 9 Frontend connecté (PWA, dynamique, responsive)
+
+| Fichier | Ajout |
+|---|---|
+| `run.py` | Point d'entrée FastAPI unifié : charge tous les routers (auth, admin, provisioning, PLG) + sert `Lot9_Frontend/` sur `/app/` via StaticFiles |
+| `Lot9_Frontend/js/api.js` | Client API universel 315L : JWT auto-refresh sur 401, 40+ méthodes (tenants, agents, alertes, SOAR, PLG, scoring), poll(), formatDate(), riskColor() |
+| `Lot9_Frontend/login.html` | Page d'auth 362L : formulaire JWT + redirect automatique par rôle (admin/analyste → console, dsi_client → portail) |
+| `Lot9_Frontend/console.html` | Console opérateur connectée 1715L : 7 sections (dashboard, tenants CRUD, agents + provisioning, alertes + SOAR approval, santé, facturation PLG) — polling 30s, toast, modals, responsive |
+| `Lot9_Frontend/portail.html` | Portail DSI connecté 697L : bilingue FR/EN, trial banner dynamique, score calculé depuis alertes réelles, agents temps réel, modal détail |
+| `Lot9_Frontend/sw.js` | Service worker PWA 132L : Cache First (assets), Network First (API), push notifications, offline fallback |
+| `Lot9_Frontend/manifest.json` | Manifest PWA : shortcuts console + portail, standalone, icônes SVG |
+| `Lot9_Frontend/offline.html` | Page hors ligne (affiché par le SW quand réseau indisponible) |
+
+**Passage de statique → dynamique :**
+Les frontends Lot 5 et Lot 7 restent disponibles comme maquettes de référence. Les nouvelles versions Lot 9 remplacent toutes les données hardcodées par des appels API réels.
+
+---
 
 ### Session du 29 mai 2026 — Lot 8 PLG + Déploiement Souverain
 

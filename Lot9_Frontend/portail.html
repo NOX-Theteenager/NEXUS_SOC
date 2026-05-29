@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0A0F1C"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>NEXUS SOC — Portail DSI</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #0A0F1C;
+  --bg-2:      #0D1424;
+  --surface:   #0F1729;
+  --surface-2: #131D33;
+  --border:    #1E293B;
+  --border-2:  #334155;
+  --text:      #E2E8F0;
+  --text-2:    #94A3B8;
+  --text-3:    #64748B;
+  --accent:    #5EAAFF;
+  --teal:      #3DDC97;
+  --amber:     #F5A524;
+  --red:       #EF4444;
+  --display:   "Fraunces", Georgia, serif;
+  --body:      "Manrope", sans-serif;
+  --mono:      "JetBrains Mono", monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(94,170,255,.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94,170,255,.015) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,15,28,.93);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+header::after {
+  content: "";
+  position: absolute;
+  bottom: -2px; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--amber) 0%, var(--accent) 45%, var(--teal) 100%);
+  opacity: .7;
+}
+.brand {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -.02em;
+  text-decoration: none;
+  color: var(--text);
+}
+.brand em { color: var(--amber); }
+.header-spacer { flex: 1; }
+.header-right { display: flex; align-items: center; gap: 14px; }
+.org-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-2);
+  letter-spacing: .04em;
+  border: 1px solid var(--border-2);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+.lang-switch { display: flex; gap: 4px; }
+.lang-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-3);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all .2s;
+  letter-spacing: .06em;
+}
+.lang-btn.active { border-color: var(--accent); color: var(--accent); }
+.logout-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: all .2s;
+}
+.logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+/* ── Trial banner ────────────────────────────────────────────────────── */
+.trial-banner {
+  background: linear-gradient(135deg, rgba(245,165,36,.1) 0%, rgba(94,170,255,.07) 100%);
+  border-bottom: 1px solid rgba(245,165,36,.2);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.trial-text { font-size: 13px; color: var(--amber); font-weight: 600; }
+.trial-bar-wrap { flex: 1; min-width: 100px; }
+.trial-bar-bg {
+  background: rgba(255,255,255,.08);
+  border-radius: 4px;
+  height: 4px;
+  overflow: hidden;
+}
+.trial-bar-fill {
+  height: 100%;
+  background: var(--amber);
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+.trial-quota { display: flex; gap: 16px; }
+.trial-q {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.btn-upgrade {
+  padding: 6px 14px;
+  background: var(--amber);
+  color: #0A0F1C;
+  border: none;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity .2s;
+  white-space: nowrap;
+}
+.btn-upgrade:hover { opacity: .88; }
+
+/* ── Layout ──────────────────────────────────────────────────────────── */
+.container { max-width: 1100px; margin: 0 auto; padding: 28px 24px; position: relative; z-index: 1; }
+
+/* ── Score & KPIs ────────────────────────────────────────────────────── */
+.top-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.score-card {
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 18px;
+  padding: 24px 28px;
+  text-align: center;
+  min-width: 160px;
+}
+.score-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.score-value {
+  font-family: var(--display);
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+.score-sub { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+.score-ring {
+  position: relative;
+  display: inline-block;
+  margin: 8px 0;
+}
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.kpi-mini {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+.kpi-mini-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-3);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.kpi-mini-value {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+
+/* ── Alertes ─────────────────────────────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--border-2);
+  color: var(--text-3);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.alert-list { display: flex; flex-direction: column; gap: 10px; }
+.alert-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-2);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color .2s, transform .15s;
+}
+.alert-item:hover { border-left-color: var(--accent); transform: translateX(3px); }
+.alert-item.crit { border-left-color: var(--red); }
+.alert-item.high { border-left-color: var(--amber); }
+.alert-item.med  { border-left-color: var(--accent); }
+.alert-row { display: flex; align-items: center; gap: 10px; }
+.alert-score {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  min-width: 38px;
+}
+.alert-info { flex: 1; min-width: 0; }
+.alert-title-text { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alert-meta-text { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
+.alert-status {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.alert-kc { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+.kc-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(94,170,255,.2);
+  color: var(--text-3);
+  background: rgba(94,170,255,.05);
+}
+
+.empty { text-align: center; padding: 48px 20px; color: var(--text-3); }
+.empty .icon { font-size: 36px; margin-bottom: 10px; opacity: .5; }
+.empty p { font-size: 13px; }
+
+/* ── Agents ──────────────────────────────────────────────────────────── */
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.agent-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.agent-dot.online  { background: var(--teal);  box-shadow: 0 0 6px var(--teal); }
+.agent-dot.offline { background: var(--text-3); }
+.agent-dot.isolated { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.agent-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-os   { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+
+/* ── Modal détail alerte ─────────────────────────────────────────────── */
+.overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(5,8,18,.82); backdrop-filter: blur(6px);
+  align-items: center; justify-content: center; padding: 16px;
+}
+.overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 18px;
+  padding: 30px 28px;
+  width: 100%; max-width: 580px;
+  max-height: 90vh; overflow-y: auto;
+  position: relative;
+  box-shadow: 0 24px 72px rgba(0,0,0,.55);
+  animation: modalIn .3s cubic-bezier(.22,1,.36,1);
+}
+@keyframes modalIn { from { opacity:0; transform:translateY(20px) scale(.97); } to { opacity:1; transform:none; } }
+.modal-close {
+  position: absolute; top: 14px; right: 14px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-2); font-size: 16px;
+  width: 30px; height: 30px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { color: var(--text); }
+
+/* ── Skeleton ────────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, rgba(30,41,59,.8) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ── Toast ────────────────────────────────────────────────────────────── */
+.toasts { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px; background: var(--surface-2);
+  border: 1px solid var(--border-2); border-radius: 10px;
+  font-size: 13px; max-width: 320px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  animation: toastIn .3s ease; pointer-events: all;
+}
+.toast.success { border-left: 3px solid var(--teal); }
+.toast.error   { border-left: 3px solid var(--red); }
+@keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; } }
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .top-row { grid-template-columns: 1fr; }
+  .score-card { width: 100%; text-align: left; display: flex; align-items: center; gap: 20px; padding: 18px; }
+  .score-value { font-size: 40px; }
+  header { padding: 0 16px; }
+  .container { padding: 18px 14px; }
+  .org-name { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<header>
+  <span class="brand">NEXUS <em>SOC</em></span>
+  <span class="org-name" id="org-name">—</span>
+  <span class="header-spacer"></span>
+  <div class="header-right">
+    <div class="lang-switch">
+      <button class="lang-btn active" id="btn-fr" onclick="setLang('fr')">FR</button>
+      <button class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
+    </div>
+    <button class="logout-btn" onclick="NexusAPI.logout()">Déconnexion</button>
+  </div>
+</header>
+
+<!-- ── Trial banner ────────────────────────────────────────────────────── -->
+<div class="trial-banner" id="trial-banner" style="display:none">
+  <div>
+    <div class="trial-text" id="trial-text">Essai gratuit — 30 jours restants</div>
+    <div class="trial-quota" id="trial-quota">
+      <span class="trial-q" id="trial-agents">— / 5 agents</span>
+      <span class="trial-q" id="trial-events">— / 10 000 événements/j</span>
+    </div>
+  </div>
+  <div class="trial-bar-wrap">
+    <div class="trial-bar-bg">
+      <div class="trial-bar-fill" id="trial-fill" style="width:0%"></div>
+    </div>
+  </div>
+  <button class="btn-upgrade" onclick="openUpgrade()">Passer à un plan →</button>
+</div>
+
+<!-- ── Contenu principal ─────────────────────────────────────────────── -->
+<div class="container">
+
+  <!-- Score + KPIs -->
+  <div class="top-row">
+    <div class="score-card">
+      <div>
+        <div class="score-label" data-fr="Score de sécurité" data-en="Security score">Score de sécurité</div>
+        <div class="score-value" id="score-val" style="color:var(--teal)">—</div>
+        <div class="score-sub" id="score-sub">Chargement…</div>
+      </div>
+    </div>
+    <div class="kpi-row" id="kpi-row">
+      <div class="kpi-mini skeleton" style="height:72px"></div>
+      <div class="kpi-mini skeleton" style="height:72px"></div>
+      <div class="kpi-mini skeleton" style="height:72px"></div>
+    </div>
+  </div>
+
+  <!-- Alertes actives -->
+  <div style="margin-bottom:28px">
+    <div class="section-header">
+      <div class="section-title" data-fr="Incidents actifs" data-en="Active incidents">Incidents actifs</div>
+      <button class="refresh-btn" onclick="loadAlerts()">↻ Actualiser</button>
+    </div>
+    <div class="alert-list" id="alert-list">
+      <div class="skeleton" style="height:80px;margin-bottom:6px"></div>
+      <div class="skeleton" style="height:80px"></div>
+    </div>
+  </div>
+
+  <!-- Agents -->
+  <div>
+    <div class="section-header">
+      <div class="section-title" data-fr="Agents surveillés" data-en="Monitored agents">Agents surveillés</div>
+      <span id="agent-count" style="font-family:var(--mono);font-size:11px;color:var(--text-3)">—</span>
+    </div>
+    <div class="agents-grid" id="agents-grid">
+      <div class="skeleton" style="height:52px"></div>
+      <div class="skeleton" style="height:52px"></div>
+      <div class="skeleton" style="height:52px"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Modal détail alerte ─────────────────────────────────────────────── -->
+<div class="overlay" id="modal-alert">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-alert-body"></div>
+  </div>
+</div>
+
+<!-- ── Toast container ────────────────────────────────────────────────── -->
+<div class="toasts" id="toasts"></div>
+
+<script src="js/api.js"></script>
+<script>
+'use strict';
+
+// ── Guard ──────────────────────────────────────────────────────────────
+if (!NexusAPI.guard(['dsi_client', 'lecteur', 'admin_plateforme'])) { /* redirigé */ }
+
+const tenantId = NexusAPI.tenantId;
+let LANG = 'fr';
+let DATA = { alerts: [], agents: [] };
+
+// ── Init ──────────────────────────────────────────────────────────────
+(async function init() {
+  document.getElementById('org-name').textContent = NexusAPI.user?.email || '—';
+  await Promise.all([loadTrialStatus(), loadAlerts(), loadAgents()]);
+  NexusAPI.poll(loadAlerts, 60_000);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+
+// ── Langue ────────────────────────────────────────────────────────────
+function setLang(l) {
+  LANG = l;
+  document.getElementById('btn-fr').classList.toggle('active', l === 'fr');
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.querySelectorAll('[data-fr][data-en]').forEach(el =>
+    el.textContent = el.getAttribute('data-' + l) || el.textContent);
+  renderAlerts();
+}
+
+// ── Trial status ───────────────────────────────────────────────────────
+async function loadTrialStatus() {
+  if (!tenantId) return;
+  try {
+    const d = await NexusAPI.getTrialStatus(tenantId);
+    if (!d || d.plan !== 'trial') return;
+
+    const banner = document.getElementById('trial-banner');
+    banner.style.display = 'flex';
+    const days = d.remaining_days ?? 30;
+    document.getElementById('trial-text').textContent =
+      LANG === 'fr'
+        ? `Essai gratuit — ${days} jour${days > 1 ? 's' : ''} restant${days > 1 ? 's' : ''}`
+        : `Free trial — ${days} day${days !== 1 ? 's' : ''} remaining`;
+    document.getElementById('trial-agents').textContent =
+      `${d.quota?.agents_active ?? 0} / ${d.quota?.max_agents ?? 5} agents`;
+    document.getElementById('trial-events').textContent =
+      `${(d.quota?.events_today ?? 0).toLocaleString()} / ${(d.quota?.max_daily_events ?? 10000).toLocaleString()} events/j`;
+    const pct = Math.round((1 - days / 30) * 100);
+    document.getElementById('trial-fill').style.width = pct + '%';
+  } catch {}
+}
+
+// ── Alertes ───────────────────────────────────────────────────────────
+async function loadAlerts() {
+  try {
+    const params = tenantId ? { tenant_id: tenantId, limit: 20 } : { limit: 20 };
+    const d = await NexusAPI.getAlerts(params);
+    DATA.alerts = Array.isArray(d) ? d : (d?.items || []);
+    renderAlerts();
+    updateScore();
+  } catch (e) {
+    document.getElementById('alert-list').innerHTML =
+      `<div class="empty"><div class="icon">⚠</div><p>${esc(e.detail || 'Erreur de chargement')}</p></div>`;
+  }
+}
+
+function renderAlerts() {
+  const el = document.getElementById('alert-list');
+  const open = DATA.alerts.filter(a => a.statut !== 'fermee');
+  if (!open.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">✓</div><p>${LANG === 'fr' ? 'Aucun incident actif — votre infrastructure est sous contrôle.' : 'No active incidents — your infrastructure is under control.'}</p></div>`;
+    return;
+  }
+  open.sort((a, b) => b.risque - a.risque);
+  el.innerHTML = open.map(a => {
+    const cls = a.risque >= 80 ? 'crit' : a.risque >= 60 ? 'high' : 'med';
+    const kc  = (a.kill_chain_fr || a.kill_chain || []).slice(0, 5)
+      .map(k => `<span class="kc-pill">${esc(k)}</span>`).join('');
+    const statusLabel = a.statut === 'ouverte'  ? (LANG === 'fr' ? 'ouvert' : 'open')
+                      : a.statut === 'en_cours' ? (LANG === 'fr' ? 'en cours' : 'in progress')
+                      : esc(a.statut || '');
+    return `
+    <div class="alert-item ${cls}" onclick="openAlertDetail('${esc(a.id)}')">
+      <div class="alert-row">
+        <span class="alert-score" style="color:${NexusAPI.riskColor(a.risque)}">${a.risque}</span>
+        <div class="alert-info">
+          <div class="alert-title-text">${esc(LANG === 'fr' ? (a.type_fr || a.type) : (a.type_en || a.type))} — ${esc(a.entite || '—')}</div>
+          <div class="alert-meta-text">${esc(a.source_modele || '—')} · ${esc(a.mitre || '')} · ${NexusAPI.formatDate(a.cree_le, LANG)}</div>
+        </div>
+        <span class="alert-status" style="color:${a.statut==='ouverte'?'var(--red)':'var(--amber)'};border-color:currentColor;background:currentColor15">${statusLabel}</span>
+      </div>
+      ${kc ? `<div class="alert-kc">${kc}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openAlertDetail(id) {
+  const a = DATA.alerts.find(x => x.id === id);
+  if (!a) return;
+  const kc = (a.kill_chain_fr || a.kill_chain || []).map((k, i) => {
+    const clsMap = ['kc-ia','kc-ex','kc-pe','kc-co','kc-c2','kc-im'];
+    return `<span class="kc-pill" style="font-size:11px;padding:3px 9px;border-color:rgba(94,170,255,.3)">${esc(k)}</span>`;
+  }).join('');
+  const explication = LANG === 'fr'
+    ? (a.explication_fr || a.explication || '')
+    : (a.explication_en || a.explication || '');
+  const raisons = (LANG === 'fr' ? a.raisons_fr : a.raisons_en) || a.raisons || [];
+
+  document.getElementById('modal-alert-body').innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px">
+      <span style="font-family:var(--display);font-size:36px;font-weight:600;color:${NexusAPI.riskColor(a.risque)}">${a.risque}<span style="font-size:14px;opacity:.5">/100</span></span>
+      <div>
+        <div style="font-weight:700;font-size:15px">${esc(LANG==='fr' ? (a.type_fr||a.type) : (a.type_en||a.type))} — ${esc(a.entite||'—')}</div>
+        <div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">${esc(a.source_modele||'')} · ${esc(a.mitre||'')} · ${NexusAPI.formatDate(a.cree_le, LANG)}</div>
+      </div>
+    </div>
+    ${kc ? `<div class="alert-kc" style="margin-bottom:14px">${kc}</div>` : ''}
+    <blockquote style="border-left:3px solid var(--accent);padding:10px 14px;margin:0 0 14px;background:rgba(94,170,255,.04);border-radius:0 8px 8px 0;font-family:var(--display);font-style:italic;color:var(--text-2);font-size:13.5px;line-height:1.7">
+      ${esc(explication || (LANG==='fr' ? 'Aucune explication disponible.' : 'No explanation available.'))}
+    </blockquote>
+    ${raisons.length ? `<ul style="padding-left:18px;font-size:13px;color:var(--text-2);">${raisons.map(r=>`<li style="margin-bottom:6px">${esc(r)}</li>`).join('')}</ul>` : ''}`;
+
+  document.getElementById('modal-alert').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal-alert').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.getElementById('modal-alert').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// ── Score ──────────────────────────────────────────────────────────────
+function updateScore() {
+  const open = DATA.alerts.filter(a => a.statut !== 'fermee');
+  const maxRisk = open.length ? Math.max(...open.map(a => a.risque)) : 0;
+  const score = open.length === 0 ? 100 : Math.max(0, 100 - maxRisk);
+  const el = document.getElementById('score-val');
+  el.textContent = score;
+  el.style.color = score >= 80 ? 'var(--teal)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+  document.getElementById('score-sub').textContent =
+    score >= 80 ? (LANG==='fr'?'Statut normal':'Normal status')
+    : score >= 50 ? (LANG==='fr'?'Incidents en cours':'Incidents ongoing')
+    : (LANG==='fr'?'Attention requise':'Attention required');
+
+  document.getElementById('kpi-row').innerHTML = [
+    { label: LANG==='fr'?'Incidents actifs':'Active incidents', value: open.length,
+      color: open.length > 0 ? 'var(--red)' : 'var(--teal)' },
+    { label: LANG==='fr'?'Risque max':'Max risk', value: maxRisk || '—',
+      color: NexusAPI.riskColor(maxRisk) },
+    { label: LANG==='fr'?'Agents actifs':'Active agents',
+      value: DATA.agents.filter(a => a.statut === 'actif').length + '/' + DATA.agents.length,
+      color: 'var(--text)' },
+  ].map(k => `
+    <div class="kpi-mini">
+      <div class="kpi-mini-label">${k.label}</div>
+      <div class="kpi-mini-value" style="color:${k.color}">${k.value}</div>
+    </div>`).join('');
+}
+
+// ── Agents ─────────────────────────────────────────────────────────────
+async function loadAgents() {
+  try {
+    const params = tenantId ? { tenant_id: tenantId } : {};
+    const d = await NexusAPI.getAgents(params);
+    DATA.agents = Array.isArray(d) ? d : (d?.items || []);
+    renderAgents();
+  } catch {}
+}
+
+function renderAgents() {
+  const el = document.getElementById('agents-grid');
+  document.getElementById('agent-count').textContent =
+    `${DATA.agents.filter(a => a.statut === 'actif').length} actif(s) / ${DATA.agents.length} total`;
+  if (!DATA.agents.length) {
+    el.innerHTML = `<div class="empty" style="grid-column:1/-1;padding:30px"><p>${LANG==='fr'?'Aucun agent enrôlé':'No enrolled agents'}</p></div>`;
+    return;
+  }
+  el.innerHTML = DATA.agents.map(a => {
+    const dotCls = a.statut === 'actif' ? 'online' : a.statut === 'isole' ? 'isolated' : 'offline';
+    return `
+    <div class="agent-chip">
+      <div class="agent-dot ${dotCls}"></div>
+      <div style="min-width:0">
+        <div class="agent-name">${esc(a.hostname || '—')}</div>
+        <div class="agent-os">${esc(a.os || '—')} · ${NexusAPI.formatDate(a.vu_le, LANG)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Upgrade modal (stub) ───────────────────────────────────────────────
+function openUpgrade() {
+  window.location.href = LANG === 'fr'
+    ? '../Lot8_PLG/landing_page.html#pricing'
+    : '../Lot8_PLG/landing_page.html#pricing';
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${esc(msg)}</span>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

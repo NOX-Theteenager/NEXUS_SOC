@@ -49,7 +49,13 @@ END
 $$;
 
 -- Droits en lecture sur toutes les tables pertinentes
-GRANT CONNECT ON DATABASE nexus TO nexus_analyst;
+-- (le nom de la base est résolu dynamiquement : nexus_soc en dev/démo,
+--  potentiellement différent selon POSTGRES_DB)
+DO $$
+BEGIN
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO nexus_analyst', current_database());
+END
+$$;
 GRANT USAGE ON SCHEMA public TO nexus_analyst;
 GRANT SELECT ON tenants, users, agents, alerts, soar_audit, metrics TO nexus_analyst;
 

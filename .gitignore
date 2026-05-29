@@ -1,2 +1,11 @@
 .claude
 CLAUDE.md
+.agents
+
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+
+# Outils / lockfiles locaux
+skills-lock.json

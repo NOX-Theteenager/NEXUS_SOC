@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="#0A0F1C"/>
+  <!-- Grid pattern -->
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(94,170,255,0.06)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" rx="80" fill="url(#grid)"/>
+  <!-- Hexagon ring -->
+  <polygon points="256,60 358,118 358,234 256,292 154,234 154,118"
+           fill="none" stroke="#5EAAFF" stroke-width="8" opacity="0.3"/>
+  <polygon points="256,90 338,136 338,228 256,274 174,228 174,136"
+           fill="none" stroke="#5EAAFF" stroke-width="4" opacity="0.15"/>
+  <!-- N letter in Fraunces style (simplified path) -->
+  <text x="256" y="320" text-anchor="middle" dominant-baseline="auto"
+        font-family="Georgia, serif" font-style="italic" font-weight="700"
+        font-size="200" fill="#E2E8F0" letter-spacing="-8">N</text>
+  <!-- Amber dot accent -->
+  <circle cx="370" cy="155" r="14" fill="#F5A524"/>
+  <!-- Scan line effect -->
+  <rect x="154" y="348" width="204" height="3" rx="2" fill="#5EAAFF" opacity="0.6"/>
+  <rect x="190" y="360" width="132" height="2" rx="1" fill="#5EAAFF" opacity="0.3"/>
+  <!-- Label -->
+  <text x="256" y="430" text-anchor="middle"
+        font-family="monospace" font-size="28" fill="#64748B" letter-spacing="8">SOC</text>
+</svg>

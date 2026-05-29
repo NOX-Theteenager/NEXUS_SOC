@@ -1,0 +1,315 @@
+/**
+ * NEXUS SOC — Client API universel
+ * Gère : JWT (access + refresh), auto-refresh sur 401, tous les endpoints,
+ * guard de route, polling temps réel.
+ *
+ * Usage : inclure avant tout autre script via <script src="js/api.js"></script>
+ * Expose : window.NexusAPI (instance singleton)
+ */
+(function (window) {
+  'use strict';
+
+  // ─── Configuration ─────────────────────────────────────────────────────────
+
+  /** Base URL de l'API. Vide = même origine (production).
+   *  En dev, si ouvert depuis file:// ou port différent, pointe vers :8000 */
+  const BASE =
+    window.location.protocol === 'file:' ||
+    (window.location.hostname === 'localhost' && window.location.port !== '8000')
+      ? 'http://localhost:8000'
+      : '';
+
+  const STORAGE = {
+    ACCESS:  'nexus_access_token',
+    REFRESH: 'nexus_refresh_token',
+    USER:    'nexus_user',
+  };
+
+  // ─── Classe principale ─────────────────────────────────────────────────────
+
+  class NexusAPIClient {
+    constructor() {
+      this._accessToken  = null;
+      this._refreshToken = null;
+      this._user         = null;
+      this._listeners    = {};  // event bus interne
+    }
+
+    // ── Getters ──────────────────────────────────────────────────────────────
+
+    get accessToken() {
+      if (!this._accessToken)
+        this._accessToken = localStorage.getItem(STORAGE.ACCESS);
+      return this._accessToken;
+    }
+
+    get user() {
+      if (!this._user) {
+        const raw = localStorage.getItem(STORAGE.USER);
+        try { if (raw) this._user = JSON.parse(raw); } catch {}
+      }
+      return this._user;
+    }
+
+    get isAuthenticated() { return !!this.accessToken; }
+    get role()            { return this.user?.role || null; }
+    get tenantId()        { return this.user?.tenant_id || null; }
+
+    // ── Guard ────────────────────────────────────────────────────────────────
+
+    /** Redirige vers login.html si non authentifié ou mauvais rôle.
+     *  @param {string|string[]} [roles] - rôles autorisés (optionnel)
+     *  @returns {boolean} true si accès autorisé */
+    guard(roles = null) {
+      if (!this.isAuthenticated) {
+        window.location.href = 'login.html';
+        return false;
+      }
+      if (roles) {
+        const allowed = Array.isArray(roles) ? roles : [roles];
+        if (!allowed.includes(this.role)) {
+          window.location.href = 'login.html';
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // ── Requête HTTP centrale ─────────────────────────────────────────────────
+
+    async _req(method, path, body = null, _retry = true) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
+
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      let res;
+      try {
+        res = await fetch(BASE + path, opts);
+      } catch (networkErr) {
+        throw { status: 0, detail: 'Erreur réseau — serveur injoignable.', _network: true };
+      }
+
+      // Auto-refresh sur 401
+      if (res.status === 401 && _retry) {
+        const refreshed = await this._doRefresh();
+        if (refreshed) return this._req(method, path, body, false);
+        this.logout(false);
+        return null;
+      }
+
+      if (res.status === 204) return null; // No Content
+
+      let data;
+      try { data = await res.json(); }
+      catch { data = { detail: res.statusText }; }
+
+      if (!res.ok) {
+        const msg = typeof data.detail === 'string'
+          ? data.detail
+          : JSON.stringify(data.detail || data);
+        throw { status: res.status, detail: msg };
+      }
+
+      return data;
+    }
+
+    /** Alias par méthode HTTP */
+    get(path)         { return this._req('GET',    path); }
+    post(path, body)  { return this._req('POST',   path, body); }
+    put(path, body)   { return this._req('PUT',    path, body); }
+    patch(path, body) { return this._req('PATCH',  path, body); }
+    del(path)         { return this._req('DELETE', path); }
+
+    // ── Refresh token ─────────────────────────────────────────────────────────
+
+    async _doRefresh() {
+      const rt = localStorage.getItem(STORAGE.REFRESH);
+      if (!rt) return false;
+      try {
+        const r = await fetch(BASE + '/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: rt }),
+        });
+        if (!r.ok) return false;
+        const d = await r.json();
+        this._accessToken = d.access_token;
+        localStorage.setItem(STORAGE.ACCESS, d.access_token);
+        return true;
+      } catch { return false; }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ENDPOINTS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Auth ─────────────────────────────────────────────────────────────────
+
+    async login(email, password) {
+      const d = await this._req('POST', '/auth/token', { email, password });
+      if (!d) return null;
+      this._accessToken = d.access_token;
+      localStorage.setItem(STORAGE.ACCESS,  d.access_token);
+      localStorage.setItem(STORAGE.REFRESH, d.refresh_token || '');
+      // Récupère le profil et le stocke
+      try {
+        const me = await this._req('GET', '/auth/me');
+        if (me) {
+          this._user = me;
+          localStorage.setItem(STORAGE.USER, JSON.stringify(me));
+        }
+      } catch {}
+      return d;
+    }
+
+    async me() { return this.get('/auth/me'); }
+
+    logout(redirect = true) {
+      [STORAGE.ACCESS, STORAGE.REFRESH, STORAGE.USER].forEach(k =>
+        localStorage.removeItem(k));
+      this._accessToken = this._refreshToken = this._user = null;
+      if (redirect) window.location.href = 'login.html';
+    }
+
+    // ── Admin — Tenants ───────────────────────────────────────────────────────
+
+    getTenants()           { return this.get('/admin/tenants'); }
+    getTenant(id)          { return this.get(`/admin/tenants/${id}`); }
+    createTenant(data)     { return this.post('/admin/tenants', data); }
+    updateTenant(id, data) { return this.put(`/admin/tenants/${id}`, data); }
+    suspendTenant(id)      { return this.post(`/admin/tenants/${id}/suspend`); }
+    activateTenant(id)     { return this.post(`/admin/tenants/${id}/activate`); }
+    deleteTenant(id)       { return this.del(`/admin/tenants/${id}`); }
+
+    // ── Admin — Users ─────────────────────────────────────────────────────────
+
+    getUsers(params = {})  {
+      const qs = new URLSearchParams(params).toString();
+      return this.get(`/admin/users${qs ? '?' + qs : ''}`);
+    }
+    createUser(data)       { return this.post('/admin/users', data); }
+    updateUser(id, data)   { return this.put(`/admin/users/${id}`, data); }
+    deleteUser(id)         { return this.del(`/admin/users/${id}`); }
+
+    // ── Admin — Agents ────────────────────────────────────────────────────────
+
+    getAgents(params = {}) {
+      const qs = new URLSearchParams(params).toString();
+      return this.get(`/admin/agents${qs ? '?' + qs : ''}`);
+    }
+
+    // ── Admin — Health & Billing ──────────────────────────────────────────────
+
+    getHealth()            { return this.get('/health/detailed'); }
+    getHealthSimple()      { return this.get('/health'); }
+    getBilling()           { return this.get('/admin/billing'); }
+    getModelDrift(days=7)  { return this.get(`/monitor/drift?days=${days}`); }
+
+    // ── Provisioning ──────────────────────────────────────────────────────────
+
+    generateToken(data)           { return this.post('/provision/token', data); }
+    getTokenStatus(id)            { return this.get(`/provision/status/${id}`); }
+    revokeToken(id)               { return this.post(`/provision/revoke/${id}`); }
+    revokeAllAgents(tenantId)     { return this.post(`/provision/revoke-tenant/${tenantId}`); }
+    rotateHmac(agentId)           { return this.post(`/provision/rotate-hmac/${agentId}`); }
+    getInstaller(id, os)          { return this.get(`/provision/installer/${id}?os=${os}`); }
+    getOneliner(token, hostname, os = 'linux') {
+      return `${BASE}/provision/oneliner?token=${token}&hostname=${hostname}&os=${os}`;
+    }
+    bulkProvision(csv)            { return this.post('/provision/bulk', { csv }); }
+
+    // ── Analyst — Alertes ─────────────────────────────────────────────────────
+
+    getAlerts(params = {}) {
+      const qs = new URLSearchParams(params).toString();
+      return this.get(`/analyst/alerts${qs ? '?' + qs : ''}`);
+    }
+    getAlert(id)           { return this.get(`/analyst/alerts/${id}`); }
+    approveAction(actionId, approvedBy) {
+      return this.post(`/analyst/approve/${actionId}`, { approved_by: approvedBy });
+    }
+    rejectAction(actionId, reason) {
+      return this.post(`/analyst/reject/${actionId}`, { reason });
+    }
+    markFalsePositive(alertId) {
+      return this.post(`/analyst/false-positive/${alertId}`);
+    }
+    getSOCDashboard()      { return this.get('/analyst/dashboard'); }
+    getPendingSOAR()       { return this.get('/analyst/pending'); }
+
+    // ── Scoring ───────────────────────────────────────────────────────────────
+
+    scoreNetwork(features)  { return this.post('/score/network',   { features }); }
+    scoreUserDay(features)  { return this.post('/score/user-day',  { features }); }
+
+    // ── PLG ───────────────────────────────────────────────────────────────────
+
+    getTrialStatus(tenantId) { return this.get(`/plg/trial-status/${tenantId}`); }
+    getPlgPlans()            { return this.get('/plg/plans'); }
+    upgradePlan(data)        { return this.post('/plg/upgrade', data); }
+    suspendPlg(id)           { return this.post(`/plg/suspend/${id}`); }
+    resumePlg(id)            { return this.post(`/plg/resume/${id}`); }
+    runExpiryCheck()         { return this.post('/plg/run-expiry-check'); }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // UTILITAIRES UI
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Polling : appelle fn toutes les intervalMs ms.
+     *  Retourne une fonction stop() pour annuler.
+     *  @param {Function} fn - fonction async à appeler
+     *  @param {number} [intervalMs=30000]
+     *  @returns {Function} stop
+     */
+    poll(fn, intervalMs = 30_000) {
+      fn();
+      const id = setInterval(fn, intervalMs);
+      return () => clearInterval(id);
+    }
+
+    /** Formatage date locale */
+    formatDate(iso, lang = 'fr') {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleString(lang === 'fr' ? 'fr-CM' : 'en-US', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    }
+
+    /** Formatage montant FCFA */
+    formatFCFA(amount) {
+      if (!amount && amount !== 0) return '—';
+      return new Intl.NumberFormat('fr-CM').format(amount) + ' FCFA';
+    }
+
+    /** Couleur de risque (0–100) */
+    riskColor(score) {
+      if (score >= 80) return 'var(--red)';
+      if (score >= 60) return 'var(--amber)';
+      if (score >= 40) return 'var(--accent)';
+      return 'var(--teal)';
+    }
+
+    /** Badge plan */
+    planBadge(plan) {
+      const map = {
+        trial:      { label: 'Essai',      color: 'var(--accent)' },
+        starter:    { label: 'Starter',    color: 'var(--teal)' },
+        business:   { label: 'Business',   color: 'var(--amber)' },
+        enterprise: { label: 'Enterprise', color: '#b97aff' },
+        contrat_public: { label: 'Public', color: 'var(--accent)' },
+        suspended:  { label: 'Suspendu',   color: 'var(--red)' },
+        expired:    { label: 'Expiré',     color: 'var(--red)' },
+        none:       { label: '—',          color: 'var(--text-3)' },
+      };
+      return map[plan] || map.none;
+    }
+  }
+
+  // ─── Singleton global ─────────────────────────────────────────────────────
+
+  window.NexusAPI = new NexusAPIClient();
+
+})(window);

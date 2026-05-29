@@ -48,24 +48,41 @@ def get_db():
 # ---------------------------------------------------------------------------
 # Vérification du rôle (guard simple — remplacer par JWT en production)
 # ---------------------------------------------------------------------------
+# --- Validation JWT unifiée (même schéma HS256 que auth_middleware.py) --------
+# On réutilise auth_middleware.decode_token si disponible (source unique de
+# vérité), sinon on retombe sur une implémentation locale identique. Cela permet
+# au frontend (qui envoie un JWT) d'authentifier les appels /admin et /analyst.
+try:
+    from auth_middleware import decode_token as _decode_jwt  # type: ignore
+except Exception:  # pragma: no cover - fallback autonome
+    import hmac as _hmac, hashlib as _hashlib, json as _json, base64 as _b64, time as _time
+
+    _JWT_SECRET = os.getenv("JWT_SECRET", "CHANGE_ME_IN_PRODUCTION_USE_32_RANDOM_BYTES")
+
+    def _decode_jwt(token: str) -> dict:
+        parts = token.split(".")
+        if len(parts) != 3:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token malformé")
+        h, p, sig = parts
+        expected = _b64.urlsafe_b64encode(
+            _hmac.new(_JWT_SECRET.encode(), f"{h}.{p}".encode(), _hashlib.sha256).digest()
+        ).rstrip(b"=").decode()
+        if not _hmac.compare_digest(expected, sig):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Signature invalide")
+        payload = _json.loads(_b64.urlsafe_b64decode(p + "=" * (-len(p) % 4)))
+        if payload.get("exp", 0) < int(_time.time()):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token expiré")
+        return payload
+
+
 def require_admin(authorization: str = Header(...)):
-    """Vérifie que le token Bearer appartient à un admin_plateforme."""
+    """Vérifie que le JWT Bearer appartient à un admin_plateforme ou analyste_soc."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token manquant")
-    token = authorization.removeprefix("Bearer ")
-    conn = psycopg2.connect(DB_DSN, cursor_factory=psycopg2.extras.RealDictCursor)
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, role FROM users WHERE mot_de_passe = crypt(%s, mot_de_passe) AND actif = TRUE",
-                (token,)
-            )
-            user = cur.fetchone()
-    finally:
-        conn.close()
-    if not user or user["role"] not in ("admin_plateforme", "analyste_soc"):
+    payload = _decode_jwt(authorization.removeprefix("Bearer "))
+    if payload.get("role") not in ("admin_plateforme", "analyste_soc"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Rôle insuffisant")
-    return dict(user)
+    return payload
 
 
 def require_analyst(authorization: str = Header(...)):
@@ -162,6 +179,39 @@ def update_tenant(tenant_id: str, body: TenantUpdate, db=Depends(get_db), _=Depe
         cur.execute(f"UPDATE tenants SET {', '.join(sets)} WHERE id = %s", vals)
         db.commit()
     return {"message": "Tenant mis à jour"}
+
+
+@router.post("/tenants/{tenant_id}/suspend", summary="Suspendre un tenant (coupe l'ingestion)")
+def suspend_tenant(tenant_id: str, db=Depends(get_db), _=Depends(require_admin)):
+    """Marque le tenant comme suspendu (colonne PLG suspended_at + plan)."""
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE tenants SET suspended_at = now(), plan = 'suspended' "
+            "WHERE id = %s AND suspended_at IS NULL RETURNING id",
+            (tenant_id,)
+        )
+        row = cur.fetchone()
+        db.commit()
+    if not row:
+        raise HTTPException(404, detail="Tenant introuvable ou déjà suspendu")
+    return {"message": "Tenant suspendu", "tenant_id": tenant_id}
+
+
+@router.post("/tenants/{tenant_id}/activate", summary="Réactiver un tenant suspendu")
+def activate_tenant(tenant_id: str, db=Depends(get_db), _=Depends(require_admin)):
+    """Lève la suspension. Remet le plan à 'trial' si aucun abonnement payant."""
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE tenants SET suspended_at = NULL, "
+            "plan = CASE WHEN plan = 'suspended' THEN 'trial' ELSE plan END "
+            "WHERE id = %s RETURNING id",
+            (tenant_id,)
+        )
+        row = cur.fetchone()
+        db.commit()
+    if not row:
+        raise HTTPException(404, detail="Tenant introuvable")
+    return {"message": "Tenant réactivé", "tenant_id": tenant_id}
 
 
 @router.delete("/tenants/{tenant_id}", summary="Supprimer un tenant (irréversible)")
@@ -364,9 +414,92 @@ def list_all_alerts(
     return [dict(r) for r in rows]
 
 
-@analyst_router.post("/alerts/{alert_id}/approve", summary="Approuver une action SOAR en attente")
+@analyst_router.get("/alerts/{alert_id}", summary="Détail d'une alerte")
+def get_alert(alert_id: str, db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    with db.cursor() as cur:
+        cur.execute("""
+            SELECT a.id, a.tenant_id, t.nom AS tenant_nom, a.source_modele, a.type,
+                   a.entite, a.risque, a.raisons, a.mitre, a.statut, a.cree_le
+            FROM alerts a JOIN tenants t ON t.id = a.tenant_id
+            WHERE a.id = %s
+        """, (alert_id,))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, detail="Alerte introuvable")
+    return dict(row)
+
+
+@analyst_router.get("/pending", summary="Actions SOAR en attente de validation humaine")
+def list_pending_soar(db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    """File des actions à fort impact (isolate_host, freeze_account…) en attente."""
+    with db.cursor() as cur:
+        cur.execute("""
+            SELECT s.id, s.alert_id, s.tenant_id, t.nom AS tenant_nom,
+                   s.action, s.impact, s.detail, s.horodatage,
+                   a.entite, a.type, a.risque
+            FROM soar_audit s
+            JOIN tenants t ON t.id = s.tenant_id
+            LEFT JOIN alerts a ON a.id = s.alert_id
+            WHERE s.statut = 'EN ATTENTE DE VALIDATION'
+            ORDER BY s.horodatage DESC
+        """)
+        rows = cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+@analyst_router.post("/approve/{action_id}", summary="Approuver une action SOAR par son id")
+def approve_action_by_id(action_id: int, body: dict = None,
+                         db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    """Approuve une action SOAR (clé = soar_audit.id) — appelé par la console."""
+    actor = (body or {}).get("approved_by", "analyste_soc")
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE soar_audit SET statut = 'EXÉCUTÉE', decision = 'APPROUVÉE', acteur = %s "
+            "WHERE id = %s AND statut = 'EN ATTENTE DE VALIDATION' RETURNING id",
+            (actor, action_id)
+        )
+        updated = cur.fetchone()
+        db.commit()
+    if not updated:
+        raise HTTPException(404, detail="Action en attente introuvable")
+    return {"message": "Action approuvée et exécutée", "audit_id": str(updated["id"])}
+
+
+@analyst_router.post("/reject/{action_id}", summary="Refuser une action SOAR")
+def reject_action_by_id(action_id: int, body: dict = None,
+                        db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    reason = (body or {}).get("reason", "Refusé par analyste")
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE soar_audit SET statut = 'IGNORÉE', decision = 'REFUSÉE', "
+            "acteur = 'analyste_soc', detail = %s "
+            "WHERE id = %s AND statut = 'EN ATTENTE DE VALIDATION' RETURNING id",
+            (reason, action_id)
+        )
+        updated = cur.fetchone()
+        db.commit()
+    if not updated:
+        raise HTTPException(404, detail="Action en attente introuvable")
+    return {"message": "Action refusée", "audit_id": str(updated["id"])}
+
+
+@analyst_router.post("/false-positive/{alert_id}", summary="Marquer une alerte comme faux positif")
+def mark_false_positive(alert_id: str, db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE alerts SET statut = 'faux_positif' WHERE id = %s RETURNING id",
+            (alert_id,)
+        )
+        updated = cur.fetchone()
+        db.commit()
+    if not updated:
+        raise HTTPException(404, detail="Alerte introuvable")
+    return {"message": "Alerte marquée comme faux positif", "alert_id": alert_id}
+
+
+@analyst_router.post("/alerts/{alert_id}/approve", summary="Approuver une action SOAR (par alerte + action)")
 def approve_soar_action(alert_id: str, action: str, db=Depends(get_analyst_db), _=Depends(require_analyst)):
-    """Valide une action SOAR en attente de validation humaine (fort impact)."""
+    """Variante historique : valide par (alert_id, action). Conservée pour compat."""
     with db.cursor() as cur:
         cur.execute(
             "UPDATE soar_audit SET statut = 'EXÉCUTÉE', decision = 'APPROUVÉE', acteur = 'analyste_soc' "

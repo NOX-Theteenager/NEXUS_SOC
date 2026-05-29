@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NEXUS SOC — Hors ligne</title>
+<style>
+:root {
+  --bg: #0A0F1C; --text: #E2E8F0; --text-3: #64748B;
+  --amber: #F5A524; --display: "Fraunces", Georgia, serif;
+  --body: "Manrope", sans-serif; --mono: "JetBrains Mono", monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--body); background: var(--bg); color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; text-align: center; padding: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+.card {
+  position: relative; max-width: 400px;
+  background: #0F1729; border: 1px solid #1E293B;
+  border-radius: 20px; padding: 48px 36px;
+}
+.logo {
+  font-family: var(--display); font-style: italic;
+  font-weight: 600; font-size: 28px;
+  letter-spacing: -.02em; margin-bottom: 24px;
+}
+.logo em { color: var(--amber); }
+.icon { font-size: 48px; margin-bottom: 16px; opacity: .6; }
+h2 { font-family: var(--display); font-size: 22px; margin-bottom: 10px; }
+p  { color: var(--text-3); font-size: 14px; line-height: 1.65; margin-bottom: 20px; }
+.btn {
+  display: inline-block; padding: 10px 24px;
+  background: #5EAAFF; color: #07111F;
+  border: none; border-radius: 9px;
+  font-weight: 700; font-size: 14px;
+  cursor: pointer; text-decoration: none;
+}
+.version {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  letter-spacing: .1em; margin-top: 20px;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">NEXUS <em>SOC</em></div>
+  <div class="icon">📡</div>
+  <h2>Connexion perdue</h2>
+  <p>
+    Vous êtes actuellement hors ligne.<br>
+    Vérifiez votre connexion réseau et réessayez.<br>
+    Les dernières données chargées restent accessibles depuis le cache.
+  </p>
+  <button class="btn" onclick="window.location.reload()">Réessayer</button>
+  <div class="version">NEXUS SOC · Mode hors ligne</div>
+</div>
+</body>
+</html>

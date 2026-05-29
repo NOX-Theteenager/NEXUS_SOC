@@ -7,6 +7,21 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ---------------------------------------------------------------------------
+-- Rôle applicatif client (soumis à la RLS — ne possède PAS BYPASSRLS).
+-- C'est sous ce rôle que l'API positionne app.current_tenant pour isoler
+-- chaque tenant. Créé ici car les schémas analyst/provisioning lui accordent
+-- des droits (GRANT ... TO nexus_app).
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nexus_app') THEN
+        CREATE ROLE nexus_app LOGIN PASSWORD 'change_me' NOSUPERUSER NOBYPASSRLS;
+        RAISE NOTICE 'Rôle nexus_app créé.';
+    END IF;
+END
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Tenants (organisations clientes)
 -- ---------------------------------------------------------------------------
 CREATE TABLE tenants (

@@ -91,7 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_plg_reg_token
 CREATE OR REPLACE VIEW v_trial_expiry AS
 SELECT
     t.id                                                        AS tenant_id,
-    t.name                                                      AS tenant_name,
+    t.nom                                                       AS tenant_name,
     r.email,
     t.trial_ends_at,
     EXTRACT(EPOCH FROM (t.trial_ends_at - NOW())) / 86400       AS days_remaining,
@@ -111,7 +111,7 @@ ORDER BY t.trial_ends_at ASC;
 CREATE OR REPLACE VIEW v_active_subscriptions AS
 SELECT
     t.id          AS tenant_id,
-    t.name        AS tenant_name,
+    t.nom                                                       AS tenant_name,
     s.plan,
     s.status,
     s.amount_fcfa,
