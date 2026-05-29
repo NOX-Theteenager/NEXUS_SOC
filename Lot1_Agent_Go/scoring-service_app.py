@@ -160,6 +160,92 @@ def score_userday(features: dict):
 
 
 # --------------------------------------------------------------------------- #
+# PLG — Vérification des quotas trial (synchrone, psycopg2)
+# Voir Lot8_PLG/plg_api.py pour la version asyncpg complète
+# --------------------------------------------------------------------------- #
+def _enforce_trial_quota_sync(tenant_id: str, db) -> None:
+    """
+    Vérifie et incrémente les quotas trial pour le tenant.
+    Lève HTTP 402/429 si suspendu, expiré ou quota dépassé.
+    Appelé par le handler /ingest après validation du token.
+    """
+    import datetime as _dt
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    t.plan,
+                    t.suspended_at,
+                    t.trial_ends_at,
+                    t.max_agents,
+                    t.max_daily_events,
+                    COALESCE(q.agent_count, 0) AS agents_today,
+                    COALESCE(q.event_count, 0)  AS events_today
+                FROM tenants t
+                LEFT JOIN trial_quotas q
+                    ON q.tenant_id = t.id AND q.date = CURRENT_DATE
+                WHERE t.id = %s::uuid
+                """,
+                (tenant_id,),
+            )
+            row = cur.fetchone()
+    except Exception:
+        return  # table PLG absente → mode dégradé, pas de blocage
+
+    if not row:
+        return
+
+    plan, suspended_at, trial_ends_at, max_agents, max_daily_events, agents_today, events_today = row
+
+    if suspended_at is not None:
+        raise HTTPException(402, detail={
+            "code":        "TENANT_SUSPENDED",
+            "message":     "Ingestion suspendue. Renouvelez votre abonnement sur le portail.",
+            "upgrade_url": "https://nexussoc.cm/upgrade",
+        })
+
+    if plan == "trial":
+        now = _dt.datetime.now(_dt.timezone.utc)
+        if trial_ends_at and trial_ends_at.replace(tzinfo=_dt.timezone.utc) < now:
+            raise HTTPException(402, detail={
+                "code":        "TRIAL_EXPIRED",
+                "message":     "Période d'essai terminée. Souscrivez un abonnement pour continuer.",
+                "upgrade_url": "https://nexussoc.cm/upgrade",
+            })
+
+        if agents_today >= (max_agents or 5):
+            raise HTTPException(429, detail={
+                "code":        "AGENT_QUOTA_EXCEEDED",
+                "message":     f"Quota d'agents atteint ({max_agents} max en essai). Passez à un abonnement payant.",
+                "upgrade_url": "https://nexussoc.cm/upgrade",
+            })
+
+        if events_today >= (max_daily_events or 10000):
+            raise HTTPException(429, detail={
+                "code":        "DAILY_VOLUME_EXCEEDED",
+                "message":     f"Volume quotidien atteint ({max_daily_events:,} événements/jour en essai). Reprise demain.",
+                "upgrade_url": "https://nexussoc.cm/upgrade",
+            })
+
+        # Incrémenter le compteur quotidien
+        try:
+            with db.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO trial_quotas (tenant_id, date, event_count)
+                    VALUES (%s::uuid, CURRENT_DATE, 1)
+                    ON CONFLICT (tenant_id, date)
+                    DO UPDATE SET event_count = trial_quotas.event_count + 1
+                    """,
+                    (tenant_id,),
+                )
+            db.commit()
+        except Exception:
+            pass  # table absente → ignorer
+
+
+# --------------------------------------------------------------------------- #
 # Émission d'alerte → Kafka (consommée par le SOAR) + persistance Postgres
 # --------------------------------------------------------------------------- #
 def emit_alert(alert: dict):
@@ -339,9 +425,15 @@ async def ingest(request: Request):
     except Exception:
         raise HTTPException(400, detail="JSON invalide")
 
-    agent_id = batch.get("agent_id", "")
+    agent_id  = batch.get("agent_id", "")
+    tenant_id = batch.get("tenant_id", "")
+
     if not _verify_ingest(raw, authorization, x_signature, agent_id):
         raise HTTPException(401, detail="Token ou signature invalide")
+
+    # PLG : vérification des quotas trial (no-op si table absente ou plan non-trial)
+    if tenant_id and STATE["db"]:
+        _enforce_trial_quota_sync(tenant_id, STATE["db"])
 
     n = 0
     if STATE["producer"]:

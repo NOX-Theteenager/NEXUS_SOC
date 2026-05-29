@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEXUS SOC — Sécurité de niveau entreprise pour le Cameroun</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   NEXUS SOC — Landing Page PLG
+   Design system : dark ops-center
+   ========================================================= */
+:root {
+  --bg:        #0A0F1C;
+  --bg-2:      #0D1424;
+  --surface:   #0F1729;
+  --surface-2: #131D33;
+  --border:    #1E293B;
+  --border-2:  #334155;
+  --text:      #E2E8F0;
+  --text-2:    #94A3B8;
+  --text-3:    #64748B;
+  --accent:    #5EAAFF;
+  --teal:      #3DDC97;
+  --amber:     #F5A524;
+  --red:       #EF4444;
+  --display:   "Fraunces", Georgia, serif;
+  --body:      "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:      "JetBrains Mono", ui-monospace, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; height: 58px; z-index: 200;
+  background: rgba(10,15,28,.93); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 32px; gap: 24px;
+}
+nav::after {
+  content: ""; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--amber) 0%, var(--accent) 45%, var(--teal) 100%);
+  opacity: .7;
+}
+.nav-brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; }
+.nav-brand .mark {
+  font-family: var(--display); font-style: italic; font-weight: 600;
+  font-size: 22px; letter-spacing: -.02em; color: var(--text);
+}
+.nav-brand .mark em { color: var(--amber); }
+.nav-brand .sub {
+  font-family: var(--mono); font-size: 9px; color: var(--text-3);
+  letter-spacing: .18em; text-transform: uppercase;
+}
+.nav-links { display: flex; gap: 28px; margin-left: auto; }
+.nav-links a {
+  font-size: 13px; font-weight: 500; color: var(--text-2);
+  text-decoration: none; letter-spacing: .01em; transition: color .2s;
+}
+.nav-links a:hover { color: var(--text); }
+.btn-nav {
+  padding: 7px 18px; background: var(--accent); color: #0A0F1C;
+  border-radius: 8px; font-weight: 700; font-size: 13px;
+  text-decoration: none; transition: opacity .2s;
+}
+.btn-nav:hover { opacity: .88; color: #0A0F1C; }
+
+/* HERO */
+.hero {
+  position: relative; z-index: 1;
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 120px 24px 80px;
+  overflow: hidden;
+}
+.hero-glow {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -60%);
+  width: 700px; height: 700px; pointer-events: none;
+  background: radial-gradient(ellipse, rgba(94,170,255,.08) 0%, transparent 70%);
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 14px; border: 1px solid rgba(94,170,255,.25);
+  border-radius: 999px; background: rgba(94,170,255,.07);
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  letter-spacing: .14em; text-transform: uppercase; margin-bottom: 28px;
+}
+.hero-eyebrow::before {
+  content: ""; width: 6px; height: 6px; background: var(--teal);
+  border-radius: 50%; animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: .3; }
+}
+.hero h1 {
+  font-family: var(--display); font-size: clamp(36px, 6vw, 72px);
+  font-weight: 600; line-height: 1.1; letter-spacing: -.03em;
+  max-width: 800px; margin-bottom: 24px;
+}
+.hero h1 em { font-style: italic; color: var(--accent); }
+.hero-sub {
+  font-size: clamp(15px, 2vw, 18px); color: var(--text-2);
+  max-width: 560px; margin-bottom: 48px; line-height: 1.65;
+}
+
+/* CTA DUAL */
+.cta-dual {
+  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-bottom: 64px;
+}
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 14px 28px; background: var(--accent); color: #080E1B;
+  border-radius: 10px; font-weight: 700; font-size: 15px;
+  text-decoration: none; border: none; cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+  box-shadow: 0 4px 20px rgba(94,170,255,.25);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(94,170,255,.35); }
+.btn-primary .badge {
+  padding: 2px 8px; background: rgba(255,255,255,.18);
+  border-radius: 6px; font-size: 11px; font-family: var(--mono);
+}
+.btn-sovereign {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 14px 28px; background: transparent; color: var(--text);
+  border-radius: 10px; font-weight: 600; font-size: 15px;
+  text-decoration: none; border: 1px solid var(--border-2); cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.btn-sovereign:hover { border-color: var(--teal); background: rgba(61,220,151,.05); }
+.btn-sovereign .icon { color: var(--teal); font-size: 18px; }
+
+/* STATS BAR */
+.stats-bar {
+  display: flex; gap: 48px; flex-wrap: wrap; justify-content: center;
+  padding-top: 48px; border-top: 1px solid var(--border);
+  width: 100%; max-width: 700px;
+}
+.stat { text-align: center; }
+.stat-num {
+  display: block; font-family: var(--display); font-size: 32px;
+  font-weight: 600; color: var(--text); letter-spacing: -.02em;
+}
+.stat-num em { color: var(--accent); }
+.stat-lbl { font-size: 12px; color: var(--text-3); letter-spacing: .04em; margin-top: 2px; }
+
+/* SECTIONS */
+section { position: relative; z-index: 1; }
+.section-inner { max-width: 1100px; margin: 0 auto; padding: 96px 24px; }
+.section-tag {
+  display: inline-block; font-family: var(--mono); font-size: 11px;
+  color: var(--teal); letter-spacing: .16em; text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.section-title {
+  font-family: var(--display); font-size: clamp(28px, 4vw, 44px);
+  font-weight: 600; letter-spacing: -.025em; line-height: 1.15;
+  margin-bottom: 16px;
+}
+.section-sub { color: var(--text-2); font-size: 16px; max-width: 540px; line-height: 1.65; }
+
+/* HOW IT WORKS */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2px; margin-top: 56px; }
+.step {
+  background: var(--surface); border: 1px solid var(--border); padding: 36px 32px;
+  position: relative; overflow: hidden; transition: border-color .25s;
+}
+.step:hover { border-color: var(--border-2); }
+.step-num {
+  font-family: var(--display); font-size: 72px; font-weight: 600;
+  color: rgba(255,255,255,.04); position: absolute; top: 12px; right: 24px;
+  line-height: 1; pointer-events: none;
+}
+.step-icon {
+  width: 44px; height: 44px; border-radius: 12px; display: flex;
+  align-items: center; justify-content: center; font-size: 20px;
+  margin-bottom: 20px; border: 1px solid var(--border-2);
+}
+.step-icon.blue  { background: rgba(94,170,255,.1);  color: var(--accent); }
+.step-icon.teal  { background: rgba(61,220,151,.1);  color: var(--teal);  }
+.step-icon.amber { background: rgba(245,165,36,.1);  color: var(--amber); }
+.step h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+.step p  { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+
+/* FEATURES */
+.features-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px; margin-top: 56px;
+}
+.feature-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 28px 24px; transition: border-color .25s, transform .25s;
+}
+.feature-card:hover { border-color: var(--border-2); transform: translateY(-3px); }
+.fc-icon { font-size: 24px; margin-bottom: 14px; }
+.fc-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.fc-desc { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+
+/* PRICING */
+.pricing-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px; margin-top: 56px; align-items: start;
+}
+.plan-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 32px 28px; position: relative; overflow: hidden;
+  transition: border-color .25s;
+}
+.plan-card.featured { border-color: var(--accent); }
+.plan-card.featured::before {
+  content: "Populaire"; position: absolute; top: 18px; right: 18px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--accent);
+  background: rgba(94,170,255,.12); padding: 3px 10px; border-radius: 999px;
+  border: 1px solid rgba(94,170,255,.25);
+}
+.plan-name { font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 16px; }
+.plan-price { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+.plan-price .amount { font-family: var(--display); font-size: 38px; font-weight: 600; letter-spacing: -.02em; }
+.plan-price .currency { font-size: 14px; color: var(--text-2); }
+.plan-price .period  { font-size: 13px; color: var(--text-3); }
+.plan-trial { font-size: 12px; color: var(--teal); font-family: var(--mono); margin-bottom: 20px; }
+.plan-agents { font-size: 13px; color: var(--text-2); margin-bottom: 24px; }
+.plan-agents strong { color: var(--text); }
+.plan-features { list-style: none; margin-bottom: 28px; display: flex; flex-direction: column; gap: 10px; }
+.plan-features li { font-size: 13px; color: var(--text-2); display: flex; align-items: flex-start; gap: 10px; }
+.plan-features li::before { content: "✓"; color: var(--teal); font-size: 13px; flex-shrink: 0; font-weight: 700; }
+.btn-plan {
+  width: 100%; padding: 12px; border-radius: 10px; font-weight: 700;
+  font-size: 14px; cursor: pointer; border: none; transition: opacity .2s;
+}
+.btn-plan.solid { background: var(--accent); color: #080E1B; }
+.btn-plan.solid:hover { opacity: .88; }
+.btn-plan.outline { background: transparent; color: var(--text); border: 1px solid var(--border-2); }
+.btn-plan.outline:hover { border-color: var(--accent); color: var(--accent); }
+
+/* SOVEREIGN SECTION */
+.sovereign-section {
+  background: linear-gradient(135deg, rgba(61,220,151,.04) 0%, rgba(94,170,255,.04) 100%);
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.sovereign-inner {
+  max-width: 1100px; margin: 0 auto; padding: 96px 24px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+}
+@media (max-width: 800px) { .sovereign-inner { grid-template-columns: 1fr; } }
+.sovereign-badges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 8px; font-size: 12px; font-family: var(--mono);
+  border: 1px solid var(--border-2); color: var(--text-2); letter-spacing: .04em;
+}
+.badge.teal  { border-color: rgba(61,220,151,.3);  color: var(--teal);  background: rgba(61,220,151,.06);  }
+.badge.amber { border-color: rgba(245,165,36,.3);  color: var(--amber); background: rgba(245,165,36,.06);  }
+.sovereign-card {
+  background: var(--surface-2); border: 1px solid var(--border-2);
+  border-radius: 16px; padding: 40px 36px;
+}
+.sovereign-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+.contact-field { margin-bottom: 16px; }
+.contact-field label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 6px; font-family: var(--mono); letter-spacing: .04em; }
+.contact-field input,
+.contact-field select,
+.contact-field textarea {
+  width: 100%; padding: 10px 14px; background: var(--surface);
+  border: 1px solid var(--border-2); border-radius: 8px; color: var(--text);
+  font-family: var(--body); font-size: 14px; outline: none;
+  transition: border-color .2s;
+}
+.contact-field input:focus,
+.contact-field select:focus,
+.contact-field textarea:focus { border-color: var(--accent); }
+.contact-field textarea { resize: vertical; min-height: 90px; }
+.contact-field select { appearance: none; cursor: pointer; }
+.btn-contact {
+  width: 100%; padding: 13px; background: var(--teal); color: #071412;
+  border: none; border-radius: 10px; font-weight: 700; font-size: 14px;
+  cursor: pointer; transition: opacity .2s; margin-top: 8px;
+}
+.btn-contact:hover { opacity: .88; }
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1; padding: 40px 32px;
+  border-top: 1px solid var(--border); text-align: center;
+}
+footer p { font-size: 12px; color: var(--text-3); }
+footer a { color: var(--text-2); text-decoration: none; }
+footer a:hover { color: var(--text); }
+
+/* =========================================================
+   MODAL SaaS (inscription multi-étapes)
+   ========================================================= */
+.overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(5,8,18,.75); backdrop-filter: blur(6px);
+  align-items: center; justify-content: center; padding: 24px;
+}
+.overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border-2);
+  border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 480px;
+  position: relative; box-shadow: 0 24px 64px rgba(0,0,0,.6);
+}
+.modal-close {
+  position: absolute; top: 16px; right: 16px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-2); font-size: 18px;
+  width: 32px; height: 32px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; line-height: 1;
+}
+.modal-close:hover { color: var(--text); border-color: var(--border-2); }
+.modal-logo {
+  font-family: var(--display); font-size: 20px; font-weight: 600;
+  font-style: italic; letter-spacing: -.02em; margin-bottom: 6px;
+}
+.modal-logo em { color: var(--amber); }
+.modal-step-label {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  letter-spacing: .14em; text-transform: uppercase; margin-bottom: 24px;
+}
+.step-dots { display: flex; gap: 6px; margin-bottom: 28px; }
+.step-dot {
+  height: 3px; border-radius: 2px; flex: 1;
+  background: var(--border-2); transition: background .3s;
+}
+.step-dot.done { background: var(--teal); }
+.step-dot.active { background: var(--accent); }
+
+.modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.modal .sub { font-size: 13px; color: var(--text-2); margin-bottom: 28px; line-height: 1.55; }
+
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 6px; font-family: var(--mono); letter-spacing: .04em; }
+.field input,
+.field select {
+  width: 100%; padding: 11px 14px; background: var(--bg-2);
+  border: 1px solid var(--border-2); border-radius: 9px; color: var(--text);
+  font-family: var(--body); font-size: 14px; outline: none; transition: border-color .2s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field .err { font-size: 12px; color: var(--red); margin-top: 5px; display: none; }
+.field.has-error input, .field.has-error select { border-color: var(--red); }
+.field.has-error .err { display: block; }
+
+.alert-box {
+  padding: 12px 16px; border-radius: 10px; font-size: 13px; line-height: 1.55;
+  margin-bottom: 16px; display: none;
+}
+.alert-box.error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.25); color: #FCA5A5; }
+.alert-box.success { background: rgba(61,220,151,.1); border: 1px solid rgba(61,220,151,.25); color: var(--teal); }
+.alert-box.warn    { background: rgba(245,165,36,.1); border: 1px solid rgba(245,165,36,.25); color: var(--amber); }
+
+.btn-submit {
+  width: 100%; padding: 13px; background: var(--accent); color: #080E1B;
+  border: none; border-radius: 10px; font-weight: 700; font-size: 15px;
+  cursor: pointer; transition: opacity .2s; margin-top: 4px;
+}
+.btn-submit:hover { opacity: .88; }
+.btn-submit:disabled { opacity: .45; cursor: not-allowed; }
+
+.card-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+.card-logo-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.card-logo { padding: 5px 10px; border: 1px solid var(--border-2); border-radius: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+
+.success-icon {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: rgba(61,220,151,.12); border: 2px solid rgba(61,220,151,.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; margin: 0 auto 20px;
+}
+.cred-box {
+  background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;
+}
+.cred-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.cred-label { font-size: 11px; color: var(--text-3); font-family: var(--mono); letter-spacing: .06em; }
+.cred-val { font-family: var(--mono); font-size: 12px; color: var(--teal); }
+.trial-info {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;
+}
+.trial-badge {
+  background: var(--surface-2); border: 1px solid var(--border-2);
+  border-radius: 10px; padding: 14px; text-align: center;
+}
+.trial-badge .num { font-family: var(--display); font-size: 28px; font-weight: 600; color: var(--accent); }
+.trial-badge .lbl { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
+
+/* Responsive nav */
+@media (max-width: 640px) {
+  .nav-links { display: none; }
+  .hero h1 { font-size: 32px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">
+    <span class="mark">NEXUS <em>SOC</em></span>
+    <span class="sub">SOCaaS · Cameroun</span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">Comment ça marche</a>
+    <a href="#features">Fonctionnalités</a>
+    <a href="#pricing">Tarifs</a>
+    <a href="#souverain">Secteur Public</a>
+    <a href="#" class="btn-nav" onclick="openSaas(); return false;">Essai gratuit</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">SOC-as-a-Service · Hébergement Cameroun · Bilingue FR/EN</div>
+  <h1>La cybersécurité <em>enterprise</em><br>au prix d'une microfinance</h1>
+  <p class="hero-sub">
+    NEXUS SOC protège vos postes, détecte les intrusions et répond aux incidents —
+    automatiquement, en français, depuis un serveur sur le sol camerounais.
+  </p>
+  <div class="cta-dual">
+    <button class="btn-primary" onclick="openSaas()">
+      ▶ Essai gratuit 30 jours
+      <span class="badge">0 FCFA</span>
+    </button>
+    <button class="btn-sovereign" onclick="scrollSovereign()">
+      <span class="icon">🏛</span> Déploiement Souverain
+    </button>
+  </div>
+  <div class="stats-bar">
+    <div class="stat"><span class="stat-num"><em>~400</em></span><span class="stat-lbl">Microfinances COBAC</span></div>
+    <div class="stat"><span class="stat-num"><em>90s</em></span><span class="stat-lbl">MTTD exfiltration</span></div>
+    <div class="stat"><span class="stat-num"><em>7/7</em></span><span class="stat-lbl">Techniques MITRE couvertes</span></div>
+    <div class="stat"><span class="stat-num"><em>0.987</em></span><span class="stat-lbl">ROC-AUC Modèle réseau</span></div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-inner">
+    <span class="section-tag">Démarrage en 15 minutes</span>
+    <h2 class="section-title">Opérationnel avant votre prochain café</h2>
+    <p class="section-sub">Pas d'infrastructure à déployer, pas d'ingénieur certifié requis. Vous gérez ; NEXUS SOC surveille.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-icon blue">✉</div>
+        <h3>Inscription &amp; Validation</h3>
+        <p>Créez votre compte avec votre e-mail professionnel. Une validation d'identité à 0 FCFA confirme que vous êtes bien vous.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-icon teal">⚙</div>
+        <h3>Configuration du Parc</h3>
+        <p>Renseignez vos postes, serveurs et chemins à surveiller depuis votre espace client. L'agent se télécharge en un clic.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-icon amber">🛡</div>
+        <h3>Protection Active</h3>
+        <p>L'agent léger (5 Mo) s'installe en silence, remonte la télémétrie et les alertes apparaissent dans votre portail DSI.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="background: var(--bg-2);">
+  <div class="section-inner">
+    <span class="section-tag">Fonctionnalités</span>
+    <h2 class="section-title">Tout ce dont vous avez besoin,<br>rien de superflu</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="fc-icon">🔍</div>
+        <div class="fc-title">Détection IA — 7 techniques MITRE</div>
+        <div class="fc-desc">Isolation Forest + UEBA détectent ransomware, exfiltration, comptes fantômes et C2 en moins de 2 minutes.</div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">⚡</div>
+        <div class="fc-title">SOAR avec garde-fous</div>
+        <div class="fc-desc">Isolation d'hôte, gel de compte, blocage IP. Les actions à fort impact attendent toujours votre validation.</div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🇨🇲</div>
+        <div class="fc-title">Souveraineté numérique</div>
+        <div class="fc-desc">Données hébergées au Cameroun. Conformité loi 2010/012 et ANTIC. Aucune télémétrie ne quitte le territoire.</div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">💬</div>
+        <div class="fc-title">Explications en français</div>
+        <div class="fc-desc">Chaque alerte est traduite en langage clair par le LLM Analyst. Rapports hebdo par SMS et WhatsApp.</div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔒</div>
+        <div class="fc-title">Agent tatouage cryptographique</div>
+        <div class="fc-desc">Binaire obfusqué et lié à votre organisation. Configuration récupérée dynamiquement — rien de sensible stocké en dur.</div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">📊</div>
+        <div class="fc-title">Portail DSI temps réel</div>
+        <div class="fc-desc">Score de sécurité, kill-chain colorée MITRE ATT&amp;CK, kill-chain étendue et tableau de bord en mode sombre.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="section-inner">
+    <span class="section-tag">Tarification en FCFA</span>
+    <h2 class="section-title">Des prix pensés pour l'Afrique centrale</h2>
+    <p class="section-sub">33× moins cher que CrowdStrike. Analyste SOC inclus dans l'abonnement.</p>
+    <div class="pricing-grid">
+      <div class="plan-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">
+          <span class="amount">25 000</span>
+          <span class="currency">FCFA</span>
+          <span class="period">/mois</span>
+        </div>
+        <div class="plan-trial">✓ Essai gratuit 30 jours inclus</div>
+        <div class="plan-agents">Jusqu'à <strong>10 postes</strong> surveillés</div>
+        <ul class="plan-features">
+          <li>Portail DSI temps réel</li>
+          <li>Alertes e-mail</li>
+          <li>LLM Analyst (mode template)</li>
+          <li>Corrélation SIEM MITRE ATT&amp;CK</li>
+          <li>Support tickets e-mail</li>
+        </ul>
+        <button class="btn-plan outline" onclick="openSaas()">Démarrer l'essai gratuit</button>
+      </div>
+      <div class="plan-card featured">
+        <div class="plan-name">Business</div>
+        <div class="plan-price">
+          <span class="amount">75 000</span>
+          <span class="currency">FCFA</span>
+          <span class="period">/mois</span>
+        </div>
+        <div class="plan-trial">✓ Essai gratuit 30 jours inclus</div>
+        <div class="plan-agents">Jusqu'à <strong>50 postes</strong> surveillés</div>
+        <ul class="plan-features">
+          <li>Tout Starter, plus :</li>
+          <li>Modèle UEBA fraude interne</li>
+          <li>Notifications SMS + WhatsApp</li>
+          <li>SOAR semi-automatique</li>
+          <li>1 session de formation/mois</li>
+        </ul>
+        <button class="btn-plan solid" onclick="openSaas()">Démarrer l'essai gratuit</button>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-price">
+          <span class="amount">200 000</span>
+          <span class="currency">FCFA</span>
+          <span class="period">/mois</span>
+        </div>
+        <div class="plan-trial">✓ Essai gratuit 30 jours inclus</div>
+        <div class="plan-agents">Jusqu'à <strong>200 postes</strong> surveillés</div>
+        <ul class="plan-features">
+          <li>Tout Business, plus :</li>
+          <li>Modèle détection réseau (M1)</li>
+          <li>SOAR complet + tableau de bord SOC</li>
+          <li>Accès API + intégrations</li>
+          <li>SLA 4h, analyste SOC dédié</li>
+        </ul>
+        <button class="btn-plan outline" onclick="openSaas()">Démarrer l'essai gratuit</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOVEREIGN SECTION -->
+<section id="souverain" class="sovereign-section">
+  <div class="sovereign-inner">
+    <div>
+      <span class="section-tag">Secteur Public</span>
+      <h2 class="section-title">Déploiement Souverain<br>Hub &amp; Spoke</h2>
+      <p style="color:var(--text-2); font-size:15px; line-height:1.7; margin-bottom:24px;">
+        Pour les ministères, directions générales et agences d'État camerounaises.
+        NEXUS SOC s'installe sur <strong>votre infrastructure</strong>, avec intégration
+        SIGIPES, SYDONIA, conformité ANTIC et SLA 1h.
+      </p>
+      <div class="sovereign-badges">
+        <span class="badge teal">🏛 Hébergement sur site</span>
+        <span class="badge teal">🔗 Intégration SIGIPES / SYDONIA</span>
+        <span class="badge amber">📋 Conformité ANTIC</span>
+        <span class="badge amber">⚖ Loi 2010/012</span>
+        <span class="badge">🤝 SLA 1h</span>
+        <span class="badge">👤 Analyste SOC dédié</span>
+      </div>
+    </div>
+    <div class="sovereign-card">
+      <h3>Contacter un architecte NEXUS SOC</h3>
+      <div id="contact-success" class="alert-box success" style="display:none;">
+        Votre demande a bien été transmise. Un architecte vous contactera sous 48h.
+      </div>
+      <form id="sovereign-form" onsubmit="submitSovereign(event)">
+        <div class="contact-field">
+          <label>Nom complet</label>
+          <input type="text" id="s-name" placeholder="Jean-Pierre Mballa" required>
+        </div>
+        <div class="contact-field">
+          <label>Organisation</label>
+          <input type="text" id="s-org" placeholder="MINFI, DGI, DGCOOP…" required>
+        </div>
+        <div class="contact-field">
+          <label>Type d'entité</label>
+          <select id="s-type">
+            <option value="">Sélectionner…</option>
+            <option>Ministère</option>
+            <option>Direction Générale</option>
+            <option>Agence d'État</option>
+            <option>Régie financière</option>
+            <option>Université / Grande École</option>
+          </select>
+        </div>
+        <div class="contact-field">
+          <label>Téléphone</label>
+          <input type="tel" id="s-phone" placeholder="+237 6XX XXX XXX">
+        </div>
+        <div class="contact-field">
+          <label>Message (optionnel)</label>
+          <textarea id="s-msg" placeholder="Nombre de postes estimé, délai souhaité…"></textarea>
+        </div>
+        <button type="submit" class="btn-contact">Envoyer la demande →</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    © 2026 NEXUS SOC — Plateforme SOCaaS souveraine pour le Cameroun ·
+    <a href="mailto:contact@nexussoc.cm">contact@nexussoc.cm</a> ·
+    Loi n° 2010/012 · ANTIC
+  </p>
+</footer>
+
+<!-- =====================================================
+     MODAL SaaS — Inscription multi-étapes
+     ===================================================== -->
+<div class="overlay" id="modal-saas">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSaas()">✕</button>
+    <div class="modal-logo">NEXUS <em>SOC</em></div>
+    <div class="modal-step-label" id="step-label">Étape 1 / 4</div>
+    <div class="step-dots">
+      <div class="step-dot active" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-dot" id="dot-3"></div>
+      <div class="step-dot" id="dot-4"></div>
+    </div>
+
+    <!-- ÉTAPE 1 : E-mail -->
+    <div id="saas-step-1">
+      <h2>Votre adresse e-mail professionnelle</h2>
+      <p class="sub">Utilisez l'adresse de votre organisation (microfinance, cabinet comptable, assurance). Les adresses temporaires et les domaines gouvernementaux sont filtrés.</p>
+      <div class="field" id="f-email">
+        <label>Adresse e-mail</label>
+        <input type="email" id="in-email" placeholder="dsio@votreorganisation.cm" autocomplete="email">
+        <div class="err" id="err-email">—</div>
+      </div>
+      <div class="alert-box warn" id="alert-gov">
+        🏛 Votre domaine est identifié comme public ou réglementé. Utilisez le formulaire <strong>Déploiement Souverain</strong> ci-dessous pour être mis en contact avec un architecte.
+      </div>
+      <button class="btn-submit" id="btn-step1" onclick="step1Next()">Continuer →</button>
+    </div>
+
+    <!-- ÉTAPE 2 : Détails organisation -->
+    <div id="saas-step-2" style="display:none;">
+      <h2>Votre organisation</h2>
+      <p class="sub">Ces informations permettent de configurer votre espace client.</p>
+      <div class="field" id="f-org">
+        <label>Nom de l'organisation</label>
+        <input type="text" id="in-org" placeholder="Caisse de microfinance ABC">
+        <div class="err" id="err-org">Champ requis</div>
+      </div>
+      <div class="field">
+        <label>Secteur</label>
+        <select id="in-sector">
+          <option value="">Sélectionner…</option>
+          <option value="microfinance">Microfinance (COBAC)</option>
+          <option value="assurance">Assurance (CIMA)</option>
+          <option value="cabinet">Cabinet comptable (ONECCA)</option>
+          <option value="autre">Autre secteur financier</option>
+        </select>
+      </div>
+      <div class="alert-box error" id="alert-step2">—</div>
+      <button class="btn-submit" id="btn-step2" onclick="step2Next()">Créer mon compte →</button>
+    </div>
+
+    <!-- ÉTAPE 3 : Vérification e-mail -->
+    <div id="saas-step-3" style="display:none;">
+      <h2>Vérifiez votre e-mail</h2>
+      <p class="sub">Un lien de confirmation a été envoyé à <strong id="display-email">—</strong>. Cliquez sur ce lien pour continuer.</p>
+      <div style="text-align:center; padding: 24px 0;">
+        <div style="font-size:52px; margin-bottom:12px;">✉️</div>
+        <p style="font-size:13px; color:var(--text-2);">Vérifiez également vos courriers indésirables.</p>
+      </div>
+      <button class="btn-submit" style="background:var(--surface-2); color:var(--text); border:1px solid var(--border-2);" onclick="step3Resend()">Renvoyer le lien</button>
+    </div>
+
+    <!-- ÉTAPE 4 : Pré-autorisation bancaire -->
+    <div id="saas-step-4" style="display:none;">
+      <h2>Validation d'identité</h2>
+      <p class="sub">Une pré-autorisation à <strong>0 FCFA</strong> confirme votre identité et protège la plateforme contre les créations frauduleuses. Aucun montant n'est débité.</p>
+      <div class="card-logo-row">
+        <div class="card-logo">VISA</div>
+        <div class="card-logo">MasterCard</div>
+        <div class="card-logo">CinetPay</div>
+      </div>
+      <div class="field">
+        <label>Numéro de carte</label>
+        <input type="text" id="in-card" placeholder="•••• •••• •••• ••••" maxlength="19" oninput="formatCard(this)">
+      </div>
+      <div class="card-row">
+        <div class="field">
+          <label>Expiration</label>
+          <input type="text" id="in-exp" placeholder="MM/AA" maxlength="5" oninput="formatExp(this)">
+        </div>
+        <div class="field">
+          <label>CVV</label>
+          <input type="text" id="in-cvv" placeholder="•••" maxlength="3">
+        </div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:18px;font-size:20px;color:var(--text-3);">🔒</div>
+      </div>
+      <div class="alert-box error" id="alert-preauth">—</div>
+      <button class="btn-submit" id="btn-preauth" onclick="step4Submit()">Valider l'identité (0 FCFA) →</button>
+    </div>
+
+    <!-- ÉTAPE 5 : Succès -->
+    <div id="saas-step-5" style="display:none;">
+      <div style="text-align:center;">
+        <div class="success-icon">✓</div>
+        <h2 style="margin-bottom:8px;">Compte activé !</h2>
+        <p class="sub">Votre essai gratuit est démarré. Installez l'agent sur vos postes depuis votre portail.</p>
+      </div>
+      <div class="trial-info">
+        <div class="trial-badge">
+          <div class="num">30</div>
+          <div class="lbl">Jours d'essai</div>
+        </div>
+        <div class="trial-badge">
+          <div class="num">5</div>
+          <div class="lbl">Agents max</div>
+        </div>
+      </div>
+      <div class="cred-box">
+        <div class="cred-row">
+          <span class="cred-label">TENANT ID</span>
+          <span class="cred-val" id="cred-tenant">—</span>
+        </div>
+        <div class="cred-row">
+          <span class="cred-label">PORTAIL</span>
+          <span class="cred-val">nexussoc.cm/portal</span>
+        </div>
+      </div>
+      <button class="btn-submit" onclick="window.open('https://nexussoc.cm/portal', '_blank'); closeSaas();">Accéder au portail →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// Constantes API
+// =====================================================
+const API = ""; // Préfixe : laisser vide si servi depuis le même domaine
+let regState = { email: "", reg_id: "", tenant_id: "" };
+
+// =====================================================
+// Navigation modal
+// =====================================================
+function openSaas() {
+  document.getElementById("modal-saas").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeSaas() {
+  document.getElementById("modal-saas").classList.remove("open");
+  document.body.style.overflow = "";
+}
+function scrollSovereign() {
+  document.getElementById("souverain").scrollIntoView({ behavior: "smooth" });
+}
+document.getElementById("modal-saas").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) closeSaas();
+});
+
+function goToStep(n) {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`saas-step-${i}`);
+    if (el) el.style.display = i === n ? "" : "none";
+  }
+  document.getElementById("step-label").textContent =
+    n <= 4 ? `Étape ${n} / 4` : "Compte activé";
+  for (let i = 1; i <= 4; i++) {
+    const d = document.getElementById(`dot-${i}`);
+    d.classList.remove("active", "done");
+    if (i < n)  d.classList.add("done");
+    if (i === n) d.classList.add("active");
+  }
+}
+
+// =====================================================
+// Étape 1 — Vérification e-mail
+// =====================================================
+async function step1Next() {
+  const email = document.getElementById("in-email").value.trim();
+  const fEmail = document.getElementById("f-email");
+  const errEmail = document.getElementById("err-email");
+  const alertGov = document.getElementById("alert-gov");
+  const btn = document.getElementById("btn-step1");
+
+  fEmail.classList.remove("has-error");
+  alertGov.style.display = "none";
+  if (!email || !email.includes("@")) {
+    fEmail.classList.add("has-error");
+    errEmail.textContent = "Entrez une adresse e-mail valide.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Vérification…";
+  try {
+    const r = await fetch(`${API}/plg/check-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      if (data.detail?.code === "GOV_DOMAIN_REDIRECT") {
+        alertGov.style.display = "block";
+      } else {
+        fEmail.classList.add("has-error");
+        errEmail.textContent = data.detail?.message || data.detail || "E-mail invalide.";
+      }
+      return;
+    }
+    regState.email = email;
+    document.getElementById("display-email").textContent = email;
+    goToStep(2);
+  } catch {
+    fEmail.classList.add("has-error");
+    errEmail.textContent = "Erreur réseau. Réessayez.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Continuer →";
+  }
+}
+
+// =====================================================
+// Étape 2 — Détails organisation
+// =====================================================
+async function step2Next() {
+  const org    = document.getElementById("in-org").value.trim();
+  const sector = document.getElementById("in-sector").value;
+  const fOrg   = document.getElementById("f-org");
+  const alert2 = document.getElementById("alert-step2");
+  const btn    = document.getElementById("btn-step2");
+
+  fOrg.classList.remove("has-error");
+  alert2.style.display = "none";
+  if (!org) { fOrg.classList.add("has-error"); return; }
+  if (!sector) { alert2.style.display = "block"; alert2.textContent = "Sélectionnez votre secteur."; return; }
+
+  btn.disabled = true;
+  btn.textContent = "Création du compte…";
+  try {
+    const r = await fetch(`${API}/plg/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: regState.email, organization_name: org, sector }),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      alert2.style.display = "block";
+      alert2.textContent = data.detail?.message || data.detail || "Erreur lors de la création du compte.";
+      return;
+    }
+    goToStep(3);
+  } catch {
+    alert2.style.display = "block";
+    alert2.textContent = "Erreur réseau. Réessayez.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Créer mon compte →";
+  }
+}
+
+// =====================================================
+// Étape 3 — Vérification e-mail (renvoi)
+// =====================================================
+async function step3Resend() {
+  const org    = document.getElementById("in-org").value.trim();
+  const sector = document.getElementById("in-sector").value;
+  await fetch(`${API}/plg/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: regState.email, organization_name: org, sector }),
+  });
+}
+
+// Fonction appelée depuis le lien de vérification reçu par e-mail
+// (ex: nexussoc.cm/verify?token=xxx → appelle /plg/verify-email)
+async function verifyEmailToken(token) {
+  const r = await fetch(`${API}/plg/verify-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  if (r.ok) {
+    const d = await r.json();
+    regState.reg_id = d.registration_id;
+    openSaas();
+    goToStep(4);
+  }
+}
+
+// =====================================================
+// Étape 4 — Pré-autorisation bancaire
+// =====================================================
+function formatCard(el) {
+  el.value = el.value.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
+}
+function formatExp(el) {
+  el.value = el.value.replace(/\D/g, "").replace(/^(\d{2})(\d)/, "$1/$2").slice(0, 5);
+}
+
+async function step4Submit() {
+  const card  = document.getElementById("in-card").value.replace(/\s/g, "");
+  const exp   = document.getElementById("in-exp").value;
+  const cvv   = document.getElementById("in-cvv").value;
+  const alert = document.getElementById("alert-preauth");
+  const btn   = document.getElementById("btn-preauth");
+
+  alert.style.display = "none";
+  if (card.length < 16 || exp.length < 5 || cvv.length < 3) {
+    alert.style.display = "block"; alert.textContent = "Renseignez tous les champs de la carte.";
+    return;
+  }
+
+  // Construire un token opaque (en prod: fourni par CinetPay SDK)
+  const cardToken = btoa(`${card}|${exp}|${cvv}|${Date.now()}`);
+
+  btn.disabled = true; btn.textContent = "Validation en cours…";
+  try {
+    const r = await fetch(`${API}/plg/preauth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ registration_id: regState.reg_id, card_token: cardToken }),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      alert.style.display = "block";
+      alert.textContent = data.detail?.message || "Validation d'identité refusée.";
+      return;
+    }
+    regState.tenant_id = data.tenant_id;
+    document.getElementById("cred-tenant").textContent = data.tenant_id;
+    goToStep(5);
+  } catch {
+    alert.style.display = "block"; alert.textContent = "Erreur réseau. Réessayez.";
+  } finally {
+    btn.disabled = false; btn.textContent = "Valider l'identité (0 FCFA) →";
+  }
+}
+
+// =====================================================
+// Formulaire Souverain
+// =====================================================
+async function submitSovereign(e) {
+  e.preventDefault();
+  const payload = {
+    name:    document.getElementById("s-name").value,
+    org:     document.getElementById("s-org").value,
+    type:    document.getElementById("s-type").value,
+    phone:   document.getElementById("s-phone").value,
+    message: document.getElementById("s-msg").value,
+  };
+  // En production : appeler un endpoint /plg/sovereign-contact
+  console.log("Sovereign contact:", payload);
+  document.getElementById("sovereign-form").style.display = "none";
+  document.getElementById("contact-success").style.display = "block";
+}
+
+// =====================================================
+// Auto-vérification token si URL contient ?token=
+// =====================================================
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get("token");
+  if (token) verifyEmailToken(token);
+})();
+</script>
+</body>
+</html>
