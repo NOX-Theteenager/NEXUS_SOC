@@ -1166,9 +1166,23 @@ FICHIERS AJOUTÉS / MODIFIÉS (session 29 mai 2026) :
     uvicorn run:app --host 0.0.0.0 --port 8000 --reload
     → http://localhost:8000/app/login.html
 
-  VÉRIFICATION NON FAITE : fastapi/psycopg2 absents de l'environnement de dev au moment
-    de l'écriture → py_compile OK + XML validé, mais PAS de test d'exécution en direct.
-    À lancer dans un environnement avec PostgreSQL + schémas + seed appliqués.
+  VÉRIFICATION EFFECTIVE FAITE (lancement réel validé) :
+    Pile lancée pour de vrai : TimescaleDB (conteneur Docker timescale/timescaledb:2.15.3-pg16)
+    + venv (.venv) + uvicorn run:app + pytest. Les 5 schémas s'appliquent sans erreur
+    (ON_ERROR_STOP=1). Les 5 routeurs se montent (Auth, Admin, Analyste, Provisioning, PLG).
+    pytest Lot6_Tests/test_api.py : 18/18 PASS.
+    4 BUGS RÉELS découverts AU LANCEMENT et corrigés (invisibles à py_compile) :
+      F1. 01_schema_plg.sql : vues v_trial_expiry / v_active_subscriptions référençaient
+          t.name (colonne inexistante) → corrigé en t.nom.
+      F2. 01_schema_analyst.sql : GRANT CONNECT ON DATABASE nexus (codé en dur) → remplacé
+          par un DO/EXECUTE format(...) utilisant current_database().
+      F3. 01_schema_patched.sql : le rôle nexus_app (référencé par les GRANT analyst/provisioning)
+          n'était JAMAIS créé → ajout d'un CREATE ROLE nexus_app guardé.
+      F4. run.py : plg_api attend un pool asyncpg sur app.state.db jamais initialisé (→ 500
+          sur /plg/*) → ajout d'un @app.on_event("startup") qui crée le pool asyncpg.
+    DÉPENDANCES SERVEUR RÉELLES (au-delà du minimum) : python-multipart (provisioning_api
+      utilise Form) et asyncpg (plg_api) sont REQUIS pour monter ces 2 routeurs.
+    PROCÉDURE VALIDÉE pas-à-pas : voir SECTION 14 « LANCEMENT EFFECTIF VALIDÉ ».
 
 TESTS EFFECTUÉS ET RÉSULTATS :
   Simulation Atomic Red Team (attack_simulation.py) :
@@ -1505,5 +1519,44 @@ APPLIQUER TOUS LES SCHÉMAS SQL :
   psql $DB -f Lot7_Console_Fournisseur/01_schema_provisioning.sql
   psql $DB -f Lot0_Socle/01_schema_retention.sql
   psql $DB -f Lot8_PLG/01_schema_plg.sql
+  psql $DB -f Lot0_Socle/02_seed_demo.sql
+
+LANCEMENT EFFECTIF VALIDÉ (sans la pile Docker complète — juste PostgreSQL + l'API) :
+
+  Cette procédure a été EXÉCUTÉE et donne 18/18 tests PASS. Kafka/Wazuh non requis
+  (dégradation gracieuse) ; seuls PostgreSQL + l'API sont nécessaires.
+
+  # 1. PostgreSQL via Docker (image officielle du projet)
+  docker run -d --name nexus-pg-test \
+    -e POSTGRES_USER=nexus -e POSTGRES_PASSWORD=change_me -e POSTGRES_DB=nexus_soc \
+    -p 5432:5432 timescale/timescaledb:2.15.3-pg16
+  until docker exec nexus-pg-test pg_isready -U nexus -d nexus_soc; do sleep 2; done
+
+  # 2. Appliquer schémas + seed DANS le conteneur
+  for f in Lot0_Socle/01_schema_patched.sql \
+           Lot7_Console_Fournisseur/01_schema_analyst.sql \
+           Lot7_Console_Fournisseur/01_schema_provisioning.sql \
+           Lot8_PLG/01_schema_plg.sql \
+           Lot0_Socle/02_seed_demo.sql; do
+    docker exec -i nexus-pg-test psql -U nexus -d nexus_soc -v ON_ERROR_STOP=1 < "$f"
+  done
+
+  # 3. venv + dépendances (multipart + asyncpg INDISPENSABLES pour /provision et /plg)
+  python3 -m venv .venv
+  .venv/bin/pip install fastapi "uvicorn[standard]" psycopg2-binary numpy joblib \
+    email-validator python-multipart asyncpg pytest httpx
+
+  # 4. Démarrer le serveur (Kafka injoignable = OK, dégradation gracieuse)
+  export DB_DSN="postgresql://nexus:change_me@localhost:5432/nexus_soc"
+  export JWT_SECRET="CHANGE_ME_IN_PRODUCTION_USE_32_RANDOM_BYTES"
+  .venv/bin/uvicorn run:app --host 127.0.0.1 --port 8000 &
+  # → vérifier dans les logs : 5× "[run] ✓ ... monté" + "pool asyncpg PLG initialisé"
+
+  # 5. Tests (18/18 PASS attendus)
+  NEXUS_BASE_URL=http://127.0.0.1:8000 NEXUS_TEST_PWD=admin \
+    .venv/bin/pytest Lot6_Tests/test_api.py -v
+
+  # Arrêt
+  pkill -f "uvicorn run:app"; docker rm -f nexus-pg-test
 
 FIN DU CONTEXTE

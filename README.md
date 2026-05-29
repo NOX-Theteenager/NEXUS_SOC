@@ -807,13 +807,40 @@ terraform apply
 
 Valident le parcours REST de bout en bout. Skip propre si le serveur est injoignable.
 
-```bash
-# Terminal 1 — serveur (depuis la racine)
-uvicorn run:app --port 8000
+**Procédure validée de bout en bout (donne 18/18 PASS) :**
 
-# Terminal 2 — tests
-pip install pytest httpx
-pytest Lot6_Tests/test_api.py -v
+```bash
+# 1. PostgreSQL (Kafka/Wazuh non requis : dégradation gracieuse)
+docker run -d --name nexus-pg-test \
+  -e POSTGRES_USER=nexus -e POSTGRES_PASSWORD=change_me -e POSTGRES_DB=nexus_soc \
+  -p 5432:5432 timescale/timescaledb:2.15.3-pg16
+until docker exec nexus-pg-test pg_isready -U nexus -d nexus_soc; do sleep 2; done
+
+# 2. Schémas + seed (dans le conteneur)
+for f in Lot0_Socle/01_schema_patched.sql \
+         Lot7_Console_Fournisseur/01_schema_analyst.sql \
+         Lot7_Console_Fournisseur/01_schema_provisioning.sql \
+         Lot8_PLG/01_schema_plg.sql \
+         Lot0_Socle/02_seed_demo.sql; do
+  docker exec -i nexus-pg-test psql -U nexus -d nexus_soc -v ON_ERROR_STOP=1 < "$f"
+done
+
+# 3. venv + dépendances (python-multipart et asyncpg INDISPENSABLES)
+python3 -m venv .venv
+.venv/bin/pip install fastapi "uvicorn[standard]" psycopg2-binary numpy joblib \
+  email-validator python-multipart asyncpg pytest httpx
+
+# 4. Serveur (terminal 1)
+export DB_DSN="postgresql://nexus:change_me@localhost:5432/nexus_soc"
+.venv/bin/uvicorn run:app --port 8000
+
+# 5. Tests (terminal 2)
+NEXUS_BASE_URL=http://127.0.0.1:8000 NEXUS_TEST_PWD=admin \
+  .venv/bin/pytest Lot6_Tests/test_api.py -v
+# → 18 passed
+
+# Arrêt
+pkill -f "uvicorn run:app"; docker rm -f nexus-pg-test
 ```
 
 Couverture : login des 3 rôles, rejet d'un JWT invalide, cloisonnement RBAC
@@ -988,6 +1015,23 @@ curl -X POST http://localhost:8000/plg/run-expiry-check \
 ---
 
 ## Changelog
+
+### Session du 29 mai 2026 — Lancement effectif validé (18/18 tests)
+
+La pile a été **exécutée pour de vrai** (TimescaleDB Docker + uvicorn + pytest) :
+les 5 schémas s'appliquent sans erreur, les 5 routeurs se montent, **18/18 tests
+API passent**. 4 bugs réels — invisibles à la compilation — ont été découverts et
+corrigés à cette occasion :
+
+| Bug | Fichier | Correctif |
+|---|---|---|
+| Vues PLG référençaient `t.name` (inexistant) | `Lot8_PLG/01_schema_plg.sql` | → `t.nom` |
+| `GRANT ON DATABASE nexus` codé en dur | `01_schema_analyst.sql` | `current_database()` dynamique |
+| Rôle `nexus_app` jamais créé | `01_schema_patched.sql` | `CREATE ROLE` guardé |
+| Pool asyncpg PLG non initialisé (`/plg/*` → 500) | `run.py` | pool créé au `startup` |
+
+> Dépendances serveur indispensables (au-delà du minimum) : **`python-multipart`**
+> (provisioning) et **`asyncpg`** (PLG). Procédure validée pas-à-pas en section 8.
 
 ### Session du 29 mai 2026 — Intégration end-to-end + durcissement
 
