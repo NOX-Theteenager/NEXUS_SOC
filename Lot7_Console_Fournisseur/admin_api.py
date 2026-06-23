@@ -540,3 +540,181 @@ def soc_dashboard(db=Depends(get_analyst_db), _=Depends(require_analyst)):
         "top_tenants_by_incidents": top_tenants,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+# ---------------------------------------------------------------------------
+# G. PORTAIL DSI — vue restreinte au tenant du JWT
+#    Accessible aux rôles dsi_client, lecteur (et admin_plateforme/analyste_soc).
+#    Sert le flux des notifications push in-app + le téléchargement des rapports.
+# ---------------------------------------------------------------------------
+portail_router = APIRouter(prefix="/portal", tags=["Portail DSI"])
+
+
+def require_client(authorization: str = Header(...)):
+    """JWT obligatoire ; tous les rôles d'un tenant client sont acceptés."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Token manquant")
+    payload = _decode_jwt(authorization.removeprefix("Bearer "))
+    allowed = {"dsi_client", "lecteur", "admin_plateforme", "analyste_soc"}
+    if payload.get("role") not in allowed:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Rôle insuffisant")
+    return payload
+
+
+def _tenant_id_or_403(user: dict) -> str:
+    """Renvoie le tenant_id du JWT ; 403 si l'utilisateur n'est pas lié à un tenant."""
+    tid = user.get("tenant_id")
+    if not tid:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            detail="Aucun tenant associé à cet utilisateur (compte plateforme).")
+    return tid
+
+
+@portail_router.get("/alerts", summary="Alertes du tenant courant (filtré par JWT)")
+def portal_alerts(limit: int = 50, db=Depends(get_db), user: dict = Depends(require_client)):
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute("""
+            SELECT id, tenant_id, source_modele, type, entite, risque, raisons,
+                   mitre, statut, cree_le
+            FROM alerts WHERE tenant_id = %s::uuid
+            ORDER BY cree_le DESC LIMIT %s
+        """, (tid, limit))
+        return [dict(r) for r in cur.fetchall()]
+
+
+@portail_router.get("/agents", summary="Agents du tenant courant")
+def portal_agents(db=Depends(get_db), user: dict = Depends(require_client)):
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute("""
+            SELECT id, tenant_id, hostname, os, statut, vu_le
+            FROM agents WHERE tenant_id = %s::uuid
+            ORDER BY hostname
+        """, (tid,))
+        return [dict(r) for r in cur.fetchall()]
+
+
+@portail_router.get("/notifications", summary="Notifications push in-app du tenant")
+def portal_notifications(
+    unread_only: bool = False,
+    limit: int = 50,
+    db=Depends(get_db),
+    user: dict = Depends(require_client),
+):
+    tid = _tenant_id_or_403(user)
+    conditions = ["tenant_id = %s::uuid"]
+    vals = [tid]
+    if unread_only:
+        conditions.append("read_at IS NULL")
+    vals.append(limit)
+    with db.cursor() as cur:
+        cur.execute(f"""
+            SELECT id, tenant_id, alert_id, type, severity, title, body,
+                   (report_html IS NOT NULL) AS has_report,
+                   created_at, read_at
+            FROM notifications
+            WHERE {' AND '.join(conditions)}
+            ORDER BY created_at DESC LIMIT %s
+        """, vals)
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.execute(
+            "SELECT COUNT(*) AS n FROM notifications "
+            "WHERE tenant_id = %s::uuid AND read_at IS NULL",
+            (tid,),
+        )
+        unread = cur.fetchone()["n"]
+    return {"items": rows, "unread_count": unread}
+
+
+@portail_router.post("/notifications/{notif_id}/mark-read",
+                     summary="Marquer une notification comme lue")
+def portal_notif_mark_read(notif_id: str, db=Depends(get_db),
+                           user: dict = Depends(require_client)):
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE notifications SET read_at = now() "
+            "WHERE id = %s::uuid AND tenant_id = %s::uuid AND read_at IS NULL "
+            "RETURNING id",
+            (notif_id, tid),
+        )
+        row = cur.fetchone()
+        db.commit()
+    if not row:
+        # idempotent : déjà lue ou inexistante → 200 quand même
+        return {"status": "noop"}
+    return {"status": "marked_read"}
+
+
+@portail_router.post("/notifications/mark-all-read",
+                     summary="Marquer toutes les notifications comme lues")
+def portal_notif_mark_all_read(db=Depends(get_db), user: dict = Depends(require_client)):
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE notifications SET read_at = now() "
+            "WHERE tenant_id = %s::uuid AND read_at IS NULL RETURNING id",
+            (tid,),
+        )
+        n = cur.rowcount
+        db.commit()
+    return {"status": "ok", "marked": n}
+
+
+@portail_router.get("/notifications/{notif_id}/report",
+                    summary="Rapport HTML enrichi (affichage in-app)")
+def portal_notif_report(notif_id: str, db=Depends(get_db),
+                        user: dict = Depends(require_client)):
+    """Renvoie le rapport HTML en JSON pour affichage dans le modal du portail."""
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, title, severity, report_html, created_at "
+            "FROM notifications WHERE id = %s::uuid AND tenant_id = %s::uuid",
+            (notif_id, tid),
+        )
+        row = cur.fetchone()
+    if not row or not row.get("report_html"):
+        raise HTTPException(404, detail="Rapport introuvable")
+    return dict(row)
+
+
+@portail_router.get("/notifications/{notif_id}/download",
+                    summary="Téléchargement du rapport HTML (attachment)")
+def portal_notif_download(notif_id: str, db=Depends(get_db),
+                          user: dict = Depends(require_client)):
+    """Renvoie le rapport HTML brut avec Content-Disposition: attachment."""
+    from fastapi.responses import Response
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT report_html FROM notifications "
+            "WHERE id = %s::uuid AND tenant_id = %s::uuid",
+            (notif_id, tid),
+        )
+        row = cur.fetchone()
+    if not row or not row.get("report_html"):
+        raise HTTPException(404, detail="Rapport introuvable")
+    filename = f"rapport-nexussoc-{notif_id[:8]}.html"
+    return Response(
+        content=row["report_html"],
+        media_type="text/html; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@portail_router.get("/summary", summary="Synthèse temps-réel du tenant (KPIs portail)")
+def portal_summary(db=Depends(get_db), user: dict = Depends(require_client)):
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute("""
+            SELECT
+              (SELECT COUNT(*) FROM alerts WHERE tenant_id=%s::uuid AND statut!='resolue') AS open_alerts,
+              (SELECT COALESCE(MAX(risque),0) FROM alerts WHERE tenant_id=%s::uuid AND statut!='resolue') AS max_risk,
+              (SELECT COUNT(*) FROM agents WHERE tenant_id=%s::uuid AND statut='actif') AS agents_active,
+              (SELECT COUNT(*) FROM agents WHERE tenant_id=%s::uuid) AS agents_total,
+              (SELECT COUNT(*) FROM notifications WHERE tenant_id=%s::uuid AND read_at IS NULL) AS unread_notifications
+        """, (tid, tid, tid, tid, tid))
+        row = cur.fetchone()
+    return dict(row) if row else {}

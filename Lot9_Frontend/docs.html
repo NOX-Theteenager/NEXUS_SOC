@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0A0F1C"/>
+<meta name="description" content="NEXUS SOC — Documentation complète : démarrage rapide, installation, déploiements (VM, Docker, cloud, souverain), fonctionnalités, API."/>
+<title>NEXUS SOC — Documentation</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #07101e;
+  --bg-2:      #0A0F1C;
+  --surface:   #0F1729;
+  --surface-2: #131D33;
+  --border:    #1E293B;
+  --border-2:  #334155;
+  --text:      #E2E8F0;
+  --text-2:    #94A3B8;
+  --text-3:    #64748B;
+  --accent:    #5EAAFF;
+  --teal:      #3DDC97;
+  --amber:     #F5A524;
+  --red:       #EF4444;
+  --purple:    #B97AFF;
+  --display:   "Fraunces", Georgia, serif;
+  --body:      "Manrope", sans-serif;
+  --mono:      "JetBrains Mono", monospace;
+  --nav-h: 62px;
+  --sidebar-w: 260px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(94,170,255,.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94,170,255,.012) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h); z-index: 100;
+  background: rgba(7,16,30,.94); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 28px; gap: 22px;
+}
+nav::after {
+  content: ""; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--amber) 0%, var(--accent) 45%, var(--teal) 100%);
+  opacity: .65;
+}
+.nav-brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; }
+.nav-brand .mark { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 22px; letter-spacing: -.02em; color: var(--text); }
+.nav-brand .mark em { color: var(--amber); font-style: italic; }
+.nav-brand .sub { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; }
+.nav-spacer { flex: 1; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { font-size: 13.5px; color: var(--text-2); text-decoration: none; transition: color .2s; }
+.nav-links a:hover { color: var(--text); }
+.btn-nav-ghost {
+  padding: 7px 16px; background: transparent; color: var(--text);
+  border: 1px solid var(--border-2); border-radius: 8px;
+  font-weight: 600; font-size: 13px; text-decoration: none;
+  transition: border-color .2s;
+}
+.btn-nav-ghost:hover { border-color: var(--accent); }
+
+/* ── Layout ── */
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  max-width: 1320px; margin: 0 auto;
+  padding-top: var(--nav-h);
+  position: relative; z-index: 1;
+}
+
+/* ── Sidebar TOC ── */
+aside {
+  position: sticky; top: var(--nav-h);
+  height: calc(100vh - var(--nav-h));
+  overflow-y: auto;
+  padding: 32px 18px 32px 28px;
+  border-right: 1px solid var(--border);
+}
+aside h4 {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--text-3); letter-spacing: .14em;
+  text-transform: uppercase; margin: 24px 0 10px;
+}
+aside h4:first-child { margin-top: 0; }
+aside ul { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+aside a {
+  display: block;
+  padding: 7px 12px;
+  font-size: 13.5px; color: var(--text-2);
+  text-decoration: none;
+  border-radius: 7px;
+  border-left: 2px solid transparent;
+  transition: color .15s, background .15s, border-color .15s;
+}
+aside a:hover { color: var(--text); background: var(--surface); }
+aside a.active {
+  color: var(--accent);
+  background: rgba(94,170,255,.07);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Main content ── */
+main { padding: 40px 60px 96px; max-width: 880px; }
+.lead {
+  font-size: 18px; color: var(--text-2);
+  margin-bottom: 32px; line-height: 1.7;
+}
+
+h1 {
+  font-family: var(--display); font-size: 44px;
+  font-weight: 600; letter-spacing: -.025em;
+  margin-bottom: 12px; line-height: 1.1;
+}
+h1 em { font-style: italic; color: var(--accent); }
+h2 {
+  font-family: var(--display); font-size: 30px; font-weight: 600;
+  letter-spacing: -.02em;
+  margin: 64px 0 18px; line-height: 1.2;
+  padding-top: 12px;
+}
+h2::before {
+  content: "§"; font-family: var(--mono); font-size: 16px;
+  color: var(--text-3); margin-right: 12px;
+}
+h3 {
+  font-size: 18px; font-weight: 700;
+  margin: 32px 0 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+h3 .num {
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  background: rgba(94,170,255,.1); padding: 3px 8px; border-radius: 5px;
+}
+p { margin-bottom: 14px; color: var(--text-2); }
+strong { color: var(--text); font-weight: 600; }
+ul.bullets {
+  list-style: none; margin: 8px 0 18px 0; padding-left: 0;
+}
+ul.bullets li {
+  position: relative; padding-left: 22px; margin-bottom: 8px;
+  color: var(--text-2);
+}
+ul.bullets li::before {
+  content: "▸"; position: absolute; left: 4px; top: 0;
+  color: var(--accent);
+}
+ol.steps {
+  counter-reset: step;
+  list-style: none; margin: 18px 0; padding: 0;
+}
+ol.steps li {
+  counter-increment: step;
+  position: relative; padding-left: 42px; margin-bottom: 18px;
+  color: var(--text-2);
+}
+ol.steps li::before {
+  content: counter(step); position: absolute; left: 0; top: -2px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #07111F;
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Code blocks ── */
+.code {
+  position: relative;
+  background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: 11px; padding: 18px 20px 18px 20px;
+  font-family: var(--mono); font-size: 12.5px;
+  color: var(--text); line-height: 1.7;
+  overflow-x: auto;
+  margin: 14px 0 22px;
+}
+.code .copy-btn {
+  position: absolute; top: 10px; right: 10px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text-3); font-family: var(--mono); font-size: 11px;
+  padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.code .copy-btn:hover { color: var(--teal); border-color: var(--teal); }
+.code .cmt { color: var(--text-3); font-style: italic; }
+.code .str { color: var(--teal); }
+.code .kw  { color: var(--accent); }
+.code .num { color: var(--amber); }
+code.inline {
+  background: var(--surface-2);
+  padding: 2px 7px; border-radius: 4px;
+  font-family: var(--mono); font-size: 12.5px;
+  color: var(--teal);
+  border: 1px solid var(--border);
+}
+
+/* ── Callouts ── */
+.callout {
+  border-left: 3px solid;
+  background: var(--surface);
+  border-radius: 0 10px 10px 0;
+  padding: 14px 18px; margin: 18px 0;
+}
+.callout.tip   { border-color: var(--teal);   background: rgba(61,220,151,.04); }
+.callout.warn  { border-color: var(--amber);  background: rgba(245,165,36,.04); }
+.callout.info  { border-color: var(--accent); background: rgba(94,170,255,.04); }
+.callout.danger{ border-color: var(--red);    background: rgba(239,68,68,.04); }
+.callout-head {
+  font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .14em; text-transform: uppercase;
+  margin-bottom: 6px; font-weight: 700;
+}
+.callout.tip .callout-head { color: var(--teal); }
+.callout.warn .callout-head { color: var(--amber); }
+.callout.info .callout-head { color: var(--accent); }
+.callout.danger .callout-head { color: var(--red); }
+.callout p:last-child { margin-bottom: 0; }
+
+/* ── Tableaux ── */
+table {
+  width: 100%; border-collapse: collapse;
+  margin: 18px 0 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 11px; overflow: hidden;
+}
+th, td { padding: 12px 16px; text-align: left; font-size: 13.5px; border-bottom: 1px solid var(--border); }
+th { background: var(--surface-2); font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: rgba(19,29,51,.4); }
+
+/* ── Cards déploiement ── */
+.deploy-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px; margin: 22px 0;
+}
+.deploy-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px 22px;
+  transition: border-color .25s, transform .2s;
+}
+.deploy-card:hover { border-color: var(--border-2); transform: translateY(-3px); }
+.deploy-card .icon { font-size: 28px; margin-bottom: 12px; }
+.deploy-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); font-family: var(--body); letter-spacing: 0; text-transform: none; }
+.deploy-card p { font-size: 13px; line-height: 1.55; margin-bottom: 10px; }
+.deploy-card a {
+  display: inline-block; font-size: 12.5px; color: var(--accent);
+  text-decoration: none; font-weight: 600;
+}
+.deploy-card a:hover { text-decoration: underline; }
+
+/* ── Anchors visibles au survol ── */
+h2, h3 { scroll-margin-top: 80px; }
+
+/* ── Mobile ── */
+.toc-toggle {
+  display: none; position: fixed; bottom: 24px; right: 24px; z-index: 50;
+  background: var(--accent); color: #07111F;
+  border: none; padding: 12px 18px; border-radius: 999px;
+  font-weight: 700; font-size: 13px; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(94,170,255,.4);
+}
+@media (max-width: 880px) {
+  .layout { grid-template-columns: 1fr; }
+  aside {
+    position: fixed; top: var(--nav-h); left: 0; bottom: 0; width: 280px;
+    background: var(--bg-2); transform: translateX(-100%);
+    transition: transform .3s; z-index: 90;
+    height: auto;
+  }
+  aside.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,.5); }
+  main { padding: 32px 24px 96px; }
+  .toc-toggle { display: block; }
+  .nav-links a:not(.btn-nav-ghost) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a class="nav-brand" href="landing.html">
+    <span class="mark">NEXUS <em>SOC</em></span>
+    <span class="sub">Documentation</span>
+  </a>
+  <span class="nav-spacer"></span>
+  <div class="nav-links">
+    <a href="landing.html">Accueil</a>
+    <a href="contact.html">Contact</a>
+    <a href="login.html" class="btn-nav-ghost">Connexion</a>
+  </div>
+</nav>
+
+<button class="toc-toggle" onclick="document.querySelector('aside').classList.toggle('open')">☰ Sommaire</button>
+
+<div class="layout">
+
+  <!-- ── SIDEBAR TOC ── -->
+  <aside>
+    <h4>Premiers pas</h4>
+    <ul>
+      <li><a href="#quickstart">Démarrage rapide</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#accounts">Comptes &amp; rôles</a></li>
+    </ul>
+
+    <h4>Installation</h4>
+    <ul>
+      <li><a href="#install-server">Serveur (pile complète)</a></li>
+      <li><a href="#install-agents">Agents endpoint</a></li>
+      <li><a href="#agent-methods">Méthodes de déploiement</a></li>
+    </ul>
+
+    <h4>Déploiements alternatifs</h4>
+    <ul>
+      <li><a href="#deployment">Vue d'ensemble</a></li>
+      <li><a href="#deploy-docker">Docker Compose</a></li>
+      <li><a href="#deploy-vm">Machine virtuelle</a></li>
+      <li><a href="#deploy-cloud">Cloud privé</a></li>
+      <li><a href="#deploy-sovereign">Souverain (Terraform)</a></li>
+      <li><a href="#deploy-selfhosted">Auto-hébergé</a></li>
+    </ul>
+
+    <h4>Fonctionnalités</h4>
+    <ul>
+      <li><a href="#feat-siem">SIEM &amp; corrélation MITRE</a></li>
+      <li><a href="#feat-ai">Modèles IA</a></li>
+      <li><a href="#feat-soar">SOAR &amp; garde-fous</a></li>
+      <li><a href="#feat-llm">LLM Analyst bilingue</a></li>
+      <li><a href="#feat-multitenant">Multi-tenant (RLS)</a></li>
+      <li><a href="#feat-pwa">Portail PWA</a></li>
+    </ul>
+
+    <h4>Référence</h4>
+    <ul>
+      <li><a href="#api">API REST</a></li>
+      <li><a href="#security">Sécurité</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main>
+
+    <h1>Documentation <em>NEXUS SOC</em></h1>
+    <p class="lead">Guide complet de la plateforme SOC-as-a-Service : démarrage en 15 minutes, déploiement des agents sur tout type de parc, et choix entre cinq modes de déploiement du serveur (Docker, VM, cloud privé, souverain, auto-hébergé).</p>
+
+    <!-- ============================================================== -->
+    <h2 id="quickstart">Démarrage rapide</h2>
+    <p>Le chemin le plus court pour disposer d'une instance fonctionnelle en local, avec données de démonstration et tests automatisés validés (18/18 PASS).</p>
+
+    <ol class="steps">
+      <li><strong>PostgreSQL</strong> dans Docker (TimescaleDB officiel). C'est la seule infrastructure obligatoire.</li>
+      <li><strong>Schémas + seed SQL</strong> appliqués dans l'ordre. Le seed crée 3 comptes de démonstration et des alertes prêtes à explorer.</li>
+      <li><strong>Environnement Python</strong> dédié (venv) et installation des dépendances.</li>
+      <li><strong>Serveur uvicorn</strong> qui monte tous les routeurs et sert le frontend PWA sur <code class="inline">/app/</code>.</li>
+      <li><strong>Tests pytest</strong> qui valident le parcours bout en bout.</li>
+    </ol>
+
+    <div class="code">
+<button class="copy-btn" onclick="copyCode(this)">Copier</button><span class="cmt"># 1. PostgreSQL (TimescaleDB) en conteneur</span>
+docker run -d --name nexus-pg-test \
+  -e POSTGRES_USER=nexus -e POSTGRES_PASSWORD=change_me -e POSTGRES_DB=nexus_soc \
+  -p 5432:5432 timescale/timescaledb:2.15.3-pg16
+until docker exec nexus-pg-test pg_isready -U nexus -d nexus_soc; do sleep 2; done
+
+<span class="cmt"># 2. Schémas + seed (dans l'ordre)</span>
+for f in Lot0_Socle/01_schema_patched.sql \
+         Lot7_Console_Fournisseur/01_schema_analyst.sql \
+         Lot7_Console_Fournisseur/01_schema_provisioning.sql \
+         Lot8_PLG/01_schema_plg.sql \
+         Lot0_Socle/02_seed_demo.sql; do
+  docker exec -i nexus-pg-test psql -U nexus -d nexus_soc -v ON_ERROR_STOP=1 &lt; "$f"
+done
+
+<span class="cmt"># 3. venv + dépendances</span>
+python3 -m venv .venv
+.venv/bin/pip install fastapi "uvicorn[standard]" psycopg2-binary numpy joblib \
+  email-validator python-multipart asyncpg pytest httpx
+
+<span class="cmt"># 4. Serveur</span>
+export DB_DSN=<span class="str">"postgresql://nexus:change_me@localhost:5432/nexus_soc"</span>
+.venv/bin/uvicorn run:app --port 8000
+
+<span class="cmt"># 5. Tests (18 passed attendus)</span>
+NEXUS_BASE_URL=http://127.0.0.1:8000 NEXUS_TEST_PWD=admin \
+  .venv/bin/pytest Lot6_Tests/test_api.py -v</div>
+
+    <div class="callout tip">
+      <div class="callout-head">Astuce</div>
+      <p>Kafka et Wazuh ne sont <strong>pas requis</strong> pour démarrer : le service de scoring est conçu pour fonctionner en dégradation gracieuse. Vous pouvez les ajouter plus tard via le <code class="inline">docker-compose.yml</code> du Lot 0.</p>
+    </div>
+
+    <!-- ============================================================== -->
+    <h2 id="architecture">Architecture</h2>
+    <p>Sept composants principaux travaillent ensemble : un agent endpoint léger en Go, une passerelle d'ingestion FastAPI, un pipeline temps réel via Kafka, deux modèles d'IA (Isolation Forest réseau + UEBA fraude), un moteur SOAR avec garde-fous, un LLM Analyst pour la restitution bilingue, et une console opérateur multi-tenant.</p>
+
+    <p>Le stockage repose sur deux briques : TimescaleDB (PostgreSQL 16 + extension séries temporelles) pour le relationnel et l'audit, et Wazuh Indexer (OpenSearch) pour le stockage chaud SIEM. L'isolation entre clients est assurée par Row-Level Security PostgreSQL, avec un rôle <code class="inline">nexus_app</code> filtré et un rôle <code class="inline">nexus_analyst</code> BYPASSRLS pour la supervision cross-tenant.</p>
+
+    <p>Le diagramme d'architecture complet est disponible dans <code class="inline">00_Documents/Architecture_NEXUS_SOC.drawio</code>.</p>
+
+    <!-- ============================================================== -->
+    <h2 id="accounts">Comptes &amp; rôles</h2>
+    <p>Le seed de démonstration crée trois comptes représentatifs (mot de passe : <code class="inline">admin</code>) :</p>
+    <table>
+      <thead><tr><th>E-mail</th><th>Rôle</th><th>Atterrissage</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">admin@nexussoc.cm</code></td><td>admin_plateforme</td><td>Console (admin + SOC)</td></tr>
+        <tr><td><code class="inline">soc@nexussoc.cm</code></td><td>analyste_soc</td><td>Console (file d'alertes + SOAR)</td></tr>
+        <tr><td><code class="inline">dsi@minfi.cm</code></td><td>dsi_client</td><td>Portail DSI (tenant MINFI)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ============================================================== -->
+    <h2 id="install-server">Installation du serveur</h2>
+    <p>Le point d'entrée unique est <code class="inline">run.py</code>. Il charge le service de scoring (Lot 1), monte les routeurs <code class="inline">/auth/*</code>, <code class="inline">/admin/*</code>, <code class="inline">/analyst/*</code>, <code class="inline">/provision/*</code>, <code class="inline">/plg/*</code>, initialise un pool asyncpg pour PLG, et sert le frontend sur <code class="inline">/app/</code> via StaticFiles.</p>
+
+    <h3><span class="num">a</span> Variables d'environnement minimales</h3>
+    <div class="code">
+DB_DSN=<span class="str">"postgresql://nexus:change_me@localhost:5432/nexus_soc"</span>
+JWT_SECRET=<span class="str">"CHANGE_ME_IN_PRODUCTION_USE_32_RANDOM_BYTES"</span>
+PSEUDO_SECRET=<span class="str">"CHANGE_ME_PSEUDO_SECRET"</span>
+RISK_THRESHOLD=<span class="num">70</span>
+INGEST_LIMIT_REQ=<span class="num">30</span>
+NEXUS_CORS_ORIGINS=<span class="str">"https://soc.votre-domaine.cm"</span>   <span class="cmt"># en production</span></div>
+
+    <h3><span class="num">b</span> Dépendances Python indispensables</h3>
+    <table>
+      <thead><tr><th>Paquet</th><th>Pourquoi</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">fastapi</code>, <code class="inline">uvicorn</code></td><td>Cœur du serveur</td></tr>
+        <tr><td><code class="inline">psycopg2-binary</code></td><td>Auth, scoring, admin (synchrone)</td></tr>
+        <tr><td><code class="inline">asyncpg</code></td><td>Module PLG (pool sur <code class="inline">app.state.db</code>)</td></tr>
+        <tr><td><code class="inline">python-multipart</code></td><td>Endpoints provisioning (Form data)</td></tr>
+        <tr><td><code class="inline">email-validator</code></td><td>Validation EmailStr (Pydantic)</td></tr>
+        <tr><td><code class="inline">numpy</code>, <code class="inline">joblib</code></td><td>Import des modèles IA (chargement <code class="inline">.joblib</code>)</td></tr>
+        <tr><td><code class="inline">pytest</code>, <code class="inline">httpx</code></td><td>Suite de tests API</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ============================================================== -->
+    <h2 id="install-agents">Installation des agents endpoint</h2>
+    <p>L'agent est un binaire Go d'environ <strong>5 Mo</strong>, écrit en pur <code class="inline">stdlib</code> (aucune dépendance externe), egress-only HTTPS, avec signature HMAC-SHA256 des lots et store-and-forward local. Il fonctionne derrière n'importe quel pare-feu.</p>
+
+    <h3><span class="num">a</span> Compiler l'agent</h3>
+    <div class="code">
+<button class="copy-btn" onclick="copyCode(this)">Copier</button><span class="cmt"># Linux amd64 (~5,0 Mo)</span>
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags=<span class="str">"-s -w"</span> -o nexusagent .
+
+<span class="cmt"># Windows amd64 (~5,3 Mo)</span>
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags=<span class="str">"-s -w"</span> -o nexusagent.exe .</div>
+
+    <h3><span class="num">b</span> Configurer (config.json sur le poste)</h3>
+    <div class="code">
+{
+  <span class="kw">"server_url"</span>:   <span class="str">"https://soc.votre-domaine.cm/ingest"</span>,
+  <span class="kw">"enroll_token"</span>: <span class="str">"nexus_xxx"</span>,
+  <span class="kw">"hmac_key"</span>:     <span class="str">"…"</span>,
+  <span class="kw">"agent_id"</span>:     <span class="str">"agent-poste-001"</span>,
+  <span class="kw">"tenant_id"</span>:    <span class="str">"&lt;UUID&gt;"</span>,
+  <span class="kw">"interval_sec"</span>: <span class="num">30</span>,
+  <span class="kw">"watch_dirs"</span>:   [<span class="str">"/home"</span>, <span class="str">"/tmp"</span>, <span class="str">"/var/log"</span>],
+  <span class="kw">"queue_dir"</span>:    <span class="str">"./queue"</span>,
+  <span class="kw">"queue_max_mb"</span>: <span class="num">50</span>
+}</div>
+
+    <!-- ============================================================== -->
+    <h2 id="agent-methods">Méthodes de déploiement des agents</h2>
+    <p>Six méthodes selon votre contexte. Toutes génèrent des tokens à <strong>cycle de vie configurable</strong> (expiration, usage unique, binding hostname).</p>
+
+    <div class="deploy-grid">
+      <div class="deploy-card"><div class="icon">⚡</div><h4>One-liner curl|bash</h4><p>Une seule commande copiée-collée sur le poste. Idéal pour quelques agents.</p><a href="#m-oneliner">Voir →</a></div>
+      <div class="deploy-card"><div class="icon">🪟</div><h4>One-liner PowerShell</h4><p>Équivalent Windows via <code class="inline">irm | iex</code> en PowerShell admin.</p><a href="#m-oneliner">Voir →</a></div>
+      <div class="deploy-card"><div class="icon">📋</div><h4>CSV bulk</h4><p>Importez un CSV de hostnames, recevez un token par ligne dans un récap exportable.</p><a href="#m-bulk">Voir →</a></div>
+      <div class="deploy-card"><div class="icon">📦</div><h4>Pack offline (.zip)</h4><p>Binaire + config + script d'installation, pour postes sans accès internet.</p><a href="#m-offline">Voir →</a></div>
+      <div class="deploy-card"><div class="icon">🔳</div><h4>QR Code</h4><p>QR scannable depuis le poste — utile pour le terrain (kiosques, ateliers).</p><a href="#m-qr">Voir →</a></div>
+      <div class="deploy-card"><div class="icon">🎼</div><h4>Ansible playbook</h4><p>Déploiement de masse Linux (50–500 postes) via un playbook fourni.</p><a href="#m-ansible">Voir →</a></div>
+    </div>
+
+    <h3 id="m-oneliner"><span class="num">1</span> One-liner</h3>
+    <div class="code">
+<span class="cmt"># Linux</span>
+curl -fsSL <span class="str">"https://soc.votre-domaine.cm/provision/oneliner?token=nexus_xxx&amp;hostname=POSTE-01"</span> | bash
+
+<span class="cmt"># Windows (PowerShell admin)</span>
+Set-ExecutionPolicy Bypass -Scope Process -Force
+irm <span class="str">"https://soc.votre-domaine.cm/provision/oneliner?token=nexus_xxx&amp;hostname=POSTE-01&amp;os=windows"</span> | iex</div>
+
+    <h3 id="m-bulk"><span class="num">2</span> CSV bulk</h3>
+    <p>Format attendu : une ligne par poste, colonnes <code class="inline">hostname,os,description</code>. Envoyez le contenu à <code class="inline">POST /provision/bulk</code>, recevez un CSV de tokens à distribuer.</p>
+
+    <h3 id="m-offline"><span class="num">3</span> Pack offline</h3>
+    <p>Téléchargez <code class="inline">GET /provision/offline-pack/{agent_id}</code> qui contient le binaire (Linux et Windows), un <code class="inline">config.json</code> pré-rempli, et les scripts <code class="inline">install_linux.sh</code> / <code class="inline">install_windows.ps1</code>. Copiez-le sur clé USB, transférez sur le poste, lancez l'installeur.</p>
+
+    <h3 id="m-qr"><span class="num">4</span> QR code</h3>
+    <p>L'endpoint <code class="inline">GET /provision/qr/{agent_id}</code> renvoie un PNG en base64. Scanné, il donne la commande <code class="inline">curl | bash</code> complète sur le terminal du poste.</p>
+
+    <h3 id="m-ansible"><span class="num">5</span> Ansible</h3>
+    <div class="code">
+ansible-playbook -i inventaire.ini \
+  Lot7_Console_Fournisseur/install_templates/ansible_nexus_agent.yml \
+  -e <span class="str">"nexus_server=https://soc.votre-domaine.cm"</span> \
+  -e <span class="str">"nexus_token=nexus_xxx"</span> \
+  -e <span class="str">"nexus_tenant_id=&lt;UUID&gt;"</span></div>
+
+    <!-- ============================================================== -->
+    <h2 id="deployment">Déploiements alternatifs (serveur)</h2>
+    <p>Cinq modes de déploiement de la plateforme NEXUS SOC, du plus simple au plus contrôlé. Chacun correspond à un profil d'organisation et un niveau d'exigence souveraine.</p>
+
+    <table>
+      <thead><tr><th>Mode</th><th>Cible idéale</th><th>Effort</th><th>Souveraineté</th></tr></thead>
+      <tbody>
+        <tr><td>Docker Compose</td><td>Démo, PoC, petite équipe</td><td>★☆☆</td><td>★★★</td></tr>
+        <tr><td>Machine virtuelle</td><td>Microfinance / cabinet</td><td>★★☆</td><td>★★★</td></tr>
+        <tr><td>Cloud privé (VPC)</td><td>Assurance moyenne</td><td>★★☆</td><td>★★☆</td></tr>
+        <tr><td>Souverain (Terraform)</td><td>Administration publique</td><td>★★★</td><td>★★★</td></tr>
+        <tr><td>Auto-hébergé bare-metal</td><td>RSSI exigeant</td><td>★★★</td><td>★★★</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="deploy-docker"><span class="num">1</span> Docker Compose (par défaut)</h3>
+    <p>Le mode le plus simple. Le <code class="inline">docker-compose.yml</code> du Lot 0 démarre l'intégralité de la pile : Kafka KRaft, TimescaleDB, Wazuh Indexer + Manager + Dashboard, scoring service. Toutes les <strong>healthchecks</strong> sont configurées, le démarrage est attendu via <code class="inline">--wait</code>.</p>
+    <div class="code">
+sudo sysctl -w vm.max_map_count=<span class="num">262144</span>
+cd Lot0_Socle &amp;&amp; unzip nexus-soc-socle.zip &amp;&amp; cd nexus-soc-socle
+cp .env.example .env <span class="cmt"># adapter les mots de passe</span>
+docker compose up -d --wait
+docker compose ps
+curl http://localhost:8000/health</div>
+    <div class="callout warn"><div class="callout-head">RAM</div><p>La pile complète demande <strong>8 Go</strong> minimum (Wazuh Indexer est l'élément le plus gourmand). Sur 4 Go, commentez le service <code class="inline">wazuh.dashboard</code> et utilisez seulement l'API.</p></div>
+
+    <h3 id="deploy-vm"><span class="num">2</span> Machine virtuelle (Ubuntu / Debian)</h3>
+    <p>Pour une organisation préférant une VM dédiée plutôt que des conteneurs. Recommandé : Ubuntu 22.04 LTS, 8 Go RAM, 50 Go disque. La séquence est identique à Docker Compose, plus la configuration d'un service <code class="inline">systemd</code> pour redémarrer automatiquement la pile.</p>
+    <ul class="bullets">
+      <li>Installez Docker selon la procédure officielle.</li>
+      <li>Clonez le dépôt dans <code class="inline">/opt/nexus-soc</code>.</li>
+      <li>Créez une unité <code class="inline">/etc/systemd/system/nexus-soc.service</code> qui lance <code class="inline">docker compose up</code> au boot.</li>
+      <li>Configurez un reverse proxy (Nginx / Caddy) en frontal pour HTTPS et le routage <code class="inline">/app</code> vers le frontend.</li>
+    </ul>
+
+    <h3 id="deploy-cloud"><span class="num">3</span> Cloud privé (AWS/Azure/GCP en VPC dédié)</h3>
+    <p>Pour un déploiement à plus grande échelle, restant sous votre contrôle, dans un VPC isolé. Architecture cible :</p>
+    <ul class="bullets">
+      <li><strong>Calcul</strong> : Kubernetes managé (EKS, AKS, GKE) avec auto-scaling.</li>
+      <li><strong>Base</strong> : PostgreSQL managé (RDS, Cloud SQL) avec extension <code class="inline">timescaledb</code> ou installation manuelle.</li>
+      <li><strong>Pipeline</strong> : Kafka managé (MSK, Confluent Cloud, Event Hub) ou auto-géré sur Kubernetes.</li>
+      <li><strong>Stockage objet</strong> : S3/Blob pour les sauvegardes et les modèles IA.</li>
+      <li><strong>Réseau</strong> : VPC privé, endpoints VPC, pas d'IP publique pour la base.</li>
+    </ul>
+    <div class="callout info"><div class="callout-head">Conformité</div><p>Pour un usage au Cameroun, privilégiez les régions les plus proches géographiquement (AWS Cape Town, Azure Johannesburg) en attendant une présence souveraine. Les administrations publiques doivent rester sur le mode souverain ci-dessous.</p></div>
+
+    <h3 id="deploy-sovereign"><span class="num">4</span> Déploiement souverain (Terraform Hub &amp; Spoke)</h3>
+    <p>C'est le mode <strong>recommandé pour les administrations publiques camerounaises</strong>. La pile est déployée par un module Terraform (<code class="inline">Lot8_PLG/terraform-souverain/</code>) directement sur un serveur fourni par l'institution. Aucune donnée ne quitte le site.</p>
+    <ol class="steps">
+      <li>L'institution provisionne un serveur physique ou une VM (Ubuntu 22.04, 8 Go RAM minimum) avec accès SSH.</li>
+      <li>Vous renseignez <code class="inline">terraform.tfvars</code> : IP serveur, clé SSH, nom de l'institution, domaine.</li>
+      <li><code class="inline">terraform apply</code> exécute 7 étapes en SSH : prérequis Docker, upload configs et sources, certificats Wazuh, démarrage de la pile, vérification de santé.</li>
+      <li>Les secrets (PostgreSQL, JWT, Wazuh admin) sont auto-générés et accessibles via <code class="inline">terraform output</code>.</li>
+      <li>Un cron de sauvegarde quotidienne (02h00) est installé automatiquement.</li>
+    </ol>
+    <div class="code">
+cd Lot8_PLG/terraform-souverain/
+cp terraform.tfvars.example terraform.tfvars
+nano terraform.tfvars   <span class="cmt"># server_host, institution_name, nexus_domain</span>
+terraform init &amp;&amp; terraform plan &amp;&amp; terraform apply
+terraform output -raw postgres_password</div>
+
+    <h3 id="deploy-selfhosted"><span class="num">5</span> Auto-hébergé bare-metal</h3>
+    <p>Pour un RSSI souhaitant contrôler chaque couche. Identique au mode VM, mais sur du matériel physique dédié, sans hyperviseur. Recommandations :</p>
+    <ul class="bullets">
+      <li>RAID 1 ou 10 pour les volumes critiques (TimescaleDB, Wazuh Indexer).</li>
+      <li>Chiffrement <code class="inline">LUKS</code> des volumes au repos.</li>
+      <li>Sauvegardes externalisées chiffrées (rsync + GPG ou Restic).</li>
+      <li>Réseau d'administration séparé du réseau d'ingestion des agents.</li>
+      <li>HSM ou Vault pour la clé HMAC maîtresse (rotation périodique).</li>
+    </ul>
+
+    <!-- ============================================================== -->
+    <h2 id="feat-siem">Fonctionnalités · SIEM &amp; corrélation MITRE</h2>
+    <p>Le pipeline normalise la télémétrie brute vers un schéma ECS-like, extrait les features comportementales d'hôte, puis corrèle pour reconstituer des chaînes d'attaque sur 30 minutes glissantes.</p>
+    <p><strong>8 techniques MITRE ATT&amp;CK</strong> couvertes : T1059 (exécution), T1071 (C2), T1005 (collecte), T1204 (user execution), T1486 (ransomware/impact), T1027 (obfuscation), T1136 (création de compte), T1083 (énumération).</p>
+    <p>Un incident est levé si <strong>≥ 3 tactiques distinctes</strong> sont observées dans la fenêtre, ou si <strong>Execution+C2</strong>, ou <strong>Impact</strong>, ou <strong>Defense Evasion + Persistence</strong>.</p>
+
+    <h2 id="feat-ai">Fonctionnalités · Modèles IA</h2>
+    <table>
+      <thead><tr><th>Modèle</th><th>Cible</th><th>Métriques</th></tr></thead>
+      <tbody>
+        <tr><td><strong>M1 — Réseau</strong></td><td>DDoS, PortScan, Bot/C2 (CICIDS2017)</td><td>ROC-AUC 0.987 (IF) / 0.991 (AE)</td></tr>
+        <tr><td><strong>M2 — UEBA fraude</strong></td><td>Faux mandatements, fantômes, exfil (SIGIPES)</td><td>ROC-AUC 0.969 · FPR 4 %</td></tr>
+        <tr><td><strong>Drift monitor</strong></td><td>Dérive en production</td><td>PSI &gt; 0.10 / &gt; 0.25</td></tr>
+      </tbody>
+    </table>
+    <p>Chaque alerte du Modèle 2 est accompagnée du <strong>top-3 des features les plus déviantes</strong> en écarts-type (σ), avec libellés en clair (« volume de données exportées anormalement élevé : 13.1σ »).</p>
+
+    <h2 id="feat-soar">Fonctionnalités · SOAR &amp; garde-fous</h2>
+    <p>Quatre playbooks intégrés : fraude interne, exfiltration, ransomware, anomalie réseau/C2. Chaque action a un niveau d'impact (LOW / MEDIUM / HIGH).</p>
+    <ul class="bullets">
+      <li><strong>Mode Observe</strong> (<code class="inline">dry_run=True</code>) : aucune action exécutée, tout est journalisé.</li>
+      <li><strong>Mode Semi-auto</strong> (défaut prod) : LOW + MEDIUM automatiques si risque ≥ 70 ; HIGH (gel de compte, isolation d'hôte) attend la <strong>validation humaine</strong>.</li>
+      <li><strong>Mode Auto complet</strong> : toutes actions automatisées — non recommandé par défaut.</li>
+    </ul>
+
+    <h2 id="feat-llm">Fonctionnalités · LLM Analyst bilingue</h2>
+    <p>Chaque incident est expliqué en langage clair (3–5 phrases factuelles) dans la langue choisie : <strong>FR</strong> ou <strong>EN</strong>. Deux modes :</p>
+    <ul class="bullets">
+      <li><strong>Template</strong> (défaut) : explication déterministe, sans hallucination, sans LLM.</li>
+      <li><strong>LLM</strong> (optionnel) : Mistral 7B ou Llama via API compatible OpenAI (Ollama / vLLM, variable <code class="inline">OLLAMA_BASE_URL</code>).</li>
+    </ul>
+
+    <h2 id="feat-multitenant">Fonctionnalités · Multi-tenant (RLS PostgreSQL)</h2>
+    <p>Une seule instance héberge tous les tenants. L'isolation est assurée par <strong>Row-Level Security</strong> PostgreSQL : chaque requête API positionne <code class="inline">app.current_tenant</code> avant d'exécuter ses requêtes.</p>
+    <p>Deux rôles : <code class="inline">nexus_app</code> (soumis à la RLS, vue d'un seul tenant) et <code class="inline">nexus_analyst</code> (BYPASSRLS, vue cross-tenants pour le SOC mutualisé). L'isolation est <strong>vérifiée par 8 assertions</strong> sur PostgreSQL réel.</p>
+
+    <h2 id="feat-pwa">Fonctionnalités · Portail PWA</h2>
+    <p>Le frontend (Lot 9) est une <strong>Progressive Web App</strong> installable. Le service worker met en cache les pages, sert les ressources en mode hors ligne, et reçoit les notifications push pour les alertes critiques.</p>
+    <ul class="bullets">
+      <li><strong>Chrome / Edge</strong> : icône « Installer » dans la barre d'adresse.</li>
+      <li><strong>Android</strong> : « Ajouter à l'écran d'accueil » — l'app se lance en mode standalone sans barre navigateur.</li>
+      <li><strong>iOS</strong> : « Sur l'écran d'accueil » depuis Safari.</li>
+    </ul>
+
+    <!-- ============================================================== -->
+    <h2 id="api">API REST</h2>
+    <p>La documentation interactive OpenAPI est disponible à <code class="inline">/docs</code> et <code class="inline">/redoc</code> dès que le serveur tourne.</p>
+    <table>
+      <thead><tr><th>Préfixe</th><th>Rôle</th><th>Auth requise</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">/auth/*</code></td><td>Login, refresh, profil</td><td>Anonyme (login) / JWT</td></tr>
+        <tr><td><code class="inline">/admin/*</code></td><td>Tenants, users, agents, billing, santé</td><td>admin_plateforme</td></tr>
+        <tr><td><code class="inline">/analyst/*</code></td><td>Alertes cross-tenants, SOAR pending, dashboard</td><td>analyste_soc / admin</td></tr>
+        <tr><td><code class="inline">/provision/*</code></td><td>Tokens, scripts, QR, bulk CSV, révocation</td><td>admin</td></tr>
+        <tr><td><code class="inline">/plg/*</code></td><td>Inscription, vérif email, pré-auth, quotas trial</td><td>Mixte (public + admin)</td></tr>
+        <tr><td><code class="inline">/score/*</code></td><td>Scoring synchrone M1 / M2 (intégration)</td><td>—</td></tr>
+        <tr><td><code class="inline">/ingest</code></td><td>Passerelle agents (HMAC + Bearer + rate limit)</td><td>HMAC + Bearer agent</td></tr>
+        <tr><td><code class="inline">/health</code>, <code class="inline">/health/detailed</code></td><td>État des services</td><td>Anonyme</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ============================================================== -->
+    <h2 id="security">Sécurité</h2>
+    <ul class="bullets">
+      <li><strong>JWT HS256</strong> maison (auth_middleware), access 15 min + refresh 7 j, auto-refresh sur 401 côté client.</li>
+      <li><strong>Validation HMAC-SHA256</strong> sur chaque lot ingéré, Bearer token vérifié contre le hash en base.</li>
+      <li><strong>Rate limiting</strong> : 100 req/min global, 30 req/min sur <code class="inline">/ingest</code> (HTTP 429 + <code class="inline">Retry-After</code>).</li>
+      <li><strong>Pseudonymisation</strong> stable des PII (e-mails, IPs, agent_ids) via HMAC ; mapping pseudonyme → original réservé à l'admin pour enquête légale.</li>
+      <li><strong>CORS</strong> configurable via <code class="inline">NEXUS_CORS_ORIGINS</code> ; jamais de wildcard avec credentials.</li>
+      <li><strong>Rotation HMAC</strong> par agent (<code class="inline">POST /provision/rotate-hmac/{agent_id}</code>) et <strong>révocation d'urgence</strong> par tenant (<code class="inline">/provision/revoke-tenant/{tenant_id}</code>).</li>
+    </ul>
+    <div class="callout danger">
+      <div class="callout-head">À durcir en production</div>
+      <p>La pré-authorisation bancaire PLG est actuellement un <strong>stub</strong> — à remplacer par l'intégration CinetPay ou PayDunya avant tout déploiement réel facturé.</p>
+    </div>
+
+    <!-- ============================================================== -->
+    <h2 id="faq">FAQ</h2>
+
+    <h3>Mon serveur a moins de 8 Go de RAM, est-ce possible ?</h3>
+    <p>Oui. Commentez le service <code class="inline">wazuh.dashboard</code> et baissez <code class="inline">OPENSEARCH_JAVA_OPTS</code> à <code class="inline">-Xms256m -Xmx256m</code> dans <code class="inline">docker-compose.yml</code>. Vous gardez l'API REST et le portail mais perdez l'interface SIEM graphique de Wazuh.</p>
+
+    <h3>Les agents fonctionnent-ils derrière un pare-feu strict ?</h3>
+    <p>Oui — l'agent est <strong>egress-only</strong> en HTTPS sur le port 443 (configurable). Aucun port entrant requis. Le store-and-forward local conserve les lots si le serveur est momentanément injoignable.</p>
+
+    <h3>Que se passe-t-il si le serveur tombe quelques heures ?</h3>
+    <p>Les agents continuent à collecter localement. Les lots sont mis en file persistante (taille bornée par <code class="inline">queue_max_mb</code>) et rejoués automatiquement à la reprise. Aucune perte d'événements tant que la file n'est pas saturée.</p>
+
+    <h3>Puis-je remplacer le modèle UEBA par le mien ?</h3>
+    <p>Oui. Tout modèle scikit-learn sauvé en <code class="inline">.joblib</code> avec la structure attendue (<code class="inline">model</code>, <code class="inline">scaler</code>, <code class="inline">features</code>, <code class="inline">threshold</code>, <code class="inline">risk_cfg</code>) est compatible. Déposez-le dans <code class="inline">models/model2_isoforest.joblib</code> et redémarrez le scoring service.</p>
+
+    <h3>Le mode LLM est-il indispensable ?</h3>
+    <p>Non. Le mode <strong>template</strong> par défaut produit des explications déterministes en français et en anglais, sans risque d'hallucination. Le mode LLM est une amélioration optionnelle pour les explications longues.</p>
+
+    <h3>Comment intégrer SIGIPES / SYDONIA ?</h3>
+    <p>Dans le mode souverain Terraform, l'intégration est faite manuellement par l'architecte NEXUS SOC pendant la phase d'onboarding. Le Modèle 2 UEBA est calibré sur les patterns d'audit observés. <a href="contact.html">Contactez un architecte →</a></p>
+
+    <div style="margin-top: 80px; padding-top: 32px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+      <a href="landing.html" style="color: var(--text-2); text-decoration: none; font-size: 13px;">← Retour à l'accueil</a>
+      <a href="contact.html" style="color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600;">Contacter un architecte NEXUS SOC →</a>
+    </div>
+
+  </main>
+</div>
+
+<script>
+'use strict';
+
+// Active section dans la sidebar (scrollspy)
+const links = document.querySelectorAll('aside a[href^="#"]');
+const sections = Array.from(links).map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+function updateActive() {
+  const y = window.scrollY + 100;
+  let current = sections[0];
+  for (const s of sections) { if (s.offsetTop <= y) current = s; }
+  if (!current) return;
+  links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current.id));
+}
+window.addEventListener('scroll', updateActive, { passive: true });
+updateActive();
+
+// Copy code blocks
+function copyCode(btn) {
+  const code = btn.parentElement.innerText.replace(/^Copier\n?/, '');
+  navigator.clipboard.writeText(code).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copié';
+    btn.style.color = 'var(--teal)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1400);
+  });
+}
+
+// PWA
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

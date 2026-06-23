@@ -1,0 +1,17 @@
+📊 *Rapport Sécurité NEXUS SOC — Semaine 22*
+Organisation : *Ministère des Finances*
+
+✅ Score de sécurité : *72/100* (-8 vs semaine dernière)
+
+📈 *Cette semaine*
+• 14 tentatives bloquées
+• 1 clic sur un lien suspect — email retiré automatiquement
+• 2 postes avec mises à jour critiques en attente
+
+⚠ *Action requise*
+Mettre à jour Windows sur les postes signalés.
+
+💡 *Conseil de la semaine*
+Activez l'authentification à deux facteurs sur vos comptes Google Workspace.
+
+Rapport complet : nexussoc.cm/rapport/semaine

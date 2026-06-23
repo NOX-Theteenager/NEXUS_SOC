@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0A0F1C"/>
+<meta name="description" content="NEXUS SOC — Contact architecte pour un déploiement souverain Hub & Spoke (administrations publiques camerounaises)."/>
+<title>NEXUS SOC — Contacter un architecte</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #07101e;
+  --bg-2:      #0A0F1C;
+  --surface:   #0F1729;
+  --surface-2: #131D33;
+  --border:    #1E293B;
+  --border-2:  #334155;
+  --text:      #E2E8F0;
+  --text-2:    #94A3B8;
+  --text-3:    #64748B;
+  --accent:    #5EAAFF;
+  --teal:      #3DDC97;
+  --amber:     #F5A524;
+  --red:       #EF4444;
+  --purple:    #B97AFF;
+  --display:   "Fraunces", Georgia, serif;
+  --body:      "Manrope", sans-serif;
+  --mono:      "JetBrains Mono", monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(circle at 30% 10%, rgba(185,122,255,.10), transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(94,170,255,.07), transparent 55%);
+}
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(94,170,255,.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94,170,255,.014) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; height: 62px; z-index: 100;
+  background: rgba(7,16,30,.92); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 28px; gap: 22px;
+}
+nav::after {
+  content: ""; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--amber) 0%, var(--accent) 45%, var(--teal) 100%);
+  opacity: .65;
+}
+.nav-brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; }
+.nav-brand .mark { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 22px; letter-spacing: -.02em; color: var(--text); }
+.nav-brand .mark em { color: var(--amber); }
+.nav-brand .sub { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; }
+.nav-spacer { flex: 1; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { font-size: 13.5px; color: var(--text-2); text-decoration: none; transition: color .2s; }
+.nav-links a:hover { color: var(--text); }
+.btn-nav-ghost {
+  padding: 7px 16px; background: transparent; color: var(--text);
+  border: 1px solid var(--border-2); border-radius: 8px;
+  font-weight: 600; font-size: 13px; text-decoration: none;
+  transition: border-color .2s;
+}
+.btn-nav-ghost:hover { border-color: var(--accent); }
+
+/* ── Layout ── */
+.container {
+  position: relative; z-index: 1;
+  max-width: 1180px; margin: 0 auto;
+  padding: 110px 32px 80px;
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 64px;
+  align-items: start;
+}
+
+/* ── Left column : info ── */
+.intro {
+  padding-top: 18px;
+}
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--purple);
+  letter-spacing: .15em; text-transform: uppercase;
+  background: rgba(185,122,255,.07);
+  padding: 6px 14px; border-radius: 999px;
+  border: 1px solid rgba(185,122,255,.2);
+  margin-bottom: 24px;
+}
+.eyebrow::before {
+  content: ""; width: 6px; height: 6px; background: var(--purple);
+  border-radius: 50%; box-shadow: 0 0 6px var(--purple);
+}
+h1 {
+  font-family: var(--display);
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 600;
+  letter-spacing: -.025em; line-height: 1.1;
+  margin-bottom: 18px;
+}
+h1 em { font-style: italic; color: var(--purple);
+  background: linear-gradient(135deg, var(--purple), var(--accent));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.lead {
+  font-size: 17px; color: var(--text-2);
+  line-height: 1.7; margin-bottom: 36px;
+}
+
+.advantages {
+  display: flex; flex-direction: column; gap: 18px;
+  margin-top: 32px;
+}
+.adv {
+  display: flex; gap: 16px;
+  padding: 18px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  transition: border-color .2s, transform .2s;
+}
+.adv:hover { border-color: var(--border-2); transform: translateX(4px); }
+.adv-icon {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(185,122,255,.1);
+  border: 1px solid rgba(185,122,255,.2);
+  border-radius: 10px;
+  font-size: 18px;
+}
+.adv h3 { font-size: 14.5px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.adv p { font-size: 13px; color: var(--text-2); line-height: 1.55; margin: 0; }
+
+.timeline {
+  margin-top: 32px;
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 14px;
+}
+.timeline-head {
+  font-family: var(--mono); font-size: 10.5px;
+  color: var(--accent); letter-spacing: .14em;
+  text-transform: uppercase; margin-bottom: 16px;
+}
+.tl-step {
+  display: flex; align-items: flex-start; gap: 14px;
+  position: relative; padding-bottom: 16px;
+}
+.tl-step:not(:last-child)::after {
+  content: ""; position: absolute;
+  left: 13px; top: 30px; bottom: 4px; width: 2px;
+  background: var(--border-2);
+}
+.tl-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #07111F;
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; z-index: 1;
+}
+.tl-text { font-size: 13.5px; color: var(--text-2); line-height: 1.55; padding-top: 4px; }
+.tl-text strong { color: var(--text); }
+
+/* ── Right column : form ── */
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 20px;
+  padding: 40px 36px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.4);
+  position: relative;
+  overflow: hidden;
+}
+.form-card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--purple), var(--accent));
+}
+.form-card h2 {
+  font-family: var(--display); font-size: 24px;
+  font-weight: 600; letter-spacing: -.015em;
+  margin-bottom: 8px;
+}
+.form-card .sub {
+  font-size: 13.5px; color: var(--text-2);
+  margin-bottom: 28px; line-height: 1.55;
+}
+.field { margin-bottom: 18px; }
+.field label {
+  display: block;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--text-2); margin-bottom: 7px;
+  letter-spacing: .04em;
+}
+.field label .req { color: var(--red); margin-left: 3px; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 11px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-2);
+  border-radius: 9px; color: var(--text);
+  font-family: var(--body); font-size: 14px;
+  outline: none; transition: border-color .2s, box-shadow .2s;
+  resize: none;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(94,170,255,.12);
+}
+.field textarea { min-height: 100px; font-family: var(--body); resize: vertical; }
+.field.error input, .field.error select, .field.error textarea { border-color: var(--red); }
+.field .err {
+  font-size: 12px; color: var(--red);
+  margin-top: 5px; display: none;
+}
+.field.error .err { display: block; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.checkbox-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 14px; background: var(--bg-2);
+  border-radius: 9px; margin-bottom: 18px;
+}
+.checkbox-row input { width: 16px; height: 16px; margin-top: 3px; accent-color: var(--accent); }
+.checkbox-row label {
+  font-size: 12.5px; color: var(--text-2); line-height: 1.5;
+  font-family: var(--body); letter-spacing: 0;
+}
+.checkbox-row a { color: var(--accent); text-decoration: none; }
+.checkbox-row a:hover { text-decoration: underline; }
+.btn-submit {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--purple), var(--accent));
+  color: #07111F;
+  border: none; border-radius: 11px;
+  font-weight: 700; font-size: 15px;
+  cursor: pointer; transition: opacity .2s, transform .15s;
+  font-family: var(--body);
+  position: relative; overflow: hidden;
+}
+.btn-submit:hover:not(:disabled) { transform: translateY(-2px); }
+.btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+.btn-submit .spinner {
+  display: none;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(0,0,0,.3);
+  border-top-color: #07111F;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin: 0 auto;
+}
+.btn-submit.loading .spinner { display: block; }
+.btn-submit.loading .label { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.alert-box {
+  display: none;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+.alert-box.show { display: block; }
+.alert-box.success {
+  background: rgba(61,220,151,.08);
+  border: 1px solid rgba(61,220,151,.25);
+  color: var(--teal);
+}
+.alert-box.error {
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.25);
+  color: #FCA5A5;
+}
+
+/* ── Success state ── */
+.success-state {
+  display: none;
+  text-align: center;
+  padding: 30px 20px;
+}
+.success-state.show { display: block; }
+.success-icon {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: rgba(61,220,151,.12);
+  border: 2px solid rgba(61,220,151,.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; color: var(--teal);
+  margin: 0 auto 22px;
+}
+.success-state h3 {
+  font-family: var(--display); font-size: 22px;
+  font-weight: 600; margin-bottom: 10px;
+}
+.success-state p { font-size: 14px; color: var(--text-2); margin-bottom: 8px; }
+.ref-box {
+  display: inline-block;
+  margin-top: 18px; padding: 10px 16px;
+  background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: 9px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--teal);
+}
+.back-link {
+  display: inline-block; margin-top: 26px;
+  font-size: 13px; color: var(--accent);
+  text-decoration: none; font-weight: 600;
+}
+
+/* ── Direct contacts ── */
+.direct-contacts {
+  margin-top: 36px;
+  padding: 22px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.direct-contacts h4 {
+  font-family: var(--mono); font-size: 10.5px;
+  color: var(--text-3); letter-spacing: .14em;
+  text-transform: uppercase; margin-bottom: 14px;
+}
+.contact-line {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text-2);
+  margin-bottom: 8px;
+}
+.contact-line:last-child { margin-bottom: 0; }
+.contact-line .icon { color: var(--accent); font-size: 14px; width: 18px; }
+.contact-line a { color: var(--text); text-decoration: none; }
+.contact-line a:hover { color: var(--accent); }
+
+/* ── Responsive ── */
+@media (max-width: 880px) {
+  .container { grid-template-columns: 1fr; gap: 40px; padding: 96px 22px 64px; }
+  .nav-links a:not(.btn-nav-ghost) { display: none; }
+  .row { grid-template-columns: 1fr; }
+  .form-card { padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a class="nav-brand" href="landing.html">
+    <span class="mark">NEXUS <em>SOC</em></span>
+    <span class="sub">Contact architecte</span>
+  </a>
+  <span class="nav-spacer"></span>
+  <div class="nav-links">
+    <a href="landing.html">Accueil</a>
+    <a href="docs.html">Documentation</a>
+    <a href="login.html" class="btn-nav-ghost">Connexion</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ── INTRO ── -->
+  <div class="intro">
+    <div class="eyebrow">★ Déploiement Souverain · Hub &amp; Spoke</div>
+    <h1>Parlons de votre <em>déploiement souverain</em></h1>
+    <p class="lead">Pour les ministères, directions générales et agences d'État camerounaises. NEXUS SOC s'installe sur <strong>votre infrastructure</strong>, avec intégration SIGIPES / SYDONIA, accompagnement vers la conformité ANTIC, et un SLA d'1 h.</p>
+
+    <div class="advantages">
+      <div class="adv">
+        <div class="adv-icon">🏛</div>
+        <div><h3>Hébergement sur site</h3><p>La pile complète (Kafka, TimescaleDB, Wazuh, scoring) tourne sur votre serveur. Aucune donnée ne quitte le territoire.</p></div>
+      </div>
+      <div class="adv">
+        <div class="adv-icon">🔗</div>
+        <div><h3>Intégration SIGIPES &amp; SYDONIA</h3><p>Connexion aux journaux d'audit des systèmes métiers, calibration du modèle UEBA sur vos patterns réels.</p></div>
+      </div>
+      <div class="adv">
+        <div class="adv-icon">📋</div>
+        <div><h3>Conformité ANTIC</h3><p>Accompagnement à la déclaration du système, à l'homologation, et alignement sur la loi n° 2010/012.</p></div>
+      </div>
+      <div class="adv">
+        <div class="adv-icon">🤝</div>
+        <div><h3>SLA 1 h &amp; analyste dédié</h3><p>Un analyste SOC est affecté à votre organisation, joignable 24/7 pour les incidents critiques.</p></div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-head">Notre processus en 4 étapes</div>
+      <div class="tl-step">
+        <div class="tl-num">1</div>
+        <div class="tl-text"><strong>Qualification (48 h)</strong> — un architecte étudie votre demande et planifie un premier échange.</div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-num">2</div>
+        <div class="tl-text"><strong>Cartographie du SI</strong> — analyse du parc, du réseau, des contraintes souveraines et des systèmes métiers à intégrer.</div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-num">3</div>
+        <div class="tl-text"><strong>Proposition Hub &amp; Spoke</strong> — architecture détaillée, dimensionnement, devis annuel, calendrier de déploiement.</div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-num">4</div>
+        <div class="tl-text"><strong>Déploiement Terraform</strong> + formation des équipes DSI + initiation de la démarche de conformité ANTIC.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FORM ── -->
+  <div>
+    <div class="form-card" id="form-card">
+
+      <div class="success-state" id="success-state">
+        <div class="success-icon">✓</div>
+        <h3>Demande transmise</h3>
+        <p>Un architecte NEXUS SOC vous contactera <strong>sous 48 h</strong> à l'adresse indiquée.</p>
+        <p>En cas d'urgence, vous pouvez aussi nous joindre directement par téléphone.</p>
+        <div class="ref-box">Réf. <span id="ref-id">—</span></div><br>
+        <a class="back-link" href="landing.html">← Retour à l'accueil</a>
+      </div>
+
+      <div id="form-state">
+        <h2>Contacter un architecte</h2>
+        <p class="sub">Renseignez le formulaire ci-dessous. Votre demande est transmise immédiatement à l'équipe NEXUS SOC.</p>
+
+        <div class="alert-box error" id="alert-err">—</div>
+
+        <form id="contact-form" novalidate>
+          <div class="row">
+            <div class="field" id="f-name">
+              <label>Nom complet <span class="req">*</span></label>
+              <input type="text" id="in-name" placeholder="Jean-Pierre Mballa" autocomplete="name">
+              <div class="err">Champ requis</div>
+            </div>
+            <div class="field" id="f-title">
+              <label>Fonction <span class="req">*</span></label>
+              <input type="text" id="in-title" placeholder="DSI, RSSI…" autocomplete="organization-title">
+              <div class="err">Champ requis</div>
+            </div>
+          </div>
+
+          <div class="field" id="f-org">
+            <label>Organisation <span class="req">*</span></label>
+            <input type="text" id="in-org" placeholder="MINFI, DGI, DGCOOP…" autocomplete="organization">
+            <div class="err">Champ requis</div>
+          </div>
+
+          <div class="field" id="f-type">
+            <label>Type d'entité <span class="req">*</span></label>
+            <select id="in-type">
+              <option value="">Sélectionner…</option>
+              <option>Ministère</option>
+              <option>Direction Générale</option>
+              <option>Agence d'État</option>
+              <option>Régie financière</option>
+              <option>Université / Grande École</option>
+              <option>Établissement public</option>
+              <option>Autre administration</option>
+            </select>
+            <div class="err">Sélectionnez un type d'entité</div>
+          </div>
+
+          <div class="row">
+            <div class="field" id="f-email">
+              <label>E-mail professionnel <span class="req">*</span></label>
+              <input type="email" id="in-email" placeholder="dsi@institution.cm" autocomplete="email">
+              <div class="err">E-mail invalide</div>
+            </div>
+            <div class="field" id="f-phone">
+              <label>Téléphone</label>
+              <input type="tel" id="in-phone" placeholder="+237 6XX XXX XXX" autocomplete="tel">
+              <div class="err">—</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field" id="f-postes">
+              <label>Postes à protéger</label>
+              <select id="in-postes">
+                <option value="">À discuter</option>
+                <option>Moins de 50</option>
+                <option>50–200</option>
+                <option>200–500</option>
+                <option>Plus de 500</option>
+              </select>
+              <div class="err">—</div>
+            </div>
+            <div class="field" id="f-timeline">
+              <label>Échéance souhaitée</label>
+              <select id="in-timeline">
+                <option value="">À discuter</option>
+                <option>Urgente (&lt; 1 mois)</option>
+                <option>Courte (1–3 mois)</option>
+                <option>Moyenne (3–6 mois)</option>
+                <option>Stratégique (&gt; 6 mois)</option>
+              </select>
+              <div class="err">—</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Message (contexte, systèmes métiers à intégrer, contraintes particulières)</label>
+            <textarea id="in-message" placeholder="Décrivez brièvement votre besoin et le contexte de votre organisation…"></textarea>
+          </div>
+
+          <div class="checkbox-row">
+            <input type="checkbox" id="in-consent">
+            <label for="in-consent">J'accepte que NEXUS SOC traite ces informations pour me recontacter au sujet de ma demande. Aucune communication commerciale ne sera envoyée sans mon accord explicite.</label>
+          </div>
+
+          <button type="submit" class="btn-submit" id="btn-submit">
+            <span class="label">Transmettre la demande →</span>
+            <span class="spinner"></span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="direct-contacts">
+      <h4>Contacts directs</h4>
+      <div class="contact-line">
+        <span class="icon">✉</span>
+        <a href="mailto:architecte@nexussoc.cm">architecte@nexussoc.cm</a>
+      </div>
+      <div class="contact-line">
+        <span class="icon">☎</span>
+        <a href="tel:+237620000000">+237 620 000 000</a>
+        <span style="color:var(--text-3);font-size:12px;margin-left:4px">(jours ouvrés 08h–18h)</span>
+      </div>
+      <div class="contact-line">
+        <span class="icon">📍</span>
+        Yaoundé, Cameroun
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+const form = document.getElementById('contact-form');
+const btn  = document.getElementById('btn-submit');
+const errBox = document.getElementById('alert-err');
+const formState = document.getElementById('form-state');
+const successState = document.getElementById('success-state');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideError();
+
+  // Validation
+  const fields = {
+    name:  document.getElementById('in-name'),
+    title: document.getElementById('in-title'),
+    org:   document.getElementById('in-org'),
+    type:  document.getElementById('in-type'),
+    email: document.getElementById('in-email'),
+  };
+  let ok = true;
+  for (const [key, el] of Object.entries(fields)) {
+    const wrap = document.getElementById('f-' + key);
+    wrap.classList.remove('error');
+    if (!el.value.trim()) { wrap.classList.add('error'); ok = false; }
+  }
+  // Email format
+  if (fields.email.value && !/\S+@\S+\.\S+/.test(fields.email.value)) {
+    document.getElementById('f-email').classList.add('error');
+    ok = false;
+  }
+  // Consent
+  if (!document.getElementById('in-consent').checked) {
+    showError('Vous devez accepter le traitement de vos informations pour envoyer le formulaire.');
+    return;
+  }
+  if (!ok) {
+    showError('Veuillez remplir tous les champs obligatoires.');
+    return;
+  }
+
+  setLoading(true);
+
+  const payload = {
+    name:    fields.name.value.trim(),
+    title:   fields.title.value.trim(),
+    organization: fields.org.value.trim(),
+    org_type: fields.type.value,
+    email:   fields.email.value.trim(),
+    phone:   document.getElementById('in-phone').value.trim(),
+    nb_postes: document.getElementById('in-postes').value,
+    timeline:  document.getElementById('in-timeline').value,
+    message:   document.getElementById('in-message').value.trim(),
+    submitted_at: new Date().toISOString(),
+  };
+
+  // Tentative d'envoi vers une API future ; à défaut on simule un succès local
+  // (l'endpoint /plg/sovereign-contact pourra être ajouté côté backend)
+  try {
+    const r = await fetch('/plg/sovereign-contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (r.ok) {
+      const d = await r.json().catch(() => ({}));
+      showSuccess(d.reference || generateRef());
+      return;
+    }
+    // Si l'endpoint n'existe pas encore (404) : log + succès local
+    if (r.status === 404) {
+      console.info('[contact] endpoint backend non implémenté — payload sauvegardé localement.');
+      saveLocally(payload);
+      showSuccess(generateRef());
+      return;
+    }
+    const data = await r.json().catch(() => ({}));
+    showError(data.detail?.message || data.detail || 'Erreur côté serveur. Vous pouvez aussi nous joindre par e-mail.');
+  } catch (err) {
+    // Pas de réseau → on stocke localement et on affiche succès optimiste
+    saveLocally(payload);
+    showSuccess(generateRef());
+  } finally {
+    setLoading(false);
+  }
+});
+
+function setLoading(loading) {
+  btn.disabled = loading;
+  btn.classList.toggle('loading', loading);
+}
+
+function showError(msg) {
+  errBox.textContent = msg;
+  errBox.classList.add('show');
+  errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function hideError() { errBox.classList.remove('show'); }
+
+function showSuccess(ref) {
+  formState.style.display = 'none';
+  successState.classList.add('show');
+  document.getElementById('ref-id').textContent = ref;
+}
+
+function generateRef() {
+  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const rnd  = Math.random().toString(36).slice(2,7).toUpperCase();
+  return `NSC-${date}-${rnd}`;
+}
+
+function saveLocally(payload) {
+  try {
+    const list = JSON.parse(localStorage.getItem('nexus_pending_contacts') || '[]');
+    list.push(payload);
+    localStorage.setItem('nexus_pending_contacts', JSON.stringify(list));
+  } catch {}
+}
+
+// PWA
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+# =============================================================================
+# NEXUS SOC — Dépendances Python (production + tests)
+#
+# Installation :
+#   python3 -m venv .venv
+#   .venv/bin/pip install -r requirements.txt
+#
+# Tests :
+#   .venv/bin/pytest Lot6_Tests/test_api.py -v
+#
+# Démarrage :
+#   .venv/bin/uvicorn run:app --host 0.0.0.0 --port 8000
+# =============================================================================
+
+# ── Cœur API (FastAPI + serveur ASGI) ───────────────────────────────────────
+fastapi>=0.111,<0.116
+uvicorn[standard]>=0.29,<0.33
+pydantic>=2.7,<3
+email-validator>=2.1            # nécessaire pour EmailStr (admin_api)
+python-multipart>=0.0.9         # nécessaire pour les routes Form (provisioning)
+httpx>=0.27                     # client HTTP (health/detailed + tests)
+
+# ── PostgreSQL : double pilote ──────────────────────────────────────────────
+# psycopg2 : scoring + auth + admin + provisioning (synchrone, threadé)
+# asyncpg  : module PLG (pool sur app.state.db, async)
+psycopg2-binary>=2.9.9
+asyncpg>=0.29
+
+# ── Pipeline temps réel ─────────────────────────────────────────────────────
+kafka-python>=2.0.2             # producteur + consommateur Kafka (mode dégradé si Kafka absent)
+
+# ── Modèles IA (Lot 3) ──────────────────────────────────────────────────────
+numpy>=1.26,<3
+joblib>=1.4
+scikit-learn>=1.4,<1.7          # Isolation Forest + MLPRegressor (autoencodeur)
+
+# ── Lot 8 : compilation dynamique d'agents (asyncio subprocess) ─────────────
+# (garble lui-même est un binaire Go installé séparément :
+#   go install mvdan.cc/garble@latest)
+
+# ── Tests de fumée ──────────────────────────────────────────────────────────
+pytest>=8.0
+
+# ── Génération des icônes PWA (script de build) ─────────────────────────────
+Pillow>=10.0
+
+# ── Optionnels (commentés par défaut) ───────────────────────────────────────
+
+# Mode LLM Analyst (Mistral/Llama via Ollama ou vLLM, API OpenAI-compatible)
+# openai>=1.30
+
+# Web Push notifications (clés VAPID) — fonctionnalité C2 du roadmap prod
+# pywebpush>=2.0
+
+# Génération de PDF des rapports (alternative à HTML)
+# weasyprint>=62.0
+
+# Génération de QR Code côté serveur pour l'enrôlement d'agents
+# qrcode[pil]>=7.4
+
+# Observabilité (perspective production)
+# prometheus-fastapi-instrumentator>=7.0
+# python-json-logger>=2.0

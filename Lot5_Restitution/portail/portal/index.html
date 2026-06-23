@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEXUS SOC — Portail DSI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     NEXUS SOC — Portail DSI (mode sombre, ops center)
+     ========================================================= */
+  :root {
+    --bg:        #0A0F1C;
+    --bg-2:      #0D1424;
+    --surface:   #0F1729;
+    --surface-2: #131D33;
+    --border:    #1E293B;
+    --border-2:  #334155;
+    --text:      #E2E8F0;
+    --text-2:    #94A3B8;
+    --text-3:    #64748B;
+    --accent:    #5EAAFF;
+    --teal:      #3DDC97;
+    --amber:     #F5A524;
+    --red:       #EF4444;
+    --crimson:   #B91C1C;
+    --display:   "Fraunces", Georgia, serif;
+    --body:      "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono:      "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--body);
+    color: var(--text);
+    background:
+      radial-gradient(900px circle at 12% -8%, rgba(94,170,255,0.08), transparent 60%),
+      radial-gradient(800px circle at 96% 4%, rgba(61,220,151,0.05), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    min-height: 100vh;
+    font-size: 14.5px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* fine grid texture */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .page { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 28px; }
+
+  /* ----- Header ----- */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10, 15, 28, 0.85);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  header::after {
+    content: ""; display: block; height: 2px;
+    background: linear-gradient(90deg, var(--teal) 0%, var(--accent) 50%, var(--red) 100%);
+    opacity: 0.7;
+  }
+  .header-inner { display: flex; align-items: center; gap: 18px; padding: 16px 0; }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .mark { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 24px; letter-spacing: -0.02em; color: var(--text); }
+  .brand .mark em { font-style: italic; color: var(--teal); }
+  .brand .sub { font-family: var(--mono); font-size: 10px; color: var(--text-3); letter-spacing: 0.16em; text-transform: uppercase; }
+  .tenant {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border: 1px solid var(--border-2); border-radius: 999px;
+    font-size: 12.5px; color: var(--text-2); background: var(--surface);
+  }
+  .tenant::before { content: ""; width: 6px; height: 6px; background: var(--teal); border-radius: 50%; box-shadow: 0 0 8px var(--teal); animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .spacer { flex: 1; }
+  .lang {
+    display: inline-flex; border: 1px solid var(--border-2); border-radius: 999px; overflow: hidden;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  }
+  .lang button {
+    appearance: none; background: transparent; color: var(--text-2); border: 0;
+    padding: 7px 14px; cursor: pointer; transition: all 0.2s;
+  }
+  .lang button.active { background: var(--text); color: var(--bg); font-weight: 600; }
+  .user { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border: 1px solid var(--border-2); border-radius: 999px; background: var(--surface); }
+  .user .avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--teal), var(--accent)); }
+  .user .name { font-size: 12.5px; color: var(--text-2); }
+
+  /* ----- Hero ----- */
+  .hero { padding: 36px 0 18px; }
+  .hero .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; color: var(--text-3); text-transform: uppercase; }
+  .hero h1 {
+    font-family: var(--display); font-weight: 400; font-size: 42px; line-height: 1.05;
+    margin: 8px 0 4px; letter-spacing: -0.02em; color: var(--text);
+  }
+  .hero h1 em { font-style: italic; color: var(--teal); }
+  .hero .updated { font-size: 12.5px; color: var(--text-3); }
+  .hero .updated time { font-family: var(--mono); }
+
+  /* ----- KPI tiles ----- */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 28px; }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; position: relative; overflow: hidden;
+    opacity: 0; transform: translateY(8px); animation: rise 0.6s ease-out forwards;
+  }
+  .kpi:nth-child(1) { animation-delay: 0.05s; }
+  .kpi:nth-child(2) { animation-delay: 0.13s; }
+  .kpi:nth-child(3) { animation-delay: 0.21s; }
+  .kpi:nth-child(4) { animation-delay: 0.29s; }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+  .kpi .label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3); }
+  .kpi .value { font-family: var(--display); font-weight: 400; font-size: 44px; line-height: 1; margin: 12px 0 4px; letter-spacing: -0.02em; }
+  .kpi .value .suffix { font-size: 18px; color: var(--text-3); margin-left: 4px; }
+  .kpi .delta { font-size: 12px; color: var(--text-2); }
+  .kpi .delta.down { color: var(--red); }
+  .kpi .delta.up { color: var(--teal); }
+  .kpi.warning { border-color: rgba(245,165,36,0.35); }
+  .kpi.warning .value { color: var(--amber); }
+  .kpi.critical { border-color: rgba(239,68,68,0.35); background: linear-gradient(180deg, var(--surface), rgba(239,68,68,0.04)); }
+  .kpi.critical .value { color: var(--red); }
+
+  /* ----- Main grid ----- */
+  main { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; margin: 36px 0 56px; }
+  .section-title {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 0 0 14px;
+  }
+  .section-title h2 {
+    font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: -0.01em; margin: 0;
+  }
+  .section-title h2 em { font-style: italic; color: var(--teal); }
+  .section-title .meta { font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.12em; text-transform: uppercase; }
+
+  /* ----- Incident card ----- */
+  .incident {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px; margin-bottom: 18px; transition: border-color 0.2s;
+  }
+  .incident:hover { border-color: var(--border-2); }
+  .incident.critical { border-left: 3px solid var(--red); }
+  .inc-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .severity-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px rgba(239,68,68,0.6); }
+  .inc-type {
+    font-family: var(--display); font-style: italic; font-weight: 600;
+    font-size: 19px; color: var(--text);
+  }
+  .inc-entity {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    padding: 4px 10px; border: 1px solid rgba(94,170,255,0.3); border-radius: 6px;
+  }
+  .inc-time { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); margin-left: auto; }
+  .risk-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 999px;
+    background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35);
+    color: var(--red); font-family: var(--mono); font-size: 12px; font-weight: 500;
+  }
+  .inc-meta-row { display: flex; gap: 14px; flex-wrap: wrap; margin: 10px 0 18px; font-size: 12.5px; color: var(--text-2); }
+  .chip { padding: 3px 9px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+  .chip.after-hours { color: var(--amber); border-color: rgba(245,165,36,0.35); background: rgba(245,165,36,0.06); }
+
+  /* ----- Kill-chain timeline (élément signature) ----- */
+  .killchain {
+    display: flex; gap: 0; align-items: stretch; margin: 14px 0 22px;
+    padding: 6px; background: var(--bg-2); border-radius: 12px; border: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .kc-step {
+    flex: 1; min-width: 120px; padding: 12px 14px; position: relative;
+    border-right: 1px solid var(--border);
+  }
+  .kc-step:last-child { border-right: none; }
+  .kc-step .kc-time { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); letter-spacing: 0.08em; }
+  .kc-step .kc-tactic {
+    font-family: var(--body); font-weight: 600; font-size: 11.5px;
+    margin: 6px 0 4px; letter-spacing: 0.02em;
+  }
+  .kc-step .kc-tech { font-family: var(--mono); font-size: 10.5px; color: var(--text-2); }
+  .kc-step .kc-detail { font-size: 11.5px; color: var(--text-3); margin-top: 4px; font-style: italic; }
+  .kc-step::before {
+    content: ""; position: absolute; top: 12px; left: 14px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--accent);
+  }
+  .kc-step[data-tactic="Initial Access"]::before { background: #5EAAFF; }
+  .kc-step[data-tactic="Initial Access"] .kc-tactic { color: #5EAAFF; }
+  .kc-step[data-tactic="Execution"]::before { background: var(--teal); }
+  .kc-step[data-tactic="Execution"] .kc-tactic { color: var(--teal); }
+  .kc-step[data-tactic="Collection"]::before { background: var(--amber); }
+  .kc-step[data-tactic="Collection"] .kc-tactic { color: var(--amber); }
+  .kc-step[data-tactic="Command and Control"]::before { background: var(--red); }
+  .kc-step[data-tactic="Command and Control"] .kc-tactic { color: var(--red); }
+  .kc-step[data-tactic="Impact"]::before { background: var(--crimson); }
+  .kc-step[data-tactic="Impact"] .kc-tactic { color: var(--crimson); }
+
+  /* ----- Citation Analyst (élément signature) ----- */
+  .analyst {
+    margin: 4px 0 22px; padding: 18px 22px;
+    background: linear-gradient(180deg, rgba(94,170,255,0.04), transparent);
+    border-left: 2px solid var(--teal); border-radius: 0 12px 12px 0;
+  }
+  .analyst .quote {
+    font-family: var(--display); font-style: italic; font-weight: 400;
+    font-size: 16.5px; line-height: 1.55; color: var(--text);
+  }
+  .analyst .signature {
+    margin-top: 8px; font-family: var(--mono); font-size: 11px;
+    color: var(--teal); letter-spacing: 0.12em; text-transform: uppercase;
+  }
+
+  /* ----- Action buttons ----- */
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    appearance: none; cursor: pointer; font-family: var(--body); font-weight: 500;
+    font-size: 12.5px; padding: 9px 16px; border-radius: 8px; transition: all 0.18s;
+    border: 1px solid var(--border-2); background: transparent; color: var(--text);
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .btn-primary:hover { background: transparent; color: var(--accent); }
+  .btn-ghost { color: var(--text-3); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--border-2); }
+
+  /* ----- Right column cards ----- */
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px; margin-bottom: 18px;
+  }
+  .card h3 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-3); margin: 0 0 14px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .stat-row:last-child { border-bottom: 0; }
+  .stat-row .k { font-size: 13px; color: var(--text-2); }
+  .stat-row .v { font-family: var(--mono); font-size: 14px; color: var(--text); font-weight: 500; }
+  .stat-row .v.bad { color: var(--red); }
+  .stat-row .v.good { color: var(--teal); }
+  .notif {
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .notif:last-child { border-bottom: 0; }
+  .notif .ico { font-size: 16px; }
+  .notif .body { flex: 1; }
+  .notif .body .t { font-size: 12.5px; color: var(--text); }
+  .notif .body .m { font-family: var(--mono); font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+
+  /* ----- Agents list ----- */
+  .agents-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+  .agent {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+    font-size: 13px;
+  }
+  .agent .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .agent.online .dot { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+  .agent.isolated .dot { background: var(--amber); }
+  .agent.offline .dot { background: var(--text-3); }
+  .agent .host { font-family: var(--mono); font-size: 12px; flex: 1; }
+  .agent .os { font-size: 11px; color: var(--text-3); }
+
+  /* ----- Footer ----- */
+  footer { padding: 28px 0 36px; border-top: 1px solid var(--border); margin-top: 36px; }
+  footer .row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-3); }
+  footer .row .right { font-family: var(--mono); letter-spacing: 0.08em; }
+
+  /* ----- Responsive ----- */
+  @media (max-width: 900px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    main { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 32px; }
+    .agents-list { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="page header-inner">
+    <div class="brand">
+      <span class="mark">N<em>e</em>xus SOC</span>
+      <span class="sub">Souveraineté · Détection · Réponse</span>
+    </div>
+    <span class="tenant" data-i18n="tenantLabel">Tenant : Ministère des Finances</span>
+    <div class="spacer"></div>
+    <div class="lang" role="group" aria-label="Language">
+      <button id="lang-fr" class="active" onclick="setLang('fr')">FR</button>
+      <button id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+    <div class="user">
+      <span class="avatar"></span>
+      <span class="name">DSI · M. Mballa</span>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+
+  <section class="hero">
+    <div class="eyebrow" data-i18n="eyebrow">Centre d'opérations · 24/7</div>
+    <h1><span data-i18n="heroTitle">Tableau de bord <em>Sécurité</em></span></h1>
+    <div class="updated"><span data-i18n="updatedLabel">Dernière mise à jour</span>
+      <time>2026-05-20 · 20:08</time></div>
+  </section>
+
+  <section class="kpis">
+    <div class="kpi">
+      <div class="label" data-i18n="kpiScore">Score de sécurité</div>
+      <div class="value">72<span class="suffix">/100</span></div>
+      <div class="delta down" data-i18n="kpiScoreDelta">▼ 8 vs sem. dern.</div>
+    </div>
+    <div class="kpi critical">
+      <div class="label" data-i18n="kpiIncidents">Incidents actifs</div>
+      <div class="value">1</div>
+      <div class="delta" data-i18n="kpiIncidentsSub">1 critique en cours</div>
+    </div>
+    <div class="kpi">
+      <div class="label" data-i18n="kpiAgents">Agents en ligne</div>
+      <div class="value">12<span class="suffix">/14</span></div>
+      <div class="delta" data-i18n="kpiAgentsSub">1 isolé · 1 hors-ligne</div>
+    </div>
+    <div class="kpi">
+      <div class="label" data-i18n="kpiNotifs">Notifications · 7 j.</div>
+      <div class="value">23</div>
+      <div class="delta up" data-i18n="kpiNotifsSub">SMS · WhatsApp</div>
+    </div>
+  </section>
+
+  <main>
+    <section>
+      <div class="section-title">
+        <h2><span data-i18n="incidentsTitle">Incidents <em>actifs</em></span></h2>
+        <span class="meta">1 · MITRE ATT&amp;CK</span>
+      </div>
+
+      <article class="incident critical">
+        <div class="inc-head">
+          <span class="severity-dot"></span>
+          <span class="inc-type" data-i18n="incType">Rançongiciel</span>
+          <span class="inc-entity">POSTE-COMPTA-07</span>
+          <span class="inc-time">20:02 → 20:06</span>
+          <span class="risk-badge" data-i18n="riskLabel">Risque 100/100</span>
+        </div>
+        <div class="inc-meta-row">
+          <span class="chip after-hours" data-i18n="afterHours">Activité hors heures ouvrables</span>
+          <span class="chip">T1204 · T1059 · T1005 · T1071 · T1486</span>
+          <span class="chip" data-i18n="source">Source : Corrélation SIEM</span>
+        </div>
+
+        <div class="killchain">
+          <div class="kc-step" data-tactic="Initial Access">
+            <div class="kc-time">20:02:00</div>
+            <div class="kc-tactic" data-i18n="tac.IA">Accès initial</div>
+            <div class="kc-tech">T1204</div>
+            <div class="kc-detail">facture_2026.exe</div>
+          </div>
+          <div class="kc-step" data-tactic="Execution">
+            <div class="kc-time">20:03:00</div>
+            <div class="kc-tactic" data-i18n="tac.EX">Exécution</div>
+            <div class="kc-tech">T1059</div>
+            <div class="kc-detail">cmd.exe</div>
+          </div>
+          <div class="kc-step" data-tactic="Execution">
+            <div class="kc-time">20:03:20</div>
+            <div class="kc-tactic" data-i18n="tac.EX">Exécution</div>
+            <div class="kc-tech">T1059</div>
+            <div class="kc-detail">/tmp/svch0st</div>
+          </div>
+          <div class="kc-step" data-tactic="Collection">
+            <div class="kc-time">20:04:00</div>
+            <div class="kc-tactic" data-i18n="tac.CO">Collecte</div>
+            <div class="kc-tech">T1005</div>
+            <div class="kc-detail">/etc/shadow</div>
+          </div>
+          <div class="kc-step" data-tactic="Command and Control">
+            <div class="kc-time">20:05:00</div>
+            <div class="kc-tactic" data-i18n="tac.C2">Commande &amp; Contrôle</div>
+            <div class="kc-tech">T1071</div>
+            <div class="kc-detail">185.220.101.45:4444</div>
+          </div>
+          <div class="kc-step" data-tactic="Impact">
+            <div class="kc-time">20:06:17</div>
+            <div class="kc-tactic" data-i18n="tac.IM">Impact</div>
+            <div class="kc-tech">T1486</div>
+            <div class="kc-detail" data-i18n="impactDetail">32 fichiers chiffrés</div>
+          </div>
+        </div>
+
+        <blockquote class="analyst">
+          <div class="quote"
+            data-fr="« Le système a détecté un incident de type « rançongiciel » sur l&#39;hôte POSTE-COMPTA-07. L&#39;incident reconstitue une chaîne d&#39;attaque en 6 étapes (accès initial, exécution, collecte, commande et contrôle, impact), cartographiée sur MITRE ATT&amp;CK (T1005, T1059, T1071, T1204, T1486). L&#39;activité s&#39;est déroulée en dehors des heures ouvrables, ce qui renforce le caractère suspect. Le score de risque atteint 100/100. Le poste a été isolé du réseau et une capture mémoire a été réalisée pour enquête. »"
+            data-en="&ldquo;The system detected an incident of type &lsquo;ransomware&rsquo; on host POSTE-COMPTA-07. The incident reconstructs a 6-step attack chain (initial access, execution, collection, command and control, impact), mapped to MITRE ATT&amp;CK (T1005, T1059, T1071, T1204, T1486). The activity took place outside business hours, which reinforces its suspicious nature. The risk score reaches 100/100. The host has been isolated from the network and a memory snapshot was taken for investigation.&rdquo;">
+          </div>
+          <div class="signature">— NEXUS Analyst</div>
+        </blockquote>
+
+        <div class="actions">
+          <button class="btn btn-primary" data-i18n="actDetails">Voir les détails</button>
+          <button class="btn" data-i18n="actApprove">Valider l'action (gel + restauration)</button>
+          <button class="btn btn-ghost" data-i18n="actFP">Marquer faux positif</button>
+        </div>
+      </article>
+
+      <div class="card">
+        <h3 data-i18n="agentsTitle">Agents surveillés</h3>
+        <div class="agents-list">
+          <div class="agent online"><span class="dot"></span><span class="host">SRV-BUDGET-01</span><span class="os">Linux</span></div>
+          <div class="agent online"><span class="dot"></span><span class="host">SRV-WEB-01</span><span class="os">Linux</span></div>
+          <div class="agent online"><span class="dot"></span><span class="host">POSTE-RH-03</span><span class="os">Windows</span></div>
+          <div class="agent isolated"><span class="dot"></span><span class="host">POSTE-COMPTA-07</span><span class="os" data-i18n="osIsolated">Windows · isolé</span></div>
+          <div class="agent online"><span class="dot"></span><span class="host">POSTE-DGI-12</span><span class="os">Windows</span></div>
+          <div class="agent offline"><span class="dot"></span><span class="host">POSTE-DRH-04</span><span class="os" data-i18n="osOffline">hors-ligne</span></div>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <h3 data-i18n="weekTitle">Cette semaine</h3>
+        <div class="stat-row"><span class="k" data-i18n="wkBlocked">Tentatives bloquées</span><span class="v good">14</span></div>
+        <div class="stat-row"><span class="k" data-i18n="wkPhish">Clics sur lien suspect</span><span class="v">1</span></div>
+        <div class="stat-row"><span class="k" data-i18n="wkUpdates">Postes en attente de MAJ</span><span class="v bad">2</span></div>
+        <div class="stat-row"><span class="k" data-i18n="wkUEBA">Anomalies UEBA détectées</span><span class="v">3</span></div>
+        <div class="stat-row"><span class="k" data-i18n="wkISO">Conformité ISO 27001</span><span class="v good">86 %</span></div>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="notifTitle">Notifications envoyées</h3>
+        <div class="notif">
+          <span class="ico">📱</span>
+          <div class="body">
+            <div class="t" data-fr="SMS — incident critique (rançongiciel) au DSI"
+                 data-en="SMS — critical incident (ransomware) to DSI"></div>
+            <div class="m">20:02 · +237 6XX XX XX XX</div>
+          </div>
+        </div>
+        <div class="notif">
+          <span class="ico">📱</span>
+          <div class="body">
+            <div class="t" data-fr="SMS — validation requise (gel de compte)"
+                 data-en="SMS — approval required (account freeze)"></div>
+            <div class="m">20:04 · +237 6XX XX XX XX</div>
+          </div>
+        </div>
+        <div class="notif">
+          <span class="ico">💬</span>
+          <div class="body">
+            <div class="t" data-fr="WhatsApp — rapport hebdomadaire (Semaine 22)"
+                 data-en="WhatsApp — weekly report (Week 22)"></div>
+            <div class="m" data-fr="lundi 08:00 · +237 6XX XX XX XX"
+                 data-en="Monday 08:00 · +237 6XX XX XX XX"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="lawTitle">Cadre réglementaire</h3>
+        <div class="stat-row"><span class="k">Loi 2010/012</span><span class="v good" data-i18n="lawOK">conforme</span></div>
+        <div class="stat-row"><span class="k">ANTIC</span><span class="v good" data-i18n="lawOK2">conforme</span></div>
+        <div class="stat-row"><span class="k">ISO/IEC 27001</span><span class="v">86 %</span></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <div class="row">
+      <span>NEXUS SOC · NGUETSA Junior Stéphane Céleste · KEYCE Informatique &amp; IA</span>
+      <span class="right">v1.0 · 2026</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+  /* =========================================================
+     i18n — bascule FR / EN
+     ========================================================= */
+  const STRINGS = {
+    fr: {
+      tenantLabel: "Tenant : Ministère des Finances",
+      eyebrow: "Centre d'opérations · 24/7",
+      heroTitle: "Tableau de bord <em>Sécurité</em>",
+      updatedLabel: "Dernière mise à jour",
+      kpiScore: "Score de sécurité",
+      kpiScoreDelta: "▼ 8 vs sem. dern.",
+      kpiIncidents: "Incidents actifs",
+      kpiIncidentsSub: "1 critique en cours",
+      kpiAgents: "Agents en ligne",
+      kpiAgentsSub: "1 isolé · 1 hors-ligne",
+      kpiNotifs: "Notifications · 7 j.",
+      kpiNotifsSub: "SMS · WhatsApp",
+      incidentsTitle: "Incidents <em>actifs</em>",
+      incType: "Rançongiciel",
+      riskLabel: "Risque 100/100",
+      afterHours: "Activité hors heures ouvrables",
+      source: "Source : Corrélation SIEM",
+      "tac.IA": "Accès initial",
+      "tac.EX": "Exécution",
+      "tac.CO": "Collecte",
+      "tac.C2": "Commande & Contrôle",
+      "tac.IM": "Impact",
+      impactDetail: "32 fichiers chiffrés",
+      actDetails: "Voir les détails",
+      actApprove: "Valider l'action (gel + restauration)",
+      actFP: "Marquer faux positif",
+      agentsTitle: "Agents surveillés",
+      osIsolated: "Windows · isolé",
+      osOffline: "hors-ligne",
+      weekTitle: "Cette semaine",
+      wkBlocked: "Tentatives bloquées",
+      wkPhish: "Clics sur lien suspect",
+      wkUpdates: "Postes en attente de MAJ",
+      wkUEBA: "Anomalies UEBA détectées",
+      wkISO: "Conformité ISO 27001",
+      notifTitle: "Notifications envoyées",
+      lawTitle: "Cadre réglementaire",
+      lawOK: "conforme",
+      lawOK2: "conforme",
+    },
+    en: {
+      tenantLabel: "Tenant: Ministry of Finance",
+      eyebrow: "Operations center · 24/7",
+      heroTitle: "Security <em>dashboard</em>",
+      updatedLabel: "Last updated",
+      kpiScore: "Security score",
+      kpiScoreDelta: "▼ 8 vs last week",
+      kpiIncidents: "Active incidents",
+      kpiIncidentsSub: "1 critical ongoing",
+      kpiAgents: "Agents online",
+      kpiAgentsSub: "1 isolated · 1 offline",
+      kpiNotifs: "Notifications · 7d",
+      kpiNotifsSub: "SMS · WhatsApp",
+      incidentsTitle: "Active <em>incidents</em>",
+      incType: "Ransomware",
+      riskLabel: "Risk 100/100",
+      afterHours: "After-hours activity",
+      source: "Source: SIEM correlation",
+      "tac.IA": "Initial Access",
+      "tac.EX": "Execution",
+      "tac.CO": "Collection",
+      "tac.C2": "Command & Control",
+      "tac.IM": "Impact",
+      impactDetail: "32 files encrypted",
+      actDetails: "View details",
+      actApprove: "Approve action (freeze + restore)",
+      actFP: "Mark false positive",
+      agentsTitle: "Monitored agents",
+      osIsolated: "Windows · isolated",
+      osOffline: "offline",
+      weekTitle: "This week",
+      wkBlocked: "Attempts blocked",
+      wkPhish: "Clicks on suspicious link",
+      wkUpdates: "Hosts with updates pending",
+      wkUEBA: "UEBA anomalies detected",
+      wkISO: "ISO 27001 compliance",
+      notifTitle: "Notifications sent",
+      lawTitle: "Regulatory framework",
+      lawOK: "compliant",
+      lawOK2: "compliant",
+    },
+  };
+
+  function setLang(lang) {
+    document.documentElement.lang = lang;
+    document.getElementById("lang-fr").classList.toggle("active", lang === "fr");
+    document.getElementById("lang-en").classList.toggle("active", lang === "en");
+    // Éléments avec clé data-i18n → chaîne du dictionnaire
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      const value = STRINGS[lang][key];
+      if (value !== undefined) el.innerHTML = value;
+    });
+    // Éléments avec contenu bilingue inline (data-fr / data-en)
+    document.querySelectorAll("[data-fr][data-en]").forEach(el => {
+      el.innerHTML = el.getAttribute("data-" + lang);
+    });
+  }
+
+  // Initialisation : appliquer FR par défaut pour rendre les blocs bilingues inline
+  setLang("fr");
+</script>
+</body>
+</html>

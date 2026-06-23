@@ -1,0 +1,17 @@
+📊 *NEXUS SOC Security Report — Week 22*
+Organization: *Ministère des Finances*
+
+✅ Security score: *72/100* (-8 vs last week)
+
+📈 *This week*
+• 14 attempts blocked
+• 1 click on a suspicious link — email auto-removed
+• 2 hosts with critical updates pending
+
+⚠ *Action required*
+Update Windows on the flagged hosts.
+
+💡 *Tip of the week*
+Enable two-factor authentication on your Google Workspace accounts.
+
+Full report: nexussoc.cm/rapport/semaine

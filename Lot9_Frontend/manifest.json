@@ -54,6 +54,13 @@
       "description": "Portail client DSI",
       "url": "/app/portail.html",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Documentation",
+      "short_name": "Docs",
+      "description": "Documentation NEXUS SOC",
+      "url": "/app/docs.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ],
   "related_applications": [],

@@ -105,10 +105,12 @@ _try_include(
     os.path.join(PROJECT_ROOT, "Lot1_Agent_Go",              "auth_middleware.py"),
     "auth_router", "Auth /auth/*",
 )
-# admin_api expose DEUX routeurs : `router` (/admin) ET `analyst_router` (/analyst)
+# admin_api expose TROIS routeurs : `router` (/admin), `analyst_router` (/analyst),
+# `portail_router` (/portal — vue DSI filtrée par tenant JWT)
 _try_include(
     os.path.join(PROJECT_ROOT, "Lot7_Console_Fournisseur",  "admin_api.py"),
-    ["router", "analyst_router"], "Admin /admin/* + Analyste /analyst/*",
+    ["router", "analyst_router", "portail_router"],
+    "Admin /admin/* + Analyste /analyst/* + Portail /portal/*",
 )
 _try_include(
     os.path.join(PROJECT_ROOT, "Lot7_Console_Fournisseur",  "provisioning_api.py"),
@@ -160,11 +162,18 @@ async def _close_plg_pool():
             pass
 
 
-# ─── Redirection racine → login ───────────────────────────────────────────────
+# ─── Redirection racine → landing page (vitrine) ─────────────────────────────
+# Le point d'entrée web est la landing (présentation du produit) ;
+# le point d'entrée PWA (start_url dans manifest.json) reste login.html
+# pour que l'app installée ouvre directement sur la connexion.
 from fastapi.responses import RedirectResponse
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse(url="/app/login.html")
+    return RedirectResponse(url="/app/landing.html")
 
-print("[run] NEXUS SOC démarré — http://localhost:8000/app/login.html")
+print("[run] NEXUS SOC démarré")
+print("[run]   Landing  : http://localhost:8000/app/landing.html")
+print("[run]   Login    : http://localhost:8000/app/login.html  (PWA start_url)")
+print("[run]   Docs     : http://localhost:8000/app/docs.html")
+print("[run]   Contact  : http://localhost:8000/app/contact.html")

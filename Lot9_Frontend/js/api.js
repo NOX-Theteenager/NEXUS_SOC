@@ -244,6 +244,37 @@
     scoreNetwork(features)  { return this.post('/score/network',   { features }); }
     scoreUserDay(features)  { return this.post('/score/user-day',  { features }); }
 
+    // ── Portail DSI (vue restreinte au tenant du JWT) ─────────────────────────
+
+    getPortalAlerts(limit = 50) { return this.get(`/portal/alerts?limit=${limit}`); }
+    getPortalAgents()           { return this.get('/portal/agents'); }
+    getPortalSummary()          { return this.get('/portal/summary'); }
+    getPortalNotifications(unreadOnly = false, limit = 50) {
+      const qs = new URLSearchParams({ unread_only: unreadOnly, limit }).toString();
+      return this.get(`/portal/notifications?${qs}`);
+    }
+    markNotifRead(id)           { return this.post(`/portal/notifications/${id}/mark-read`); }
+    markAllNotifsRead()         { return this.post('/portal/notifications/mark-all-read'); }
+    getNotifReport(id)          { return this.get(`/portal/notifications/${id}/report`); }
+
+    /** Télécharge le rapport HTML authentifié (Bearer) sous forme de blob.
+     *  Déclenche un download navigateur avec un nom de fichier propre. */
+    async downloadNotifReport(id, filename = null) {
+      const r = await fetch(BASE + `/portal/notifications/${id}/download`, {
+        headers: { 'Authorization': `Bearer ${this.accessToken}` },
+      });
+      if (!r.ok) throw { status: r.status, detail: 'Téléchargement refusé' };
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || `rapport-nexussoc-${id.slice(0, 8)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     // ── PLG ───────────────────────────────────────────────────────────────────
 
     getTrialStatus(tenantId) { return this.get(`/plg/trial-status/${tenantId}`); }

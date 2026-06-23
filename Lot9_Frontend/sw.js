@@ -6,18 +6,23 @@
  *   - Offline fallback pour les pages HTML
  */
 
-const CACHE_NAME    = 'nexus-soc-v1';
+const CACHE_NAME    = 'nexus-soc-v2';
 const OFFLINE_URL   = '/app/offline.html';
 
 // Assets à précacher au premier chargement
 const PRECACHE_URLS = [
   '/app/',
+  '/app/landing.html',
   '/app/login.html',
+  '/app/docs.html',
+  '/app/contact.html',
   '/app/console.html',
   '/app/portail.html',
   '/app/offline.html',
   '/app/js/api.js',
   '/app/manifest.json',
+  '/app/icons/icon-192.png',
+  '/app/icons/icon-512.png',
 ];
 
 // Préfixes d'URL qui vont vers le réseau (pas de cache)

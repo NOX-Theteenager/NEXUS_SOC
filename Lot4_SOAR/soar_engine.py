@@ -56,29 +56,36 @@ def _isolate_host(a):     return (f"Poste « {a.entity} » isolé du réseau", T
 def _block_ip(a):         return ("IP/destination malveillante bloquée au pare-feu", True, "Débloquer l'IP au pare-feu")
 def _reset_password(a):   return (f"Mot de passe de « {a.entity} » réinitialisé", False, None)
 def _snapshot(a):         return (f"Capture mémoire/état de « {a.entity} » réalisée", False, None)
-def _notify_sms(a):       return ("SMS envoyé au DSI et au responsable hiérarchique", False, None)
-def _notify_whatsapp(a):  return ("Notification WhatsApp envoyée à la cellule sécurité", False, None)
 def _journal(a):          return (f"Activité de « {a.entity} » figée et journalisée (preuve conservée pour enquête)", False, None)
 def _preserve_logs(a):    return ("Journaux d'audit liés archivés (chaîne de preuve)", False, None)
 
+# Notification push in-app vers le portail DSI : remplace les anciens
+# connecteurs notify_sms / notify_whatsapp. La persistance réelle (table
+# `notifications` + rapport HTML enrichi) est effectuée par la fonction
+# Postgres `emit_notification_from_alert(alert_id)` appelée par le pipeline,
+# ou par le caller qui dispose d'une connexion DB. Le connecteur SOAR
+# se contente ici d'enregistrer l'action et son intention.
+def _notify_dsi(a):
+    return (f"Notification poussée au portail DSI (rapport téléchargeable, alerte « {a.entity} »)", False, None)
+
 ACTIONS = {
-    "journal_investigation": dict(label="Journaliser pour enquête",        impact=LOW,    fn=_journal),
-    "preserve_logs":         dict(label="Archiver les journaux",           impact=LOW,    fn=_preserve_logs),
-    "notify_sms":            dict(label="Notifier par SMS",                 impact=LOW,    fn=_notify_sms),
-    "notify_whatsapp":       dict(label="Notifier par WhatsApp",           impact=LOW,    fn=_notify_whatsapp),
-    "snapshot_memory":       dict(label="Capturer la mémoire",             impact=MEDIUM, fn=_snapshot),
-    "block_ip":              dict(label="Bloquer l'IP malveillante",       impact=MEDIUM, fn=_block_ip),
-    "reset_password":        dict(label="Réinitialiser le mot de passe",   impact=MEDIUM, fn=_reset_password),
-    "freeze_account":        dict(label="Geler le compte",                 impact=HIGH,   fn=_freeze_account),
-    "isolate_host":          dict(label="Isoler le poste",                 impact=HIGH,   fn=_isolate_host),
+    "journal_investigation": dict(label="Journaliser pour enquête",                  impact=LOW,    fn=_journal),
+    "preserve_logs":         dict(label="Archiver les journaux",                      impact=LOW,    fn=_preserve_logs),
+    "notify_dsi":            dict(label="Notifier le DSI (push in-app + rapport)",    impact=LOW,    fn=_notify_dsi),
+    "snapshot_memory":       dict(label="Capturer la mémoire",                        impact=MEDIUM, fn=_snapshot),
+    "block_ip":              dict(label="Bloquer l'IP malveillante",                  impact=MEDIUM, fn=_block_ip),
+    "reset_password":        dict(label="Réinitialiser le mot de passe",              impact=MEDIUM, fn=_reset_password),
+    "freeze_account":        dict(label="Geler le compte",                            impact=HIGH,   fn=_freeze_account),
+    "isolate_host":          dict(label="Isoler le poste",                            impact=HIGH,   fn=_isolate_host),
 }
 
 # Playbooks : séquence d'actions par type d'incident
+# notify_dsi remplace systématiquement les anciens notify_sms / notify_whatsapp.
 PLAYBOOKS = {
-    "Fraude interne":        ["journal_investigation", "notify_sms", "freeze_account", "preserve_logs"],
-    "Exfiltration":          ["journal_investigation", "freeze_account", "block_ip", "notify_sms"],
-    "Ransomware":            ["snapshot_memory", "isolate_host", "block_ip", "notify_sms"],
-    "Anomalie réseau / C2":  ["journal_investigation", "block_ip", "notify_sms"],
+    "Fraude interne":        ["journal_investigation", "notify_dsi", "freeze_account", "preserve_logs"],
+    "Exfiltration":          ["journal_investigation", "freeze_account", "block_ip", "notify_dsi"],
+    "Ransomware":            ["snapshot_memory", "isolate_host", "block_ip", "notify_dsi"],
+    "Anomalie réseau / C2":  ["journal_investigation", "block_ip", "notify_dsi"],
 }
 
 

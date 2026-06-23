@@ -125,14 +125,46 @@ WHERE NOT EXISTS (
 );
 
 -- ---------------------------------------------------------------------------
--- 6. Récapitulatif
+-- 6. Notifications push in-app pour les portails DSI
+--    Génère une notification par alerte si la fonction d'émission existe
+--    (créée par 03_schema_notifications.sql). Idempotent : on évite les doublons.
 -- ---------------------------------------------------------------------------
 DO $$
-DECLARE n_users INT; n_alerts INT; n_pending INT;
+DECLARE
+    a_id UUID;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+                   WHERE table_name = 'notifications') THEN
+        RAISE NOTICE 'Table notifications absente — appliquez 03_schema_notifications.sql.';
+        RETURN;
+    END IF;
+    FOR a_id IN
+        SELECT id FROM alerts
+        WHERE id IN (
+          'e0000001-0000-0000-0000-000000000001',
+          'e0000002-0000-0000-0000-000000000002',
+          'e0000003-0000-0000-0000-000000000003',
+          'e0000004-0000-0000-0000-000000000004'
+        )
+    LOOP
+        IF NOT EXISTS (SELECT 1 FROM notifications WHERE alert_id = a_id) THEN
+            PERFORM emit_notification_from_alert(a_id);
+        END IF;
+    END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 7. Récapitulatif
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE n_users INT; n_alerts INT; n_pending INT; n_notifs INT := 0;
 BEGIN
   SELECT COUNT(*) INTO n_users  FROM users  WHERE email LIKE '%@nexussoc.cm' OR email = 'dsi@minfi.cm';
   SELECT COUNT(*) INTO n_alerts FROM alerts;
   SELECT COUNT(*) INTO n_pending FROM soar_audit WHERE statut = 'EN ATTENTE DE VALIDATION';
-  RAISE NOTICE 'NEXUS SOC seed : % comptes démo, % alertes, % actions SOAR en attente.',
-               n_users, n_alerts, n_pending;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='notifications') THEN
+    SELECT COUNT(*) INTO n_notifs FROM notifications;
+  END IF;
+  RAISE NOTICE 'NEXUS SOC seed : % comptes démo, % alertes, % actions SOAR en attente, % notifications.',
+               n_users, n_alerts, n_pending, n_notifs;
 END $$;
