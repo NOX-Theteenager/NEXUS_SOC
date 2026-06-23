@@ -1,0 +1,29 @@
+{
+  "roc_auc": 0.9692,
+  "pr_auc": 0.6889,
+  "taux_detection": 0.7492,
+  "taux_faux_positifs": 0.0396,
+  "precision": 0.6775,
+  "f1": 0.7115,
+  "matrice": {
+    "VN": 10372,
+    "FP": 428,
+    "FN": 301,
+    "VP": 899
+  },
+  "detection_par_type": {
+    "Exfiltration": {
+      "profils": 376,
+      "taux_detection": 0.9707
+    },
+    "Faux mandatement": {
+      "profils": 421,
+      "taux_detection": 0.5392
+    },
+    "Fonctionnaire fantôme": {
+      "profils": 403,
+      "taux_detection": 0.7618
+    }
+  },
+  "n_test": 12000
+}
