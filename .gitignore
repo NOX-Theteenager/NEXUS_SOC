@@ -7,5 +7,15 @@ CLAUDE.md
 __pycache__/
 *.pyc
 
+# Secrets — JAMAIS dans git
+.env
+.env.*.local
+!.env.example
+
 # Outils / lockfiles locaux
 skills-lock.json
+
+# Cloudflare Tunnel
+.cloudflared/
+*.cloudflared.log
+nohup.out

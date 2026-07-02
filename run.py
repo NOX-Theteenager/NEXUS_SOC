@@ -20,6 +20,20 @@ import sys
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
+# ─── Chargement du fichier .env (variables d'environnement centralisées) ────
+# Doit s'exécuter AVANT tout import qui lit os.getenv(). On n'écrase pas les
+# variables déjà définies dans l'environnement (ex. systemd, Docker, CI).
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(PROJECT_ROOT, ".env")
+    if os.path.isfile(_env_path):
+        load_dotenv(_env_path, override=False)
+        print(f"[run] ✓ .env chargé depuis {_env_path}")
+    else:
+        print("[run] ⚠ aucun fichier .env trouvé — utilisation des valeurs par défaut")
+except ImportError:
+    print("[run] ⚠ python-dotenv non installé — pip install -r requirements.txt")
+
 # ─── Application principale ──────────────────────────────────────────────────
 # On importe l'app FastAPI depuis le scoring-service (Lot 1).
 # Le nom du module utilise un underscore car Python n'autorise pas les tirets.
@@ -66,6 +80,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 print(f"[run] CORS origins: {_origins} (credentials={_allow_creds})")
+
+# ─── Headers de sécurité (HSTS + nosniff + frame-deny) ───────────────────────
+# HSTS dit au navigateur : "à partir de maintenant, n'accepte que HTTPS pour ce
+# domaine pendant 1 an, sous-domaines inclus". Active dès la 1ʳᵉ visite après
+# déploiement. Couplé à "Always Use HTTPS" côté Cloudflare → "Pas sécurisé"
+# disparaît même si l'utilisateur tape l'URL sans https://.
+@app.middleware("http")
+async def _security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault(
+        "Strict-Transport-Security",
+        "max-age=31536000; includeSubDomains; preload",
+    )
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return response
 
 # ─── Routers supplémentaires ─────────────────────────────────────────────────
 # Les dossiers des Lots sont ajoutés au PYTHONPATH pour que les imports croisés

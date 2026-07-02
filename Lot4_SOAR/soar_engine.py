@@ -68,9 +68,36 @@ def _preserve_logs(a):    return ("Journaux d'audit liés archivés (chaîne de 
 def _notify_dsi(a):
     return (f"Notification poussée au portail DSI (rapport téléchargeable, alerte « {a.entity} »)", False, None)
 
+
+# Enrichissement IOC via VirusTotal : ajoute aux raisons de l'alerte le verdict
+# multi-AV pour les IP / hash / domaines extraits. Bascule en no-op si
+# VIRUSTOTAL_ENABLED=false (mode dégradé silencieux).
+def _enrich_ioc(a):
+    try:
+        sys.path.insert(0, os.path.dirname(__file__))
+        from virustotal_client import lookup_alert_iocs
+        verdicts = lookup_alert_iocs(a)
+    except Exception as e:
+        return (f"Enrichissement VirusTotal indisponible ({e})", False, None)
+
+    if not verdicts:
+        return ("Aucun IOC exploitable extrait de l'alerte (ou VirusTotal désactivé)", False, None)
+
+    # On enrichit l'alerte elle-même pour que la suite du playbook (notification
+    # DSI) intègre les verdicts dans le rapport.
+    parts = []
+    for v in verdicts:
+        tag = v["verdict"].upper()
+        parts.append(f"VirusTotal[{tag}] {v['kind']}={v['ioc']} (malv={v['malicious']}, susp={v['suspicious']})")
+        if isinstance(a.reasons, list):
+            a.reasons.append(parts[-1])
+    return (" ; ".join(parts), False, None)
+
+
 ACTIONS = {
     "journal_investigation": dict(label="Journaliser pour enquête",                  impact=LOW,    fn=_journal),
     "preserve_logs":         dict(label="Archiver les journaux",                      impact=LOW,    fn=_preserve_logs),
+    "enrich_ioc":            dict(label="Enrichir l'IOC (VirusTotal)",                impact=INFO,   fn=_enrich_ioc),
     "notify_dsi":            dict(label="Notifier le DSI (push in-app + rapport)",    impact=LOW,    fn=_notify_dsi),
     "snapshot_memory":       dict(label="Capturer la mémoire",                        impact=MEDIUM, fn=_snapshot),
     "block_ip":              dict(label="Bloquer l'IP malveillante",                  impact=MEDIUM, fn=_block_ip),
@@ -80,12 +107,13 @@ ACTIONS = {
 }
 
 # Playbooks : séquence d'actions par type d'incident
-# notify_dsi remplace systématiquement les anciens notify_sms / notify_whatsapp.
+# enrich_ioc en tête : aucun impact, juste de la collecte, mais peut changer
+# le contenu du rapport DSI envoyé ensuite.
 PLAYBOOKS = {
-    "Fraude interne":        ["journal_investigation", "notify_dsi", "freeze_account", "preserve_logs"],
-    "Exfiltration":          ["journal_investigation", "freeze_account", "block_ip", "notify_dsi"],
-    "Ransomware":            ["snapshot_memory", "isolate_host", "block_ip", "notify_dsi"],
-    "Anomalie réseau / C2":  ["journal_investigation", "block_ip", "notify_dsi"],
+    "Fraude interne":        ["enrich_ioc", "journal_investigation", "notify_dsi", "freeze_account", "preserve_logs"],
+    "Exfiltration":          ["enrich_ioc", "journal_investigation", "freeze_account", "block_ip", "notify_dsi"],
+    "Ransomware":            ["enrich_ioc", "snapshot_memory", "isolate_host", "block_ip", "notify_dsi"],
+    "Anomalie réseau / C2":  ["enrich_ioc", "journal_investigation", "block_ip", "notify_dsi"],
 }
 
 

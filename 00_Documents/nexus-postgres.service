@@ -1,0 +1,40 @@
+[Unit]
+Description=NEXUS SOC — PostgreSQL / TimescaleDB (via Docker)
+Documentation=file:///home/noxtheteenager/Documents/Projets/NEXUS_SOC/Lot0_Socle/docker-compose.yml
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=noxtheteenager
+Group=noxtheteenager
+Restart=always
+RestartSec=10
+TimeoutStartSec=180
+
+# Nettoyage préalable : supprime tout conteneur nommé "nexus-postgres" resté
+# en état zombie après un reboot brutal. `|| true` pour ne pas échouer si absent.
+ExecStartPre=-/usr/bin/docker rm -f nexus-postgres
+
+# Lance TimescaleDB (image = même que celle du docker-compose Lot 0).
+# --rm car on relance à chaque restart ; les données sont persistées dans
+# le volume Docker `nexus_postgres_data` qui survit aux restarts du conteneur.
+ExecStart=/usr/bin/docker run --rm \
+    --name nexus-postgres \
+    -e POSTGRES_USER=nexus \
+    -e POSTGRES_PASSWORD=change_me \
+    -e POSTGRES_DB=nexus_soc \
+    -p 127.0.0.1:5432:5432 \
+    -v nexus_postgres_data:/var/lib/postgresql/data \
+    timescale/timescaledb:2.15.3-pg16
+
+# Arrêt propre : envoie SIGTERM (fastshutdown PostgreSQL)
+ExecStop=/usr/bin/docker stop -t 30 nexus-postgres
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nexus-postgres
+
+[Install]
+WantedBy=multi-user.target

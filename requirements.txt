@@ -18,7 +18,8 @@ uvicorn[standard]>=0.29,<0.33
 pydantic>=2.7,<3
 email-validator>=2.1            # nécessaire pour EmailStr (admin_api)
 python-multipart>=0.0.9         # nécessaire pour les routes Form (provisioning)
-httpx>=0.27                     # client HTTP (health/detailed + tests)
+httpx>=0.27                     # client HTTP (Mailjet, CinetPay, VirusTotal, tests)
+python-dotenv>=1.0              # chargement automatique du fichier .env
 
 # ── PostgreSQL : double pilote ──────────────────────────────────────────────
 # psycopg2 : scoring + auth + admin + provisioning (synchrone, threadé)

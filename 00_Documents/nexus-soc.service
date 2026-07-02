@@ -1,0 +1,44 @@
+[Unit]
+Description=NEXUS SOC — API FastAPI (uvicorn)
+Documentation=https://nexussoc.cm/app/docs.html
+After=network-online.target docker.service nexus-postgres.service
+Wants=network-online.target nexus-postgres.service
+
+[Service]
+Type=simple
+User=noxtheteenager
+Group=noxtheteenager
+WorkingDirectory=/home/noxtheteenager/Documents/Projets/NEXUS_SOC
+
+# Charge le .env (python-dotenv le relit aussi au démarrage, mais on l'expose
+# au process systemd pour les variables critiques avant l'import Python)
+EnvironmentFile=/home/noxtheteenager/Documents/Projets/NEXUS_SOC/.env
+
+# Lance uvicorn en écoute locale uniquement (le tunnel cloudflared expose en HTTPS)
+ExecStart=/home/noxtheteenager/Documents/Projets/NEXUS_SOC/.venv/bin/uvicorn run:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --log-level info \
+    --no-access-log
+
+# Politique de redémarrage : auto-restart si crash, attente entre tentatives
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Logs systemd (consultable via : journalctl -u nexus-soc -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nexus-soc
+
+# Limites & sécurité (durcissement raisonnable, sans casser asyncpg/httpx)
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/noxtheteenager/Documents/Projets/NEXUS_SOC
+
+[Install]
+WantedBy=multi-user.target

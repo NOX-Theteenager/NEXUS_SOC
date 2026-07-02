@@ -118,6 +118,22 @@ class EmailVerifyRequest(BaseModel):
     token: str
 
 
+class OtpVerifyRequest(BaseModel):
+    email: str
+    otp: str
+
+    @validator("email")
+    def _norm_email(cls, v):
+        return v.lower().strip()
+
+    @validator("otp")
+    def _digits_only(cls, v):
+        v = v.strip().replace(" ", "")
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError("Le code OTP doit comporter 6 chiffres")
+        return v
+
+
 class PreAuthRequest(BaseModel):
     registration_id: str
     card_token: str  # token opaque fourni par CinetPay / PayDunya
@@ -204,28 +220,44 @@ async def register(
         "SELECT id, email_verified, tenant_id, verification_token FROM plg_registrations WHERE email = $1",
         email,
     )
+    otp_ttl_s = int(os.getenv("OTP_TTL_S", "300"))
+
     if existing:
         if existing["tenant_id"]:
             raise HTTPException(409, "Un compte existe déjà pour cette adresse e-mail.")
-        # Renvoi du lien si pas encore vérifié
-        background_tasks.add_task(
-            _send_verification_email, email, existing["verification_token"], body.organization_name
+        # Régénère un OTP + reset l'expiration, conserve le token URL existant
+        new_otp = f"{secrets.randbelow(1_000_000):06d}"
+        await db.execute(
+            """
+            UPDATE plg_registrations
+            SET verification_otp = $1,
+                verification_expires_at = NOW() + ($2 || ' seconds')::INTERVAL,
+                verification_sent_at = NOW()
+            WHERE id = $3
+            """,
+            new_otp, str(otp_ttl_s), existing["id"],
         )
-        return {"status": "resent", "message": "Lien de vérification renvoyé."}
+        background_tasks.add_task(
+            _send_verification_email, email, existing["verification_token"],
+            new_otp, body.organization_name,
+        )
+        return {"status": "resent", "message": "Nouveau code envoyé."}
 
     token = secrets.token_urlsafe(32)
+    otp   = f"{secrets.randbelow(1_000_000):06d}"
     ip    = request.client.host if request.client else None
 
     await db.execute(
         """
         INSERT INTO plg_registrations
-            (email, organization_name, sector, verification_token, verification_sent_at, ip_address)
-        VALUES ($1, $2, $3, $4, NOW(), $5)
+            (email, organization_name, sector, verification_token, verification_otp,
+             verification_expires_at, verification_sent_at, ip_address)
+        VALUES ($1, $2, $3, $4, $5, NOW() + ($6 || ' seconds')::INTERVAL, NOW(), $7)
         """,
-        email, body.organization_name, body.sector, token, ip,
+        email, body.organization_name, body.sector, token, otp, str(otp_ttl_s), ip,
     )
 
-    background_tasks.add_task(_send_verification_email, email, token, body.organization_name)
+    background_tasks.add_task(_send_verification_email, email, token, otp, body.organization_name)
     return {"status": "pending_verification", "message": "E-mail de vérification envoyé."}
 
 
@@ -246,7 +278,14 @@ async def verify_email(body: EmailVerifyRequest, db: asyncpg.Pool = Depends(_db)
         return {"status": "already_verified", "registration_id": str(reg["id"])}
 
     await db.execute(
-        "UPDATE plg_registrations SET email_verified = TRUE, verification_token = NULL WHERE id = $1",
+        """
+        UPDATE plg_registrations
+        SET email_verified = TRUE,
+            verification_token = NULL,
+            verification_otp = NULL,
+            verification_expires_at = NULL
+        WHERE id = $1
+        """,
         reg["id"],
     )
     return {
@@ -254,6 +293,49 @@ async def verify_email(body: EmailVerifyRequest, db: asyncpg.Pool = Depends(_db)
         "registration_id": str(reg["id"]),
         "next_step":       "preauth",
         "message":         "Adresse confirmée. Procédez à la validation d'identité.",
+    }
+
+
+@router.post("/verify-otp")
+async def verify_otp(body: OtpVerifyRequest, db: asyncpg.Pool = Depends(_db)):
+    """
+    Vérification PLG via code OTP 6 chiffres (alternative au lien dans l'e-mail).
+    Compte les tentatives pour bloquer le bruteforce.
+    """
+    reg = await db.fetchrow(
+        """
+        SELECT id, email_verified, verification_otp, verification_expires_at
+        FROM plg_registrations WHERE email = $1
+        """,
+        body.email,
+    )
+    if not reg:
+        raise HTTPException(404, "Aucune inscription pour cette adresse e-mail.")
+    if reg["email_verified"]:
+        return {"status": "already_verified", "registration_id": str(reg["id"])}
+    if not reg["verification_otp"]:
+        raise HTTPException(400, "Aucun code OTP en attente — demandez un renvoi.")
+    if reg["verification_expires_at"] and reg["verification_expires_at"] < datetime.now(timezone.utc):
+        raise HTTPException(410, "Code OTP expiré — demandez un renvoi.")
+    if not secrets.compare_digest(reg["verification_otp"], body.otp):
+        raise HTTPException(401, "Code OTP incorrect.")
+
+    await db.execute(
+        """
+        UPDATE plg_registrations
+        SET email_verified = TRUE,
+            verification_token = NULL,
+            verification_otp = NULL,
+            verification_expires_at = NULL
+        WHERE id = $1
+        """,
+        reg["id"],
+    )
+    return {
+        "status":          "verified",
+        "registration_id": str(reg["id"]),
+        "next_step":       "preauth",
+        "message":         "Code accepté. Procédez à la validation d'identité.",
     }
 
 
@@ -293,7 +375,7 @@ async def bank_preauth(
         )
         return {"status": "already_completed", "tenant_id": str(tenant_id) if tenant_id else None}
 
-    result = await _run_preauth(body.card_token)
+    result = await _run_preauth(body.card_token, email=reg["email"])
     if not result["success"]:
         raise HTTPException(402, detail={
             "code":    "PREAUTH_FAILED",
@@ -319,6 +401,67 @@ async def bank_preauth(
         "max_agents":  TRIAL_CFG["max_agents"],
         "message":     f"Compte activé. Essai gratuit de {TRIAL_CFG['duration_days']} jours démarré.",
     }
+
+
+@router.post("/cinetpay/notify")
+async def cinetpay_webhook(
+    request: Request, db: asyncpg.Pool = Depends(_db),
+):
+    """
+    Webhook appelé par CinetPay quand un paiement change d'état.
+    Vérifie la signature HMAC (x-token) puis met à jour la souscription /
+    la pré-autorisation correspondante.
+
+    Configuré dans le dashboard CinetPay → Intégration → URL de notification.
+    """
+    body_raw = await request.body()
+    token_header = request.headers.get("x-token") or request.headers.get("X-Token") or ""
+
+    try:
+        from cinetpay_client import verify_webhook_signature, check_payment
+    except ImportError:
+        raise HTTPException(503, "Intégration CinetPay indisponible.")
+
+    if not verify_webhook_signature(token_header, body_raw):
+        logger.warning("CINETPAY webhook : signature invalide")
+        raise HTTPException(401, "Signature CinetPay invalide.")
+
+    try:
+        import json
+        payload = json.loads(body_raw.decode("utf-8")) if body_raw else {}
+    except Exception:
+        payload = dict(await request.form())
+
+    txn_id = payload.get("cpm_trans_id") or payload.get("transaction_id")
+    if not txn_id:
+        raise HTTPException(400, "transaction_id manquant.")
+
+    # Re-vérifie auprès de CinetPay (on ne se fie pas au body brut)
+    state = check_payment(txn_id)
+    accepted = state.get("success") and state.get("status") == "ACCEPTED"
+
+    # Met à jour soit la souscription, soit la pré-autorisation
+    if txn_id.startswith("NEXUS-PA-") or "preauth" in (payload.get("metadata") or ""):
+        await db.execute(
+            """
+            UPDATE plg_registrations
+            SET preauth_completed = $2, preauth_completed_at = NOW()
+            WHERE preauth_reference = $1
+            """,
+            txn_id, accepted,
+        )
+    else:
+        await db.execute(
+            """
+            UPDATE subscriptions
+            SET status = $2
+            WHERE payment_reference = $1
+            """,
+            txn_id, "active" if accepted else "cancelled",
+        )
+
+    logger.info("CINETPAY webhook | txn=%s | accepted=%s", txn_id, accepted)
+    return {"received": True, "accepted": accepted}
 
 
 @router.get("/trial-status/{tenant_id}")
@@ -666,40 +809,66 @@ async def _provision_tenant(db: asyncpg.Pool, reg) -> str:
     return tenant_id
 
 
-async def _run_preauth(card_token: str) -> dict:
+async def _run_preauth(card_token: str, email: str = "anonymous@nexussoc.cm") -> dict:
     """
-    Pré-autorisation bancaire à 0 FCFA.
-
-    Remplacer ce stub par l'intégration réelle :
-    -------------------------------------------
-    CinetPay (recommandé Cameroun) :
-        POST https://api-checkout.cinetpay.com/v2/payment
-        Headers: { "Content-Type": "application/json" }
-        Body: { "apikey": CINETPAY_API_KEY, "site_id": ...,
-                "transaction_id": unique_id, "amount": 0,
-                "currency": "XAF", "card_token": card_token }
-
-    PayDunya (alternative) :
-        POST https://app.paydunya.com/api/v1/checkout-invoice/create
-    -------------------------------------------
+    Pré-autorisation bancaire (CinetPay).
+    Délègue au client cinetpay_client.run_preauth() configuré par CINETPAY_MODE :
+      - "stub"    : démo (refuse les tokens FAIL_*, accepte les autres)
+      - "sandbox" : appel CinetPay avec clés de test
+      - "live"    : appel CinetPay avec clés de production
     """
-    if not card_token or card_token.startswith("FAIL_"):
-        return {"success": False, "message": "Carte refusée par la banque émettrice."}
+    try:
+        from cinetpay_client import run_preauth as cp_preauth
+    except ImportError:
+        logger.warning("cinetpay_client indisponible — fallback stub")
+        if not card_token or card_token.startswith("FAIL_"):
+            return {"success": False, "message": "Carte refusée par la banque émettrice."}
+        return {"success": True, "reference": f"NEXUS-PA-{secrets.token_hex(8).upper()}"}
 
-    reference = f"NEXUS-PA-{secrets.token_hex(8).upper()}"
-    return {"success": True, "reference": reference}
+    # cp_preauth est synchrone (httpx.Client) → on l'enveloppe pour rester en async
+    import asyncio
+    return await asyncio.to_thread(cp_preauth, card_token, email=email)
 
 
-async def _send_verification_email(email: str, token: str, org_name: str = "") -> None:
+async def _send_verification_email(
+    email: str, token: str, otp: str, org_name: str = ""
+) -> None:
     """
-    Envoi de l'e-mail de vérification.
-    Remplacer par SMTP (smtplib) ou API transactionnelle (SendGrid, MailerSend…).
+    Envoi de l'e-mail de vérification PLG.
+    Combine lien magique (?token=…) et code OTP 6 chiffres.
+
+    Backend choisi via EMAIL_BACKEND :
+      - "smtp"    → smtp_client (Gmail, Outlook, tout SMTP) — recommandé
+      - "mailjet" → mailjet_client (API HTTP)
+      - "log"     → aucun envoi, on logge (utile en dev)
+    Fallback automatique en "log" si les credentials du backend choisi
+    ne sont pas configurées.
     """
-    verify_url = f"https://nexussoc.cm/verify?token={token}"
+    base = os.getenv("NEXUS_SERVER_URL", "https://nexussoc.cm").rstrip("/")
+    verify_url = f"{base}/app/landing.html?verify_token={token}"
+    backend = os.getenv("EMAIL_BACKEND", "smtp").strip().lower()
+
+    try:
+        if backend == "mailjet":
+            from mailjet_client import send_verification_email as _send
+        elif backend == "log":
+            logger.info(
+                "PLG verify [log] | to=%s | org=%s | otp=%s | url=%s",
+                email, org_name, otp, verify_url,
+            )
+            return
+        else:  # défaut = smtp
+            from smtp_client import send_verification_email as _send
+    except ImportError as e:
+        logger.error("PLG verify | backend %s indisponible (%s) — log fallback", backend, e)
+        return
+
+    result = _send(email, verify_url, otp, org_name=org_name)
     logger.info(
-        "PLG verify email | to=%s | org=%s | url=%s", email, org_name, verify_url
+        "PLG verify | to=%s | backend=%s | mode=%s | ok=%s%s",
+        email, backend, result.get("mode"), result.get("ok"),
+        f" | err={result.get('error')}" if not result.get("ok") else "",
     )
-    # Production : smtplib.SMTP(...).sendmail(...)
 
 
 # =============================================================================
