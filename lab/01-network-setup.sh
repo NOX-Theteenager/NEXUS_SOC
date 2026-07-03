@@ -25,12 +25,15 @@ NET_DHCP_END="10.42.0.200"
 
 # IPs statiques réservées via DHCP (matchées par MAC configurée dans virt-manager)
 # Les MACs sont générées ici et à réutiliser lors de la création des VMs.
-MAC_VM_SOC="52:54:00:aa:00:10"
+#
+# ⚠  IMPORTANT : dans ce lab, LE HÔTE joue le rôle de SOC (10.42.0.1 = gateway).
+#     Pas de vm-soc — on utilise la machine hôte Ubuntu qui a déjà
+#     PostgreSQL, uvicorn (nexus-soc.service) et cloudflared configurés en systemd.
 MAC_VM_CIBLE="52:54:00:aa:00:20"
 MAC_VM_KALI="52:54:00:aa:00:30"
 MAC_VM_DSI="52:54:00:aa:00:40"
 
-IP_VM_SOC="10.42.0.10"
+IP_HOTE_SOC="10.42.0.1"       # gateway libvirt = hôte Ubuntu = serveur NEXUS SOC
 IP_VM_CIBLE="10.42.0.20"
 IP_VM_KALI="10.42.0.30"
 IP_VM_DSI="10.42.0.40"
@@ -97,15 +100,14 @@ cat > "$NET_XML" <<XML
     <dhcp>
       <range start='${NET_DHCP_START}' end='${NET_DHCP_END}'/>
       <!-- Réservations DHCP → IP fixes prévisibles pour la démo -->
-      <host mac='${MAC_VM_SOC}'   name='vm-soc'   ip='${IP_VM_SOC}'/>
       <host mac='${MAC_VM_CIBLE}' name='vm-cible' ip='${IP_VM_CIBLE}'/>
       <host mac='${MAC_VM_KALI}'  name='vm-kali'  ip='${IP_VM_KALI}'/>
       <host mac='${MAC_VM_DSI}'   name='vm-dsi'   ip='${IP_VM_DSI}'/>
     </dhcp>
   </ip>
-  <!-- DNS interne pour résoudre soc.minfi.local depuis les VMs -->
+  <!-- DNS interne : les VMs résolvent soc.minfi.local vers le HÔTE (gateway) -->
   <dns>
-    <host ip='${IP_VM_SOC}'>
+    <host ip='${IP_HOTE_SOC}'>
       <hostname>soc.minfi.local</hostname>
       <hostname>api.soc.minfi.local</hostname>
       <hostname>portail.soc.minfi.local</hostname>
@@ -134,22 +136,23 @@ echo "════════════════════════�
 echo "✓ Réseau '$NET_NAME' créé et actif."
 echo "════════════════════════════════════════════════════════════════════"
 echo
-echo "  Bridge   : $NET_BRIDGE"
-echo "  Subnet   : $NET_CIDR (ISOLÉ - aucun accès Internet)"
-echo "  Gateway  : $NET_GATEWAY (le hôte, joignable depuis les VMs)"
+echo "  Bridge          : $NET_BRIDGE"
+echo "  Subnet          : $NET_CIDR (ISOLÉ - aucun accès Internet)"
+echo "  Gateway / SOC   : $NET_GATEWAY  ← le HÔTE Ubuntu joue le rôle de vm-soc"
 echo
 echo "  IPs et MACs réservées (à saisir dans virt-manager) :"
 echo "  ┌──────────┬───────────────────┬───────────────────────┐"
-echo "  │ vm-soc   │ ${IP_VM_SOC}     │ ${MAC_VM_SOC}      │"
+echo "  │ HÔTE     │ ${IP_HOTE_SOC}      │ (gateway libvirt)     │"
 echo "  │ vm-cible │ ${IP_VM_CIBLE}     │ ${MAC_VM_CIBLE}      │"
 echo "  │ vm-kali  │ ${IP_VM_KALI}     │ ${MAC_VM_KALI}      │"
 echo "  │ vm-dsi   │ ${IP_VM_DSI}     │ ${MAC_VM_DSI}      │"
 echo "  └──────────┴───────────────────┴───────────────────────┘"
 echo
-echo "  DNS interne (dans le réseau) :"
-echo "  soc.minfi.local          → ${IP_VM_SOC}"
-echo "  api.soc.minfi.local      → ${IP_VM_SOC}"
-echo "  portail.soc.minfi.local  → ${IP_VM_SOC}"
+echo "  DNS interne (résolu par les VMs) :"
+echo "  soc.minfi.local          → ${IP_HOTE_SOC} (hôte)"
+echo "  api.soc.minfi.local      → ${IP_HOTE_SOC}"
+echo "  portail.soc.minfi.local  → ${IP_HOTE_SOC}"
 echo
-echo "Prochaine étape : ouvrir virt-manager et suivre 02-vm-specs.md"
+echo "Prochaine étape : lancer scripts/host-configure.sh sur le hôte"
+echo "puis créer les 3 VMs (vm-cible, vm-kali, vm-dsi) selon 02-vm-specs.md"
 echo "════════════════════════════════════════════════════════════════════"
