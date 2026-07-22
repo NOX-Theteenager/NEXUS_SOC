@@ -27,7 +27,6 @@ COPY auth_middleware.py  .
 COPY pseudonymizer.py    .
 COPY admin_api.py        .
 COPY provisioning_api.py .
-COPY plg_api.py          .
 
 # Point d'entrée
 EXPOSE 8000

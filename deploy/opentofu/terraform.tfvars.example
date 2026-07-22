@@ -42,7 +42,6 @@ backup_keep_days  = 14
 
 # ── Options ──────────────────────────────────────────────────────────────────
 expose_wazuh_dashboard = true
-enable_plg_module      = false  # Toujours false pour déploiements souverains
 
 # ── Modèles IA (optionnel — peut être fait manuellement après déploiement) ───
 # models_local_path = "/chemin/local/vers/les/modeles"

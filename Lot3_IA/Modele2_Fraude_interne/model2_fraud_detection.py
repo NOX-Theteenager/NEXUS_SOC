@@ -56,7 +56,7 @@ FEATURES = [
 # Libellé lisible de chaque feature (pour les "raisons" d'alerte)
 LISIBLE = {
     "nb_connexions": "connexions", "nb_actions_hors_heures": "actions hors heures ouvrables",
-    "nb_transactions": "transactions budgétaires", "montant_total_modifie": "montant total modifié (FCFA)",
+    "nb_transactions": "transactions budgétaires", "montant_total_modifie": "montant total modifié",
     "nb_modifs_montant": "modifications de montants", "nb_creations_compte": "créations de comptes agents",
     "nb_exports": "exports de données", "volume_donnees_exportees": "volume de données exportées",
     "nb_acces_dossiers_sensibles": "accès à des dossiers sensibles", "nb_actions_total": "actions au total",

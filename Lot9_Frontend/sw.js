@@ -103,7 +103,7 @@ async function networkFirst(request) {
   }
 }
 
-// ─── Push notifications (optionnel — si abonnement configuré) ──────────────
+// ─── Push notifications (optionnel — si notifications push configurées) ──────────────
 self.addEventListener('push', event => {
   if (!event.data) return;
   const data = event.data.json();

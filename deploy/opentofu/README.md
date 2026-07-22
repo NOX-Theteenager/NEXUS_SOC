@@ -2,7 +2,7 @@
 
 Module d'infrastructure-as-code pour déployer la pile NEXUS SOC complète sur un
 serveur souverain du CENADI, via SSH. Écrit en HCL et exécuté avec
-[OpenTofu](https://opentofu.org/) (fork libre de Terraform, licence MPL 2.0) afin
+[OpenTofu](https://opentofu.org/) (outil IaC libre et open source, licence MPL 2.0) afin
 de garantir une chaîne d'outils 100 % open source.
 
 ## Prérequis

@@ -6,7 +6,7 @@
 # =============================================================================
 
 output "nexus_api_url" {
-  description = "URL de l'API NEXUS SOC (scoring-service + endpoints admin/PLG)"
+  description = "URL de l'API NEXUS SOC (scoring-service + endpoints admin/analyst)"
   value       = "http://${var.server_host}:8000"
 }
 
@@ -80,7 +80,6 @@ output "deployment_summary" {
     timescale_version = var.timescale_version
     wazuh_version     = var.wazuh_version
     nexus_version     = var.nexus_version
-    plg_enabled       = var.enable_plg_module
     tls_expiry        = tls_self_signed_cert.nexus.validity_end_time
   }
 }

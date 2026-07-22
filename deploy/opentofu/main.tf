@@ -240,8 +240,8 @@ resource "null_resource" "upload_configs" {
   }
 
   provisioner "file" {
-    source      = "${local.repo_root}/Lot8_PLG/01_schema_plg.sql"
-    destination = "${var.install_dir}/config/postgres/init/05_schema_plg.sql"
+    source      = "${local.repo_root}/Lot0_Socle/03_schema_notifications.sql"
+    destination = "${var.install_dir}/config/postgres/init/05_schema_notifications.sql"
   }
 
   # Certificat TLS auto-signé (scoring-service HTTPS)
@@ -274,7 +274,6 @@ resource "null_resource" "upload_scoring_service" {
       filesha256("${local.repo_root}/Lot1_Agent_Go/pseudonymizer.py"),
       filesha256("${local.repo_root}/Lot7_Console_Fournisseur/admin_api.py"),
       filesha256("${local.repo_root}/Lot7_Console_Fournisseur/provisioning_api.py"),
-      filesha256("${local.repo_root}/Lot8_PLG/plg_api.py"),
       sha256(local_file.dockerfile_scoring.content),
     ]))
   }
@@ -322,11 +321,6 @@ resource "null_resource" "upload_scoring_service" {
     destination = "${var.install_dir}/scoring-service/provisioning_api.py"
   }
 
-  provisioner "file" {
-    source      = "${local.repo_root}/Lot8_PLG/plg_api.py"
-    destination = "${var.install_dir}/scoring-service/plg_api.py"
-  }
-
   # Générer requirements.txt directement sur le serveur
   provisioner "remote-exec" {
     inline = [
@@ -341,7 +335,6 @@ resource "null_resource" "upload_scoring_service" {
       joblib==1.4.2
       kafka-python==2.0.2
       psycopg2-binary==2.9.9
-      asyncpg==0.29.0
       httpx==0.27.0
       REQEOF
       EOT

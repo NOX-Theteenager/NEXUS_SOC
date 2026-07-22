@@ -168,12 +168,6 @@ variable "expose_wazuh_dashboard" {
   default     = true
 }
 
-variable "enable_plg_module" {
-  description = "Activer le module PLG (Product-Led Growth) — normalement désactivé pour les déploiements souverains"
-  type        = bool
-  default     = false
-}
-
 variable "models_local_path" {
   description = "Chemin local vers les fichiers .joblib des modèles IA. Laissez vide si non disponibles localement."
   type        = string
