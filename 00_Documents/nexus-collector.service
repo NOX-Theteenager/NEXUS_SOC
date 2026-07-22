@@ -1,0 +1,33 @@
+[Unit]
+Description=NEXUS SOC — Collecteur de télémétrie réelle (agent hôte)
+Documentation=https://nexussoc.cm/app/docs.html
+After=network-online.target nexus-soc.service
+Wants=network-online.target nexus-soc.service
+
+[Service]
+Type=simple
+User=noxtheteenager
+Group=noxtheteenager
+WorkingDirectory=/home/noxtheteenager/Documents/Projets/NEXUS_SOC
+
+# Collecte en continu : mesures réelles (compteurs TCP du noyau, sessions,
+# fichiers sensibles) envoyées signées HMAC vers /ingest toutes les 60 s.
+ExecStart=/home/noxtheteenager/Documents/Projets/NEXUS_SOC/.venv/bin/python \
+    /home/noxtheteenager/Documents/Projets/NEXUS_SOC/Lot1_Agent_Go/nexus_collector.py \
+    --loop --interval 60
+
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nexus-collector
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/noxtheteenager/Documents/Projets/NEXUS_SOC /home/noxtheteenager/.nexus-agent
+
+[Install]
+WantedBy=multi-user.target

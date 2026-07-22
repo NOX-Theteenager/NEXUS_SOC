@@ -40,6 +40,8 @@ T_RAW = os.getenv("RAW_TOPIC", "nexus.telemetry.raw")
 T_ALERTS = os.getenv("ALERTS_TOPIC", "nexus.alerts")
 DB_DSN = os.getenv("DB_DSN")
 RISK_THRESHOLD = int(os.getenv("RISK_THRESHOLD", "70"))
+# Fenêtre d'agrégation anti-doublon des alertes (minutes ; 0 = désactivé)
+ALERT_DEDUP_MIN = int(os.getenv("ALERT_DEDUP_MIN", "15"))
 
 app = FastAPI(title="NEXUS SOC — Service de scoring", version="2.0")
 STATE = {"m1": None, "m2": None, "producer": None, "db": None}
@@ -162,7 +164,41 @@ def score_userday(features: dict):
 # --------------------------------------------------------------------------- #
 # Émission d'alerte → Kafka (consommée par le SOAR) + persistance Postgres
 # --------------------------------------------------------------------------- #
-def emit_alert(alert: dict):
+def _alerte_dupliquee(alert: dict) -> bool:
+    """
+    Anti-doublon : une alerte identique (même périmètre, type et entité) déjà
+    ouverte dans la fenêtre ALERT_DEDUP_MIN n'est pas recréée.
+
+    Sans ce garde-fou, une condition persistante (ex. un flux réseau continu
+    jugé anormal) génèrerait une alerte à chaque cycle de collecte et noierait
+    la file de l'analyste. C'est l'agrégation d'alertes pratiquée en SOC.
+    """
+    if not (STATE["db"] and ALERT_DEDUP_MIN > 0):
+        return False
+    try:
+        with STATE["db"].cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM alerts "
+                " WHERE tenant_id = %s::uuid AND type = %s AND entite = %s "
+                "   AND statut = 'ouverte' "
+                "   AND cree_le > now() - (%s || ' minutes')::interval "
+                " LIMIT 1",
+                (alert.get("tenant"), alert.get("type"), alert.get("entite"),
+                 str(ALERT_DEDUP_MIN)))
+            return cur.fetchone() is not None
+    except Exception:
+        try:
+            STATE["db"].rollback()
+        except Exception:
+            pass
+        return False
+
+
+def emit_alert(alert: dict) -> bool:
+    """Émet une alerte. Retourne True si elle a réellement été enregistrée
+    (False si agrégée avec une alerte identique déjà ouverte)."""
+    if _alerte_dupliquee(alert):
+        return False
     if STATE["producer"]:
         try:
             STATE["producer"].send(T_ALERTS, json.dumps(alert).encode("utf-8"))
@@ -178,6 +214,66 @@ def emit_alert(alert: dict):
             STATE["db"].commit()
         except Exception as e:
             print(f"[scoring] insertion Postgres échouée : {e}")
+            return False
+    return True
+
+
+# --------------------------------------------------------------------------- #
+# Métriques série temporelle (hypertable `metrics`) — mesures réelles
+# --------------------------------------------------------------------------- #
+def record_metric(tenant_id, agent_id, metrique: str, valeur: float):
+    """Enregistre une mesure réelle dans l'hypertable TimescaleDB `metrics`."""
+    if not (STATE["db"] and tenant_id):
+        return
+    try:
+        with STATE["db"].cursor() as cur:
+            cur.execute(
+                "INSERT INTO metrics (ts, tenant_id, agent_id, metrique, valeur) "
+                "VALUES (now(), %s::uuid, NULLIF(%s,'')::uuid, %s, %s)",
+                (tenant_id, agent_id or "", metrique, float(valeur)))
+        STATE["db"].commit()
+    except Exception as e:
+        try:
+            STATE["db"].rollback()
+        except Exception:
+            pass
+        print(f"[metrics] insertion échouée ({metrique}) : {e}")
+
+
+def process_normalized_event(ev: dict, tenant_id: str = "", agent_id: str = "") -> bool:
+    """
+    Score un événement DÉJÀ normalisé (contenant `kind` + `features`) et émet une
+    alerte réelle si le risque dépasse le seuil. Enregistre aussi le score comme
+    métrique série temporelle.
+
+    Utilisé par le consommateur Kafka ET, en l'absence de Kafka, directement par
+    /ingest (dégradation gracieuse : la détection reste opérationnelle).
+    Retourne True si une alerte a été émise.
+    """
+    if not isinstance(ev, dict) or "features" not in ev:
+        return False
+    kind = ev.get("kind")
+    res = score_network(ev["features"]) if kind == "network" else score_userday(ev["features"])
+    if not res:
+        return False
+
+    tid = ev.get("tenant_id") or tenant_id
+    aid = ev.get("agent_id") or agent_id
+
+    # Mesure réelle : score de risque calculé sur la télémétrie reçue
+    record_metric(tid, aid, f"risque_{kind or 'inconnu'}", res["risque"])
+
+    if res.get("anomalie") and res["risque"] >= RISK_THRESHOLD:
+        return emit_alert({
+            "tenant": tid,
+            "src":    "Modèle 1 (réseau)" if kind == "network" else "Modèle 2 (UEBA)",
+            "type":   ev.get("type", "Anomalie réseau / C2" if kind == "network" else "Fraude interne"),
+            "entite": ev.get("entite", "?"),
+            "risque": res["risque"],
+            "raisons": res.get("raisons", []),
+            "mitre":  ev.get("mitre", ""),
+        })
+    return False
 
 
 # --------------------------------------------------------------------------- #
@@ -196,17 +292,8 @@ def consume_loop():
     print(f"[scoring] écoute du topic {T_TELEMETRY}…")
     for msg in consumer:
         try:
-            ev = msg.value
-            if not isinstance(ev, dict) or "features" not in ev:
-                continue   # événement non normalisé (télémétrie brute) → ignoré ici
-            kind = ev.get("kind")            # "network" | "user-day"
-            res = score_network(ev["features"]) if kind == "network" else score_userday(ev["features"])
-            if res and res.get("anomalie") and res["risque"] >= RISK_THRESHOLD:
-                emit_alert({
-                    "tenant": ev.get("tenant_id"), "src": "Modèle 1 (réseau)" if kind == "network" else "Modèle 2 (UEBA)",
-                    "type": ev.get("type", "Anomalie réseau / C2" if kind == "network" else "Fraude interne"),
-                    "entite": ev.get("entite", "?"), "risque": res["risque"],
-                    "raisons": res.get("raisons", []), "mitre": ev.get("mitre", "")})
+            # Événement non normalisé (télémétrie brute) → ignoré ici
+            process_normalized_event(msg.value)
         except Exception as e:
             print(f"[scoring] événement ignoré : {e}")
 
@@ -354,10 +441,35 @@ async def ingest(request: Request):
         }
         for ev in events:
             try:
-                STATE["producer"].send(T_RAW, json.dumps({**meta, **ev}).encode("utf-8"))
+                # Routage : un événement DÉJÀ normalisé (kind + features) part sur
+                # le topic de télémétrie normalisée, que consomme le scoring.
+                # Un événement brut part sur le topic brut, en attente de
+                # normalisation par le pipeline SIEM (Lot 2).
+                topic = T_TELEMETRY if isinstance(ev, dict) and "features" in ev else T_RAW
+                STATE["producer"].send(topic, json.dumps({**meta, **ev}).encode("utf-8"))
                 n += 1
             except Exception:
                 pass
+
+    # ── Scoring en direct des événements déjà normalisés ────────────────────
+    # Un événement portant `kind` + `features` est scoré immédiatement : la
+    # détection reste opérationnelle même sans Kafka (dégradation gracieuse).
+    # Quand Kafka est présent, le chemin nominal reste le pipeline asynchrone ;
+    # on évite alors le double traitement.
+    alertes = 0
+    if not STATE["producer"]:
+        for ev in events:
+            try:
+                if process_normalized_event(ev, tenant_id, agent_id):
+                    alertes += 1
+            except Exception as e:
+                print(f"[ingestion] scoring direct échoué : {e}")
+
+    # ── Métriques réelles de volumétrie ─────────────────────────────────────
+    if tenant_id:
+        record_metric(tenant_id, agent_id, "evenements_recus", len(events))
+        if alertes:
+            record_metric(tenant_id, agent_id, "alertes_emises", alertes)
 
     # Mettre à jour vu_le de l'agent en base
     if STATE["db"] and agent_id:
@@ -373,4 +485,4 @@ async def ingest(request: Request):
             pass
 
     print(f"[ingestion] {agent_id} : {len(events)} événements, {n} publiés")
-    return {"recus": len(events), "publies": n}
+    return {"recus": len(events), "publies": n, "alertes": alertes}
