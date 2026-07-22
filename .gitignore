@@ -19,3 +19,10 @@ skills-lock.json
 .cloudflared/
 *.cloudflared.log
 nohup.out
+
+# Wazuh — certificats/clés générés + config téléchargée à l'exécution
+Lot0_Socle/config/wazuh_indexer_ssl_certs/
+Lot0_Socle/config/wazuh_indexer/
+Lot0_Socle/config/wazuh_dashboard/
+Lot0_Socle/config/certs.yml
+Lot0_Socle/docker-compose.wazuh.yml
