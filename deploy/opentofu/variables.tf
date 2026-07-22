@@ -54,9 +54,9 @@ variable "institution_name" {
 }
 
 variable "nexus_domain" {
-  description = "FQDN de l'instance NEXUS SOC (ex: soc.cenadi.gov.cm)"
+  description = "FQDN de l'instance NEXUS SOC (ex: nexussoc.cm)"
   type        = string
-  default     = "soc.cenadi.gov.cm"
+  default     = "nexussoc.cm"
 }
 
 variable "install_dir" {

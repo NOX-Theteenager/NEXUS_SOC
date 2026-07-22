@@ -15,8 +15,8 @@ Chaque tâche A→G correspond à un commit atomique.
 1. **Licence (Tâche F).** Choix par défaut appliqué : **GPL-3.0-or-later**
    (fichier `LICENSE` = texte canonique GNU GPL v3). Motif : copyleft compatible
    avec Wazuh (GPL v2) et garantie d'auditabilité/redistribution. → **À confirmer.**
-2. **Domaine par défaut.** `soc.cenadi.gov.cm` appliqué dans `.env.example`,
-   `deploy/opentofu` et la doc. → **À confirmer** (ajuster si le FQDN réel diffère).
+2. **Domaine.** ✅ Décidé : le domaine **reste `nexussoc.cm`** (`.env.example`,
+   `deploy/opentofu`, doc). L'institution exploitante reste `institution_name = "CENADI"`.
 3. **Maquette Lot 7 supprimée.** `Lot7_Console_Fournisseur/console_fournisseur.html`
    (maquette statique, 148 Ko) a été **supprimée** plutôt que renommée : elle
    portait un module de facturation ARR/MRR/FCFA incompatible avec la vision, et
@@ -75,7 +75,7 @@ colonnes commerciales ajoutées à `tenants` (`plan`, `trial_ends_at`,
   et doc. Conservés pour compatibilité OpenTofu : le bloc HCL `terraform {}`, les
   noms de fichiers `terraform.tfstate` et `terraform.tfvars`.
 - **Valeurs par défaut CENADI** : `institution_name = "CENADI"`,
-  `nexus_domain = "soc.cenadi.gov.cm"` (`variables.tf` + `terraform.tfvars.example`).
+  `nexus_domain = "nexussoc.cm"` (`variables.tf` + `terraform.tfvars.example`).
 - Ajout de `deploy/opentofu/README.md` (workflow `tofu`).
 - **Correctif (Tâche G)** : `main.tf` uploadait encore `Lot8_PLG/01_schema_plg.sql`
   et `Lot8_PLG/plg_api.py` (supprimés) → remplacés par `03_schema_notifications.sql`,
@@ -148,7 +148,7 @@ données de démo changent.
   architecture **8 → 7 composants**, schéma ASCII sans bloc PLG, déploiement
   OpenTofu, 18 → 14 tests, comptes et périmètres de démo).
 - `.env.example` : suppression des sections e-mail/OTP (SMTP/Mailjet) et CinetPay
-  (mortes) ; `NEXUS_SERVER_URL` → `soc.cenadi.gov.cm` ; VirusTotal conservé.
+  (mortes) ; `NEXUS_SERVER_URL` conservé sur `nexussoc.cm` ; VirusTotal conservé.
 - `00_Documents/Configuration_Services_Externes.md` : réécrit autour du seul
   service externe restant (VirusTotal).
 - `Lot9_Frontend/docs.html`, `INVENTAIRE.md`, `00_Documents/Bilan_Projet.md`,

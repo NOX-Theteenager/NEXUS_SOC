@@ -162,7 +162,7 @@ NEXUS_SOC/
 │
 ├── deploy/opentofu/                     ← ★ Déploiement souverain (OpenTofu, MPL 2.0)
 │   ├── providers.tf / variables.tf / main.tf / outputs.tf
-│   ├── terraform.tfvars.example         ← institution_name=CENADI, nexus_domain=soc.cenadi.gov.cm
+│   ├── terraform.tfvars.example         ← institution_name=CENADI, nexus_domain=nexussoc.cm
 │   ├── README.md                        ← workflow tofu init/plan/apply
 │   └── templates/                       ← env.tpl · docker-compose.tpl · Dockerfile.scoring.tpl
 │
@@ -380,7 +380,7 @@ pour garantir une chaîne d'outils 100 % open source.
 cd deploy/opentofu
 cp terraform.tfvars.example terraform.tfvars
 nano terraform.tfvars          # server_host, ssh_private_key_path…
-                               # institution_name=CENADI, nexus_domain=soc.cenadi.gov.cm par défaut
+                               # institution_name=CENADI, nexus_domain=nexussoc.cm par défaut
 
 tofu init
 tofu plan

@@ -19,7 +19,7 @@
 - **Lot 9 — Frontend PWA** : login, console, portail, docs, contact, manifest, service worker, offline
 
 ### Déploiement
-- **HTTPS interne** : `https://soc.cenadi.gov.cm` (certificat institutionnel, HSTS actif)
+- **HTTPS interne** : `https://nexussoc.cm` (certificat institutionnel, HSTS actif)
 - **Systemd** : `nexus-soc` auto-start au boot, restart en cas de crash
 - **Sécurité** : HSTS + X-Frame-Options + Content-Type-Options + Referrer-Policy en réponse
 - **Souverain (OpenTofu)** : déploiement de la pile sur serveur interne CENADI (`deploy/opentofu`)
@@ -110,7 +110,7 @@ Dashboard Cloudflare → SSL/TLS → Edge Certificates → activer **HSTS** (12 
 
 ## 🏁 Ce qui est déjà démontrable au jury
 
-- **Ouvrir `https://soc.cenadi.gov.cm`** depuis le réseau interne
+- **Ouvrir `https://nexussoc.cm`** depuis le réseau interne
 - **Docs interactive** (`/app/docs.html`) → sections avec exemples
 - **Contact** (`/app/contact.html`) → formulaire de contact de l'équipe SOC
 - **Portail périmètre** (login `resp.sigipes@cenadi.cm` / `admin`) → alertes SIGIPES + notifications + rapports téléchargeables

@@ -19,7 +19,7 @@ ssh_port             = 22
 
 # ── Institution souveraine ───────────────────────────────────────────────────
 institution_name = "CENADI"
-nexus_domain     = "soc.cenadi.gov.cm"
+nexus_domain     = "nexussoc.cm"
 install_dir      = "/opt/nexus-soc"
 
 # ── Secrets (laisser vides pour génération automatique) ─────────────────────
