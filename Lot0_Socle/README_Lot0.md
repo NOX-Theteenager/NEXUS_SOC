@@ -113,7 +113,7 @@ scoring-service → PostgreSQL/TimescaleDB (alertes, audit, métriques)
 - Les **connecteurs du SOAR** (pare-feu, Active Directory, EDR, SMS) restent **simulés** tant
   qu'ils ne sont pas branchés sur des systèmes réels.
 - Ce socle est un **environnement de développement**. Le déploiement de production (Kubernetes,
-  Helm, Terraform, secrets managés, TLS partout) est le lot suivant de l'architecture cible.
+  Helm, OpenTofu, secrets managés, TLS partout) est le lot suivant de l'architecture cible.
 
 ## 9. Arrêt
 

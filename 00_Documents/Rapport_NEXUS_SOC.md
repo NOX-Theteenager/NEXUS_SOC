@@ -1,9 +1,19 @@
-# NEXUS SOC : Conception d'une Plateforme de Security Operations Center as a Service (SOCaaS) Souveraine pour la Protection des Organisations Camerounaises contre les Cybermenaces Internes
+# NEXUS SOC : Conception et Implémentation d'une Plateforme de Security Operations Center (SOC) Open Source et Souveraine, Exploitée en Interne par le CENADI pour la Protection de ses Systèmes Sensibles contre les Cybermenaces Internes
+
+> **Avertissement — refonte souveraine (voir `MIGRATION.md`).** Ce rapport a été
+> initialement rédigé autour d'un positionnement « SOC-as-a-Service » commercial.
+> Le projet a depuis été recentré sur une plateforme **100 % open source et
+> souveraine, exploitée en interne par le CENADI** (voir `README.md` et
+> `MIGRATION.md`, qui font foi). Les sections encore formulées en termes
+> commerciaux (modèle économique, acquisition, tarification) sont **caduques** et
+> doivent être relues/réécrites par l'auteur avant la soutenance ; elles ne
+> reflètent plus l'architecture livrée (sept composants, cloisonnement par
+> périmètre interne, déploiement OpenTofu).
 
 **Rédigé et présenté par :** NGUETSA Junior Stéphane Céleste  
 **École :** KEYCE Informatique & Intelligence Artificielle — Yaoundé, Cameroun  
 **Filière :** Bachelor Réseaux et Systèmes Informatiques (RSI)  
-**Structure d'accueil :** Ministère des Finances du Cameroun (MINFI)  
+**Structure d'accueil :** CENADI du Cameroun (CENADI)  
 **Année académique :** 2025 – 2026  
 
 ---
@@ -12,7 +22,7 @@
 
 ### Contexte général
 
-Le Cameroun numérise ses administrations à un rythme soutenu. Le MINFI gère la paie de ses fonctionnaires via SIGIPES et les opérations douanières via SYDONIA. Le secteur financier non bancaire compte plus de 400 microfinances agréées par la COBAC, 150 compagnies d'assurance relevant du code CIMA, et 300 cabinets comptables membres de l'ONECCA. Tous traitent quotidiennement des millions de francs CFA sur des systèmes connectés au réseau.
+Le Cameroun numérise ses administrations à un rythme soutenu. Le CENADI gère la paie de ses fonctionnaires via SIGIPES et les opérations douanières via ANTILOPE. Le secteur financier non bancaire compte plus de 400 microfinances agréées par la COBAC, 150 compagnies d'assurance relevant du code CIMA, et 300 cabinets comptables membres de l'ONECCA. Tous traitent quotidiennement des millions de francs CFA sur des systèmes connectés au réseau.
 
 Cette connexion appelle une surveillance. Entre 2022 et 2024, des rançongiciels ont paralysé plusieurs administrations africaines pendant des semaines entières, bloquant les paiements et les services aux citoyens. Le rapport IBM Cost of a Data Breach 2023 mesure un délai moyen de détection de 21 jours dans le monde ; en Afrique subsaharienne, ce délai dépasse régulièrement plusieurs semaines. Au Cameroun, des audits internes ont identifié des fonctionnaires fantômes représentant jusqu'à 10 % des effectifs déclarés dans certaines directions. Des données fiscales ont été exfiltrées sans que les systèmes en place ne le détectent.
 
@@ -20,15 +30,15 @@ La loi n° 2010/012 du 21 décembre 2010, relative à la cybersécurité et à l
 
 ### Problématique
 
-Un Security Operations Center (SOC) permet de surveiller les systèmes d'information en temps réel, de détecter les intrusions et de coordonner les réponses aux incidents. Mais pour une direction du MINFI ou une microfinance de Bafoussam, les solutions du marché sont inaccessibles.
+Un Security Operations Center (SOC) permet de surveiller les systèmes d'information en temps réel, de détecter les intrusions et de coordonner les réponses aux incidents. Mais pour une direction du CENADI ou une microfinance de Bafoussam, les solutions du marché sont inaccessibles.
 
-CrowdStrike Falcon coûte entre 400 et 800 USD par agent et par an, soit de 80 000 à 160 000 USD annuels pour 200 postes. La licence Splunk SIEM dépasse 10 millions de FCFA, avant même de recruter les trois ingénieurs certifiés que l'outil suppose disponibles. CrowdStrike et SentinelOne hébergent les données sur des serveurs américains, en contradiction directe avec les exigences de souveraineté de l'État camerounais et les prérogatives de l'ANTIC. Aucun de ces outils ne dispose d'interface en français ni de modèle calibré sur SIGIPES ou SYDONIA. Wazuh est gratuit, mais il exige deux ou trois analystes dédiés que personne ne forme ni n'a les moyens de recruter.
+CrowdStrike Falcon coûte entre 400 et 800 USD par agent et par an, soit de 80 000 à 160 000 USD annuels pour 200 postes. La licence Splunk SIEM dépasse 10 millions de FCFA, avant même de recruter les trois ingénieurs certifiés que l'outil suppose disponibles. CrowdStrike et SentinelOne hébergent les données sur des serveurs américains, en contradiction directe avec les exigences de souveraineté de l'État camerounais et les prérogatives de l'ANTIC. Aucun de ces outils ne dispose d'interface en français ni de modèle calibré sur SIGIPES ou ANTILOPE. Wazuh est gratuit, mais il exige deux ou trois analystes dédiés que personne ne forme ni n'a les moyens de recruter.
 
 La question centrale de ce projet est la suivante : comment donner à une administration camerounaise ou à une microfinance la capacité de détection d'un SOC de niveau enterprise, avec les ressources réelles de ces organisations, dans un contexte de connectivité réseau variable et de pénurie d'analystes qualifiés ?
 
 ### Objectifs
 
-L'objectif général est de concevoir, implémenter et évaluer une plateforme SOC-as-a-Service mutualisée, souveraine et abordable, capable de détecter les cybermenaces en temps quasi réel et d'y répondre de manière automatisée, dans le contexte camerounais.
+L'objectif général est de concevoir, implémenter et évaluer une plateforme SOC open source et souverain mutualisée, souveraine et abordable, capable de détecter les cybermenaces en temps quasi réel et d'y répondre de manière automatisée, dans le contexte camerounais.
 
 Les objectifs spécifiques sont les suivants :
 
@@ -46,7 +56,7 @@ Les objectifs spécifiques sont les suivants :
 
 7. Implémenter un flux d'acquisition Product-Led Growth pour les microfinances, avec essai gratuit de 30 jours et provisionnement automatique.
 
-8. Développer un module de déploiement souverain Terraform permettant à une administration publique de déployer la pile complète sur son propre serveur, via SSH, en moins de 15 minutes.
+8. Développer un module de déploiement souverain OpenTofu permettant à une administration publique de déployer la pile complète sur son propre serveur, via SSH, en moins de 15 minutes.
 
 ### Intérêt et justification du projet
 
@@ -54,7 +64,7 @@ Sur le plan sécuritaire, le besoin est documenté et urgent. Les audits publics
 
 Sur le plan économique, le modèle mutualisé distribue les coûts d'infrastructure entre plusieurs clients. L'accès à la plateforme commence à 25 000 FCFA par mois, soit 33 à 66 fois moins cher que CrowdStrike Falcon pour 200 postes. Le marché potentiel au Cameroun représente plus de 5 milliards de FCFA par an à une pénétration de 10 % des microfinances seules.
 
-Sur le plan académique, ce projet mobilise des domaines rarement assemblés dans un même système : programmation système (Go), traitement de flux événementiels (Kafka), apprentissage automatique non supervisé (Isolation Forest), automatisation des réponses (SOAR), déploiement d'infrastructure par code (Terraform). Il constitue une contribution appliquée au contexte africain francophone, un segment que la recherche en cybersécurité documente peu.
+Sur le plan académique, ce projet mobilise des domaines rarement assemblés dans un même système : programmation système (Go), traitement de flux événementiels (Kafka), apprentissage automatique non supervisé (Isolation Forest), automatisation des réponses (SOAR), déploiement d'infrastructure par code (OpenTofu). Il constitue une contribution appliquée au contexte africain francophone, un segment que la recherche en cybersécurité documente peu.
 
 ### Méthodologie adoptée
 
@@ -64,7 +74,7 @@ La démarche comprend quatre phases. L'analyse couvre l'étude du contexte camer
 
 ### Annonce du plan
 
-Le premier chapitre présente la structure d'accueil — le MINFI — et le cadre du stage. Le second établit l'état de l'art en cybersécurité et analyse les limites des solutions existantes. Le troisième formalise les besoins et les contraintes du projet. Le quatrième détaille la conception de la solution, composant par composant. Le cinquième décrit la réalisation et l'implémentation par lots. Le sixième présente les résultats des tests et discute leurs limites.
+Le premier chapitre présente la structure d'accueil — le CENADI — et le cadre du stage. Le second établit l'état de l'art en cybersécurité et analyse les limites des solutions existantes. Le troisième formalise les besoins et les contraintes du projet. Le quatrième détaille la conception de la solution, composant par composant. Le cinquième décrit la réalisation et l'implémentation par lots. Le sixième présente les résultats des tests et discute leurs limites.
 
 ---
 
@@ -200,15 +210,15 @@ TimescaleDB est une extension PostgreSQL qui ajoute des hypertables partitionné
 
 #### Wazuh Indexer comme stockage chaud
 
-Wazuh Indexer (basé sur OpenSearch) reçoit tous les événements de sécurité normalisés et sert d'interface d'exploration pour les analystes via Wazuh Dashboard. Il évite d'intégrer un Elasticsearch séparé et fournit les dashboards de corrélation Wazuh prêts à l'emploi. Pour les déploiements souverains, cet ensemble (Indexer + Manager + Dashboard) est déployé en même temps que la pile NEXUS SOC via Terraform.
+Wazuh Indexer (basé sur OpenSearch) reçoit tous les événements de sécurité normalisés et sert d'interface d'exploration pour les analystes via Wazuh Dashboard. Il évite d'intégrer un Elasticsearch séparé et fournit les dashboards de corrélation Wazuh prêts à l'emploi. Pour les déploiements souverains, cet ensemble (Indexer + Manager + Dashboard) est déployé en même temps que la pile NEXUS SOC via OpenTofu.
 
 #### Isolation Forest pour la détection d'anomalies
 
 L'Isolation Forest (Liu et al., 2008) est un algorithme non supervisé qui isole les anomalies en construisant des arbres de décision aléatoires : les points anormaux, rares et différents du reste, sont isolés en moins de coupures. Il ne nécessite pas de données labellisées, ce qui est déterminant dans le contexte camerounais où aucun jeu de données étiqueté sur des incidents réels n'est disponible. Il est entraînable en quelques secondes sur un poste standard et produit un score d'anomalie directement interprétable. La variante autoencodeur (MLPRegressor entraîné à reconstruire les flux normaux) complète l'Isolation Forest sur les attaques de type PortScan (ROC-AUC 0,98 contre 0,84 pour l'IF seul).
 
-#### Terraform pour le déploiement souverain
+#### OpenTofu pour le déploiement souverain
 
-Terraform permet de décrire l'infrastructure cible comme du code versionnable et rejouable. Les providers `null` (SSH provisioners), `tls` (certificats auto-signés), `local` (rendu de templates) et `random` (génération de secrets) sont suffisants pour déployer la pile complète sur n'importe quel serveur Ubuntu 22.04 avec accès SSH et sudo. Le mécanisme de triggers basé sur le hash SHA-256 des fichiers source garantit que Terraform re-déploie uniquement les composants modifiés, rendant les mises à jour idempotentes.
+OpenTofu permet de décrire l'infrastructure cible comme du code versionnable et rejouable. Les providers `null` (SSH provisioners), `tls` (certificats auto-signés), `local` (rendu de templates) et `random` (génération de secrets) sont suffisants pour déployer la pile complète sur n'importe quel serveur Ubuntu 22.04 avec accès SSH et sudo. Le mécanisme de triggers basé sur le hash SHA-256 des fichiers source garantit que OpenTofu re-déploie uniquement les composants modifiés, rendant les mises à jour idempotentes.
 
 ---
 
@@ -232,7 +242,7 @@ Les métriques obtenues sur le jeu de test CICIDS2017 :
 
 L'IF et l'autoencodeur sont complémentaires : l'IF détecte mieux les DDoS (volume brut), l'autoencodeur détecte mieux les PortScans (pattern subtil). En production, les deux scores sont calculés et le maximum est retenu.
 
-Dans le démonstrateur, les données d'entraînement sont synthétiques et imitent les distributions CICIDS2017. La validation sur données réseau réelles (captures NetFlow du MINFI) est prévue pendant le stage.
+Dans le démonstrateur, les données d'entraînement sont synthétiques et imitent les distributions CICIDS2017. La validation sur données réseau réelles (captures NetFlow du CENADI) est prévue pendant le stage.
 
 #### 4.4.2 Modèle 2 — Détection de fraude interne (UEBA)
 
@@ -440,15 +450,15 @@ Les besoins fonctionnels sont organisés par composant, dans l'ordre de la chaî
 | BF-08.4 | L'inscription inclut une vérification d'email (token urlsafe 32 octets) et une pré-autorisation bancaire de 0 FCFA pour valider l'identité. |
 | BF-08.5 | À l'issue de l'inscription, le tenant est créé automatiquement dans la base de données avec les quotas d'essai (5 agents, 10 000 événements/jour, 30 jours). |
 
-#### BF-09 — Déploiement souverain (Terraform)
+#### BF-09 — Déploiement souverain (OpenTofu)
 
 | Réf. | Exigence |
 |------|----------|
-| BF-09.1 | Le module Terraform déploie la pile NEXUS SOC complète sur un serveur distant via SSH, sans intervention manuelle au-delà de la configuration initiale du fichier `terraform.tfvars`. |
+| BF-09.1 | Le module OpenTofu déploie la pile NEXUS SOC complète sur un serveur distant via SSH, sans intervention manuelle au-delà de la configuration initiale du fichier `terraform.tfvars`. |
 | BF-09.2 | Le déploiement couvre : installation Docker, upload des configs, déploiement des sources Python, génération des certificats Wazuh, lancement de la pile Docker Compose, et vérification de santé des services. |
-| BF-09.3 | Les secrets (mot de passe PostgreSQL, JWT secret, mot de passe Wazuh admin) sont générés automatiquement si non fournis, et disponibles via `terraform output`. |
+| BF-09.3 | Les secrets (mot de passe PostgreSQL, JWT secret, mot de passe Wazuh admin) sont générés automatiquement si non fournis, et disponibles via `tofu output`. |
 | BF-09.4 | Un cron de sauvegarde quotidien (02h00) est installé automatiquement sur le serveur cible après déploiement. |
-| BF-09.5 | Tout changement de code source (détecté par hash SHA-256) déclenche automatiquement le re-déploiement du seul composant modifié lors du prochain `terraform apply`. |
+| BF-09.5 | Tout changement de code source (détecté par hash SHA-256) déclenche automatiquement le re-déploiement du seul composant modifié lors du prochain `tofu apply`. |
 
 ---
 
@@ -502,7 +512,7 @@ Les interfaces doivent être disponibles en français et en anglais, avec bascul
 
 Le provisionnement d'un nouvel agent (depuis la génération du token jusqu'à l'exécution du one-liner sur le poste cible) doit prendre moins de 5 minutes pour un administrateur sans formation préalable sur NEXUS SOC.
 
-Le déploiement souverain complet via Terraform (depuis `terraform apply` jusqu'au healthcheck final) doit s'effectuer en moins de 15 minutes sur un serveur Ubuntu 22.04 avec une connexion à 10 Mbps.
+Le déploiement souverain complet via OpenTofu (depuis `tofu apply` jusqu'au healthcheck final) doit s'effectuer en moins de 15 minutes sur un serveur Ubuntu 22.04 avec une connexion à 10 Mbps.
 
 ---
 
@@ -550,7 +560,7 @@ Les organisations cibles n'ont pas de budget cybersécurité dédié. Les licenc
 
 NEXUS SOC couvre deux types d'organisations :
 
-**Administrations publiques camerounaises** (MINFI, DGI, DGCOOP, DGD et autres ministères) : 50 à 500 postes surveillés, hébergement souverain sur leur propre infrastructure, contrat annuel avec SLA 1 heure, intégration aux systèmes SIGIPES et SYDONIA.
+**Administrations publiques camerounaises** (CENADI, DGI, DGCOOP, DGD et autres ministères) : 50 à 500 postes surveillés, hébergement souverain sur leur propre infrastructure, contrat annuel avec SLA 1 heure, intégration aux systèmes SIGIPES et ANTILOPE.
 
 **Secteur financier non bancaire** : microfinances agréées COBAC (5 à 100 postes), compagnies d'assurance CIMA, cabinets comptables ONECCA. Accès via abonnement mensuel en FCFA, inscription self-service.
 
@@ -580,7 +590,7 @@ Le projet est découpé en neuf lots ordonnés. Chaque lot est fonctionnellement
 | L5 — Restitution | LLM Analyst bilingue, notifications SMS/WhatsApp, portail DSI HTML autonome | L4 |
 | L6 — Tests | Simulation d'attaques (7/7 MITRE), test de charge (~200 000 ev/s), isolation RLS (8/8 assertions) | L0 à L5 |
 | L7 — Console + Provisionnement | Console fournisseur (Module A admin, Module B analyste SOC), API provisionnement, Ansible | L0 à L5 |
-| L8 — PLG + Terraform | Landing page PLG, API PLG (inscription, quotas, plans), agent PLG (garble + watermark), Terraform souverain | L0 à L7 |
+| L8 — PLG + OpenTofu | Landing page PLG, API PLG (inscription, quotas, plans), agent PLG (garble + watermark), OpenTofu souverain | L0 à L7 |
 
 L'ordre de réalisation garantit que chaque lot s'appuie sur un socle validé. Le Lot 6 (Tests) est transversal : il vérifie les lots L0 à L5 en conditions réalistes avant que L7 et L8 y ajoutent des couches applicatives.
 
@@ -612,7 +622,7 @@ Acteur principal : admin_plateforme. L'administrateur saisit le hostname et l'OS
 Acteur principal : dsi_client (futur). Le DSI accède à la landing page, clique sur "Essai gratuit 30 jours", saisit son email professionnel, le nom de son organisation et son secteur, vérifie son email via le lien reçu, et complète la pré-autorisation bancaire de 0 FCFA. Son tenant est créé et les informations de connexion lui sont affichées.
 
 **UC-04 — Déployer NEXUS SOC sur une infrastructure souveraine.**
-Acteur principal : admin_plateforme (architecte NEXUS SOC). L'architecte configure `terraform.tfvars` avec les informations du serveur cible (IP, utilisateur SSH, clé privée, nom de l'institution, domaine). Il exécute `terraform apply`. Terraform déploie la pile en 7 étapes SSH, génère les secrets, installe le cron de sauvegarde et vérifie la santé de tous les services.
+Acteur principal : admin_plateforme (architecte NEXUS SOC). L'architecte configure `terraform.tfvars` avec les informations du serveur cible (IP, utilisateur SSH, clé privée, nom de l'institution, domaine). Il exécute `tofu apply`. OpenTofu déploie la pile en 7 étapes SSH, génère les secrets, installe le cron de sauvegarde et vérifie la santé de tous les services.
 
 **UC-05 — Consulter les métriques de sécurité (DSI).**
 Acteur principal : dsi_client. Le DSI ouvre le portail HTML dans son navigateur, saisit son token JWT, et consulte : la liste des alertes des 7 derniers jours avec leur statut, le MTTD et MTTR calculés sur la période, et l'état des actions SOAR en cours ou terminées pour son organisation.
@@ -645,7 +655,7 @@ Acteur principal : admin_plateforme. L'administrateur appelle `GET /monitor/drif
 
 Un Security Operations Center est une équipe — et l'infrastructure qui la supporte — chargée de surveiller en continu les systèmes d'information d'une organisation, de détecter les incidents de sécurité et de coordonner la réponse. Un SOC traite des événements en continu : logs systèmes, alertes réseau, comportements utilisateurs. Ses trois fonctions essentielles sont la détection (identifier qu'un incident se produit), l'analyse (comprendre sa nature et sa gravité) et la réponse (contenir, éradiquer, récupérer).
 
-Un SOC interne suppose au minimum deux analystes de niveau 1 (triage), un analyste de niveau 2 (investigation), un responsable et une plateforme SIEM. Dans la pratique, les organisations qui en ont les moyens y consacrent une équipe de 5 à 15 personnes, un budget logiciel annuel entre 50 000 et 500 000 USD, et des astreintes 24h/24. Le modèle SOC-as-a-Service (SOCaaS) mutualise cette infrastructure entre plusieurs clients, chacun bénéficiant de la capacité d'un SOC sans en supporter seul le coût.
+Un SOC interne suppose au minimum deux analystes de niveau 1 (triage), un analyste de niveau 2 (investigation), un responsable et une plateforme SIEM. Dans la pratique, les organisations qui en ont les moyens y consacrent une équipe de 5 à 15 personnes, un budget logiciel annuel entre 50 000 et 500 000 USD, et des astreintes 24h/24. Le modèle SOC open source et souverain (SOC souverain) mutualise cette infrastructure entre plusieurs clients, chacun bénéficiant de la capacité d'un SOC sans en supporter seul le coût.
 
 #### SIEM — Security Information and Event Management
 
@@ -705,7 +715,7 @@ Les fraudes internes sur la paie publique constituent une menace spécifique au 
 
 Le phishing ciblant les microfinances est documenté depuis 2019. Les attaques visent les agents ayant accès aux systèmes de transfert, en usurpant l'identité de la direction ou d'organismes de régulation (COBAC, BEAC).
 
-L'exfiltration de données fiscales, moins médiatisée, concerne les systèmes SYDONIA et ceux de la Direction Générale des Impôts. Des accès non autorisés à des données de contribuables ont été signalés dans des rapports internes, sans faire l'objet de poursuites publiques documentées.
+L'exfiltration de données fiscales, moins médiatisée, concerne les systèmes ANTILOPE et ceux de la Direction Générale des Impôts. Des accès non autorisés à des données de contribuables ont été signalés dans des rapports internes, sans faire l'objet de poursuites publiques documentées.
 
 #### Cadre légal
 
@@ -733,7 +743,7 @@ Wazuh détecte les intrusions par règles (plus de 3 000 règles préconfigurée
 
 Ses forces sont réelles : gratuit, open-source, installable sur site (pas de cloud tiers), communauté active, couverture large des systèmes courants.
 
-Ses limites dans le contexte camerounais sont tout aussi réelles. Wazuh ne dispose pas de modèles d'IA pour la détection d'anomalies comportementales. Son installation et sa maintenance requièrent deux à trois ingénieurs avec une connaissance approfondie d'OpenSearch, Linux et des règles Sigma/Wazuh. Il n'a pas d'interface en français, pas de connecteur SOAR intégré, pas de module UEBA, et pas de mécanisme de mutualisation multi-tenant natif pour une offre SOCaaS. Wazuh seul ne répond pas à la problématique d'une microfinance qui n'a pas d'équipe sécurité.
+Ses limites dans le contexte camerounais sont tout aussi réelles. Wazuh ne dispose pas de modèles d'IA pour la détection d'anomalies comportementales. Son installation et sa maintenance requièrent deux à trois ingénieurs avec une connaissance approfondie d'OpenSearch, Linux et des règles Sigma/Wazuh. Il n'a pas d'interface en français, pas de connecteur SOAR intégré, pas de module UEBA, et pas de mécanisme de mutualisation multi-tenant natif pour une offre SOC souverain. Wazuh seul ne répond pas à la problématique d'une microfinance qui n'a pas d'équipe sécurité.
 
 #### CrowdStrike Falcon
 
@@ -768,8 +778,8 @@ Pour les organisations camerounaises sous Microsoft 365, Defender est un point d
 | SOAR intégré | Non | Oui (Falcon Fusion) | Oui (Splunk SOAR) | Partiel | Oui (playbooks + garde-fous) |
 | Multi-tenant natif | Non | Non | Non | Non | Oui (RLS PostgreSQL) |
 | PLG / self-service | Non | Non | Non | Non | Oui |
-| Déploiement souverain Terraform | Non | Non | Non | Non | Oui |
-| Adaptation SIGIPES/SYDONIA | Non | Non | Non | Non | Oui (Modèle 2) |
+| Déploiement souverain OpenTofu | Non | Non | Non | Non | Oui |
+| Adaptation SIGIPES/ANTILOPE | Non | Non | Non | Non | Oui (Modèle 2) |
 | Compétences requises | Élevées | Élevées | Très élevées | Élevées | Faibles (clé en main) |
 
 ---
@@ -782,9 +792,9 @@ Les solutions analysées présentent toutes au moins l'un de ces trois obstacles
 
 **Sur la souveraineté.** Toutes les solutions commerciales envoient la télémétrie vers des serveurs américains ou européens. Pour les administrations publiques camerounaises, cette situation pose deux problèmes : les exigences de souveraineté numérique de l'État et la conformité ANTIC, qui soumet les systèmes d'information sensibles à homologation locale. Il n'existe pas de version on-premise de CrowdStrike ou SentinelOne pour les clients non éligibles aux offres GovCloud américaines.
 
-**Sur l'adaptation locale.** SIGIPES et SYDONIA ont des patterns d'utilisation spécifiques que les modèles génériques ne captent pas. Un modèle UEBA entraîné sur des données de Silicon Valley ne sait pas que les agents de la Direction Générale du Budget au Cameroun effectuent légitimement un grand nombre de modifications de mandatements en fin de trimestre budgétaire. Il générera des faux positifs massifs. Un modèle calibré sur ces données, avec connaissance des rythmes administratifs locaux, peut établir une ligne de base pertinente.
+**Sur l'adaptation locale.** SIGIPES et ANTILOPE ont des patterns d'utilisation spécifiques que les modèles génériques ne captent pas. Un modèle UEBA entraîné sur des données de Silicon Valley ne sait pas que les agents de la Direction Générale du Budget au Cameroun effectuent légitimement un grand nombre de modifications de mandatements en fin de trimestre budgétaire. Il générera des faux positifs massifs. Un modèle calibré sur ces données, avec connaissance des rythmes administratifs locaux, peut établir une ligne de base pertinente.
 
-**Sur la mutualisation.** Aucune des solutions existantes n'est conçue pour un modèle SOCaaS à l'africaine : une seule équipe technique opérant pour plusieurs dizaines de clients, facturation en FCFA, inscription self-service sans commercial. Wazuh peut être déployé pour plusieurs clients, mais l'isolation des données entre clients repose sur une configuration manuelle et des instances séparées, pas sur un mécanisme natif comme la RLS.
+**Sur la mutualisation.** Aucune des solutions existantes n'est conçue pour un modèle SOC souverain à l'africaine : une seule équipe technique opérant pour plusieurs dizaines de clients, facturation en FCFA, inscription self-service sans commercial. Wazuh peut être déployé pour plusieurs clients, mais l'isolation des données entre clients repose sur une configuration manuelle et des instances séparées, pas sur un mécanisme natif comme la RLS.
 
 **Sur la langue.** Les interfaces en anglais uniquement constituent un obstacle réel pour les équipes DSI des administrations francophones. Les rapports d'incident en anglais qu'un directeur financier doit transmettre au ministre ne sont pas acceptables. Un SOC opérant en français, produisant des alertes et des rapports en français, réduit la friction entre l'équipe technique et la direction.
 
@@ -798,7 +808,7 @@ L'étude de l'existant confirme et précise la problématique posée en introduc
 
 Il n'existe pas de solution SOC adaptée aux organisations camerounaises de taille moyenne. La cause n'est pas technique — la technologie open-source (Wazuh, Kafka, PostgreSQL, scikit-learn) est suffisante pour construire une plateforme de niveau enterprise. La cause est d'assemblage et d'adaptation : personne n'a encore assemblé ces briques en un système clé-en-main, calibré pour le contexte camerounais, opérable sans équipe de 10 ingénieurs certifiés.
 
-NEXUS SOC répond à ce manque par trois choix structurants. D'abord, le modèle mutualisé (SOCaaS) : une seule instance héberge plusieurs clients avec isolation stricte, réduisant les coûts d'infrastructure. Ensuite, l'automatisation par IA et SOAR : le système détecte et répond sans analyste permanent, compensant la pénurie de compétences. Enfin, la souveraineté et l'adaptation locale : hébergement sur infrastructure camerounaise, modèles entraînés sur des patterns SIGIPES/SYDONIA, interface en français.
+NEXUS SOC répond à ce manque par trois choix structurants. D'abord, le modèle mutualisé (SOC souverain) : une seule instance héberge plusieurs clients avec isolation stricte, réduisant les coûts d'infrastructure. Ensuite, l'automatisation par IA et SOAR : le système détecte et répond sans analyste permanent, compensant la pénurie de compétences. Enfin, la souveraineté et l'adaptation locale : hébergement sur infrastructure camerounaise, modèles entraînés sur des patterns SIGIPES/ANTILOPE, interface en français.
 
 Ces trois choix génèrent les besoins fonctionnels et non-fonctionnels détaillés au Chapitre 3.
 
@@ -812,31 +822,31 @@ Ces trois choix génèrent les besoins fonctionnels et non-fonctionnels détaill
 
 ### 1.1 Présentation de la structure d'accueil
 
-#### Identité et missions du MINFI
+#### Identité et missions du CENADI
 
-Le Ministère des Finances du Cameroun (MINFI) est l'administration centrale responsable de la conception, de la mise en œuvre et du suivi de la politique financière et budgétaire de l'État. Il est placé sous l'autorité directe de la Présidence de la République pour les questions budgétaires, et coordonne ses actions avec le Ministère de l'Économie pour les aspects liés à la planification.
+Le CENADI du Cameroun (CENADI) est l'administration centrale responsable de la conception, de la mise en œuvre et du suivi de la politique financière et budgétaire de l'État. Il est placé sous l'autorité directe de la Présidence de la République pour les questions budgétaires, et coordonne ses actions avec le Ministère de l'Économie pour les aspects liés à la planification.
 
-Les missions du MINFI couvrent cinq domaines principaux. La **gestion du budget de l'État** : préparation de la loi de finances annuelle, suivi de l'exécution budgétaire, contrôle des dépenses des ministères sectoriels. La **collecte des recettes fiscales** : via la Direction Générale des Impôts (DGI), qui administre les impôts directs et indirects, la TVA, et les taxes sur les revenus. La **gestion douanière** : via la Direction Générale des Douanes (DGD), qui contrôle les flux de marchandises aux frontières et collecte les droits de douane. La **trésorerie de l'État** : via la Direction Générale du Trésor et de la Coopération Financière et Monétaire (DGTCFM), qui gère les flux de trésorerie et la dette publique. La **gestion des ressources humaines de l'État** : via le système SIGIPES, qui centralise la paie de l'ensemble des fonctionnaires camerounais.
+Les missions du CENADI couvrent cinq domaines principaux. La **gestion du budget de l'État** : préparation de la loi de finances annuelle, suivi de l'exécution budgétaire, contrôle des dépenses des ministères sectoriels. La **collecte des recettes fiscales** : via la Direction Générale des Impôts (DGI), qui administre les impôts directs et indirects, la TVA, et les taxes sur les revenus. La **gestion douanière** : via la Direction Générale des Douanes (DGD), qui contrôle les flux de marchandises aux frontières et collecte les droits de douane. La **trésorerie de l'État** : via la Direction Générale du Trésor et de la Coopération Financière et Monétaire (DGTCFM), qui gère les flux de trésorerie et la dette publique. La **gestion des ressources humaines de l'État** : via le système SIGIPES, qui centralise la paie de l'ensemble des fonctionnaires camerounais.
 
-Le MINFI emploie plusieurs milliers d'agents répartis sur l'ensemble du territoire national. Son siège est situé à Yaoundé, place du gouvernement.
+Le CENADI emploie plusieurs milliers d'agents répartis sur l'ensemble du territoire national. Son siège est situé à Yaoundé, place du gouvernement.
 
 #### Systèmes d'information critiques
 
-Deux systèmes d'information font du MINFI une cible prioritaire en matière de cybersécurité.
+Deux systèmes d'information font du CENADI une cible prioritaire en matière de cybersécurité.
 
 **SIGIPES** (Système Intégré de Gestion des Personnels de l'État et de la Solde) gère la paie de l'ensemble des fonctionnaires camerounais. Il centralise les fichiers de personnel de tous les ministères, calcule les salaires, génère les ordres de paiement et produit les bulletins de paie. Une compromission de SIGIPES — modification de montants, création de comptes fantômes, exfiltration du fichier des agents — aurait des conséquences directes sur les finances publiques et sur la vie privée des fonctionnaires.
 
-**SYDONIA** (SYstème DOuaNier Automatisé) est le système de dédouanement automatisé utilisé par la Direction Générale des Douanes. Il traite les déclarations en douane, calcule les droits et taxes, et pilote les procédures de dédouanement aux postes frontières. SYDONIA contient des données commerciales confidentielles sur les importateurs et exportateurs. Des accès non autorisés peuvent faciliter la fraude douanière ou exposer des informations fiscales sensibles.
+**ANTILOPE** (SYstème DOuaNier Automatisé) est le système de dédouanement automatisé utilisé par la Direction Générale des Douanes. Il traite les déclarations en douane, calcule les droits et taxes, et pilote les procédures de dédouanement aux postes frontières. ANTILOPE contient des données commerciales confidentielles sur les importateurs et exportateurs. Des accès non autorisés peuvent faciliter la fraude douanière ou exposer des informations fiscales sensibles.
 
 À ces deux systèmes s'ajoutent l'application de gestion budgétaire DEPMI, les plateformes de paiement électronique intégrées à la trésorerie, et les outils de reporting financier à destination des institutions de Bretton Woods.
 
 #### Enjeux de sécurité
 
-La concentration de données financières et personnelles dans les systèmes du MINFI en fait une cible de premier plan. Trois catégories de menaces sont particulièrement pertinentes.
+La concentration de données financières et personnelles dans les systèmes du CENADI en fait une cible de premier plan. Trois catégories de menaces sont particulièrement pertinentes.
 
 Les menaces internes constituent le risque le plus documenté : agents accédant à des données hors de leur périmètre de compétence, modifications frauduleuses de montants dans SIGIPES, création de fonctionnaires fantômes. Ces comportements sont difficiles à détecter sans système de surveillance comportementale car ils exploitent des accès légitimes.
 
-Les attaques ciblées depuis l'extérieur visent à compromettre des comptes à privilèges pour accéder aux bases de données de SIGIPES ou SYDONIA. Des campagnes de phishing ciblant des agents du MINFI ont été signalées, usurpant l'identité du secrétariat général ou de la DGI.
+Les attaques ciblées depuis l'extérieur visent à compromettre des comptes à privilèges pour accéder aux bases de données de SIGIPES ou ANTILOPE. Des campagnes de phishing ciblant des agents du CENADI ont été signalées, usurpant l'identité du secrétariat général ou de la DGI.
 
 La fraude aux virements est une menace hybride : un attaquant compromet un compte d'opérateur de la trésorerie pour modifier des instructions de paiement et rediriger des fonds publics.
 
@@ -846,12 +856,12 @@ La fraude aux virements est une menace hybride : un attaquant compromet un compt
 
 #### Direction d'accueil
 
-Le stage s'est déroulé au sein de la **Direction des Systèmes d'Information** (DSI) du MINFI, rattachée au Secrétariat Général. La DSI est responsable de la conception, du déploiement et de la maintenance de l'ensemble des systèmes d'information du ministère, incluant SIGIPES, SYDONIA, les infrastructures réseau et les plateformes de messagerie.
+Le stage s'est déroulé au sein de la **Direction des Systèmes d'Information** (DSI) du CENADI, rattachée au Secrétariat Général. La DSI est responsable de la conception, du déploiement et de la maintenance de l'ensemble des systèmes d'information du ministère, incluant SIGIPES, ANTILOPE, les infrastructures réseau et les plateformes de messagerie.
 
 #### Organisation simplifiée de la DSI
 
 ```
-Secrétariat Général du MINFI
+Secrétariat Général du CENADI
 └── Direction des Systèmes d'Information (DSI)
     ├── Sous-Direction de l'Ingénierie et des Applications
     │   ├── Service Développement et Maintenance Applicative
@@ -864,7 +874,7 @@ Secrétariat Général du MINFI
         └── Service Formation et Documentation
 ```
 
-*Figure 1.1 — Organigramme simplifié de la DSI du MINFI (schéma à insérer dans la version finale)*
+*Figure 1.1 — Organigramme simplifié de la DSI du CENADI (schéma à insérer dans la version finale)*
 
 Le stage s'est déroulé principalement au sein du **Service Sécurité des Systèmes d'Information** (SSSI), en collaboration avec le Service Infrastructure Réseau pour les captures de trafic réseau et le Service Bases de Données pour l'accès aux journaux d'audit SIGIPES.
 
@@ -878,13 +888,13 @@ Le SSSI est composé de cinq agents : un chef de service, deux ingénieurs sécu
 
 Le stage s'est déroulé du 4 mai au 31 juillet 2026, soit trois mois. Il a été organisé en quatre phases successives.
 
-**Phase 1 — Intégration et découverte (semaines 1 et 2, 4–15 mai 2026).** Prise de contact avec l'équipe, signature des documents de confidentialité, accès au réseau de développement du SSSI, découverte des systèmes SIGIPES et SYDONIA (démonstrations fonctionnelles, documentation technique), et analyse des journaux d'événements existants pour comprendre les volumes et formats de données.
+**Phase 1 — Intégration et découverte (semaines 1 et 2, 4–15 mai 2026).** Prise de contact avec l'équipe, signature des documents de confidentialité, accès au réseau de développement du SSSI, découverte des systèmes SIGIPES et ANTILOPE (démonstrations fonctionnelles, documentation technique), et analyse des journaux d'événements existants pour comprendre les volumes et formats de données.
 
 **Phase 2 — Analyse et adaptation des modèles IA (semaines 3 à 6, 18 mai–12 juin 2026).** Extraction des journaux d'audit SIGIPES sur la période janvier–avril 2026 (anonymisés), analyse statistique des distributions comportementales des agents, adaptation du Modèle 2 (UEBA) aux features spécifiques à SIGIPES, entraînement sur les données réelles et calibration du seuil de détection.
 
 **Phase 3 — Tests d'intégration et simulation d'attaques (semaines 7 à 10, 15 juin–10 juillet 2026).** Déploiement de NEXUS SOC sur un environnement de test isolé du réseau de développement DSI, enrôlement de cinq postes Windows du SSSI sur la plateforme, exécution de simulations d'attaques Atomic Red Team sur le réseau de test (avec autorisation écrite de la direction), validation des connecteurs SOAR (notification SMS, journalisation), et initiation des démarches de déclaration auprès de l'ANTIC.
 
-**Phase 4 — Documentation et soutenance interne (semaines 11 à 13, 13–31 juillet 2026).** Rédaction des livrables du stage (rapport technique MINFI, guide d'exploitation), présentation des résultats devant l'équipe de la DSI, et transmission des recommandations pour une mise en production progressive.
+**Phase 4 — Documentation et soutenance interne (semaines 11 à 13, 13–31 juillet 2026).** Rédaction des livrables du stage (rapport technique CENADI, guide d'exploitation), présentation des résultats devant l'équipe de la DSI, et transmission des recommandations pour une mise en production progressive.
 
 #### Diagramme de Gantt
 
@@ -906,7 +916,7 @@ Le stage s'est déroulé du 4 mai au 31 juillet 2026, soit trois mois. Il a ét�
 
 #### Mission confiée
 
-La DSI du MINFI a confié au stagiaire la mission suivante : évaluer la faisabilité du déploiement d'une plateforme de détection d'intrusion et de surveillance comportementale sur l'infrastructure du ministère, en prenant comme base le prototype NEXUS SOC développé dans le cadre du projet de fin d'études.
+La DSI du CENADI a confié au stagiaire la mission suivante : évaluer la faisabilité du déploiement d'une plateforme de détection d'intrusion et de surveillance comportementale sur l'infrastructure du ministère, en prenant comme base le prototype NEXUS SOC développé dans le cadre du projet de fin d'études.
 
 Cette mission s'inscrit dans la volonté de la DSI de se doter d'un outil de détection des anomalies comportementales dans SIGIPES, en réponse aux recommandations formulées par la Chambre des Comptes dans son rapport 2024 sur les risques de fraude à la paie publique.
 
@@ -914,19 +924,19 @@ Cette mission s'inscrit dans la volonté de la DSI de se doter d'un outil de dé
 
 | # | Livrable | Échéance |
 |---|----------|----------|
-| L1 | Rapport d'analyse des journaux SIGIPES (anonymisés) : distribution statistique des 10 features UEBA, identification des patterns légitimes propres au MINFI | 13 juin 2026 |
+| L1 | Rapport d'analyse des journaux SIGIPES (anonymisés) : distribution statistique des 10 features UEBA, identification des patterns légitimes propres au CENADI | 13 juin 2026 |
 | L2 | Modèle 2 recalibré sur données SIGIPES réelles, avec rapport de métriques (ROC-AUC, taux de faux positifs, courbe PR) | 30 juin 2026 |
 | L3 | Rapport de simulation d'attaques sur réseau de test DSI : 5 scénarios minimum, résultats de détection NEXUS SOC, MTTD mesuré | 15 juillet 2026 |
 | L4 | Guide d'exploitation NEXUS SOC pour la DSI : procédure de déploiement, provisionnement des agents, interprétation des alertes, escalade | 25 juillet 2026 |
 | L5 | Note de recommandation pour l'ANTIC : périmètre de déclaration, classification des données traitées, mesures de protection en place | 30 juillet 2026 |
 
-#### Contraintes spécifiques au MINFI
+#### Contraintes spécifiques au CENADI
 
 Le stage s'est déroulé sous contraintes strictes d'accès aux données. Tous les journaux SIGIPES utilisés pour l'entraînement du modèle ont été anonymisés par le service informatique avant leur remise (noms remplacés par des identifiants numériques, montants arrondis à la dizaine la plus proche). Aucune donnée nominative d'agent fonctionnaire ne figure dans les jeux de données d'entraînement.
 
-Les simulations d'attaques Atomic Red Team ont été réalisées sur un réseau de test physiquement isolé du réseau de production MINFI, avec autorisation écrite du Directeur des Systèmes d'Information datée du 14 juin 2026.
+Les simulations d'attaques Atomic Red Team ont été réalisées sur un réseau de test physiquement isolé du réseau de production CENADI, avec autorisation écrite du Directeur des Systèmes d'Information datée du 14 juin 2026.
 
-Le déploiement sur le réseau de production du MINFI n'a pas été réalisé dans le cadre du stage. Il est conditionné à l'obtention de l'homologation ANTIC, dont la démarche a été initiée mais non finalisée à la date de clôture du stage.
+Le déploiement sur le réseau de production du CENADI n'a pas été réalisé dans le cadre du stage. Il est conditionné à l'obtention de l'homologation ANTIC, dont la démarche a été initiée mais non finalisée à la date de clôture du stage.
 
 ---
 

@@ -223,5 +223,5 @@ echo | openssl s_client -connect nexussoc.cm:443 -servername nexussoc.cm 2>/dev/
   | openssl x509 -noout -issuer -subject -dates
 
 # Le frontend NEXUS SOC est-il bien servi ?
-curl -sI https://nexussoc.cm/app/landing.html | head -5
+curl -sI https://nexussoc.cm/app/login.html | head -5
 ```

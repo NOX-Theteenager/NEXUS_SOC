@@ -1,7 +1,7 @@
 # NEXUS SOC — Inventaire général du projet
 
 **Auteur** : NGUETSA Junior Stéphane Céleste — Bachelor 3 RSI · KEYCE Informatique & IA · Yaoundé
-**Stage** : Mai–Juillet 2026 — MINFI (Ministère des Finances)
+**Stage** : Mai–Juillet 2026 — CENADI (Centre National de Développement de l'Informatique)
 
 ---
 
@@ -13,7 +13,7 @@
 | Documents académiques | Cahier des charges, architecture technique, Gantt et template de rapport **livrés** |
 | Rédaction du rapport | **À faire** — le template `.docx` attend la prose des chapitres |
 | Support de soutenance (slides) | **À faire** |
-| Validation terrain (stage MINFI) | **À venir** — adaptation aux vraies données SIGIPES/SYDONIA |
+| Validation terrain (stage CENADI) | **À venir** — adaptation aux vraies données SIGIPES/ANTILOPE |
 
 **Nature du projet** : projet *complet en périmètre* (et non un MVP — démarche assumée dès le
 cahier des charges), au niveau *« socle de plateforme + démonstrateur runnable »*. Le passage
@@ -43,9 +43,9 @@ NEXUS_SOC/
 ## Détail par lot
 
 ### 00_Documents
-- `Cahier_des_charges_NEXUS_SOC.pdf` — 9 pages : contexte, ciblage (administrations + secteur
-  financier non bancaire), périmètre complet en 7 lots, modèle économique double, contraintes
-  légales (loi 2010/012, ANTIC, COBAC, CIMA, ONECCA, ISO 27001).
+- `Cahier_des_charges_NEXUS_SOC.pdf` — 9 pages : contexte, exploitation souveraine interne
+  par le CENADI, périmètre complet en 7 lots, contraintes légales (loi 2010/012, ANTIC,
+  ISO 27001).
 - `Architecture_technique_NEXUS_SOC.pdf` — 7 pages, 4 diagrammes (global, pipeline, attack
   chain MITRE, multi-tenant).
 - `Template_Rapport_Soutenance_NEXUS_SOC.docx` — 18 pages, page de garde bilingue camerounaise,
@@ -123,11 +123,11 @@ que ses données (RLS). **Module A (Administration) réalisé** ; module B (Anal
 
 - **`console_fournisseur.html`** — interface standalone mode sombre, bilingue FR/EN, même
   esthétique que le portail Lot 5 (Fraunces + Manrope + JetBrains Mono, palette amber/teal).
-  6 sections : tableau de bord global, tenants (CRUD + suspension), utilisateurs (RBAC),
-  agents (provisioning + génération de jetons d'enrôlement), santé système (6 services),
-  facturation (ARR / MRR / détail abonnements). Navigation sidebar. Toutes actions interactives
-  (création tenant, génération token, isolation agent) avec toasts de confirmation.
-- **`admin_api.py`** — endpoints FastAPI `/admin/*` (tenants, users, agents, health, billing)
+  sections : tableau de bord global, périmètres supervisés (CRUD + suspension), utilisateurs
+  (RBAC), agents (provisioning + génération de jetons d'enrôlement), santé système (6 services).
+  Navigation sidebar. Toutes actions interactives (création de périmètre, génération token,
+  isolation agent) avec toasts de confirmation.
+- **`admin_api.py`** — endpoints FastAPI `/admin/*` (périmètres, users, agents, health, inventaire)
   et `/analyst/*` (alerts cross-tenant, approbation SOAR, dashboard SOC) à inclure dans le
   scoring-service existant.
 - **`01_schema_analyst.sql`** — colonne `statut` sur `tenants`, colonnes `token_hash` /
@@ -150,9 +150,9 @@ que ses données (RLS). **Module A (Administration) réalisé** ; module B (Anal
 2. **Rédiger le rapport** (chapitres 1 à 6 + intro + conclusion) — toutes les figures et
    métriques sont là, prêtes à être insérées.
 3. **Préparer la soutenance** (support visuel à partir des figures déjà produites).
-4. Pendant le stage MINFI :
+4. Pendant le stage CENADI :
    - Adapter les modèles 1 et 2 aux **vraies données** (CICIDS / CTU-13 pour le réseau,
-     audits SIGIPES/SYDONIA pour la fraude) ; re-mesurer.
+     audits SIGIPES/ANTILOPE pour la fraude) ; re-mesurer.
    - Brancher les **connecteurs réels** du SOAR (AD/LDAP, pare-feu, EDR, passerelle SMS).
    - Valider la **conformité** ANTIC et la procédure d'enrôlement des agents.
 
