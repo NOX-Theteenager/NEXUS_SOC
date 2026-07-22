@@ -200,11 +200,11 @@
       return this.get(`/admin/agents${qs ? '?' + qs : ''}`);
     }
 
-    // ── Admin — Health & Billing ──────────────────────────────────────────────
+    // ── Admin — Health & Périmètres ───────────────────────────────────────────
 
     getHealth()            { return this.get('/health/detailed'); }
     getHealthSimple()      { return this.get('/health'); }
-    getBilling()           { return this.get('/admin/billing'); }
+    getPerimetres()        { return this.get('/admin/perimetres'); }
     getModelDrift(days=7)  { return this.get(`/monitor/drift?days=${days}`); }
 
     // ── Provisioning ──────────────────────────────────────────────────────────
@@ -275,15 +275,6 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    // ── PLG ───────────────────────────────────────────────────────────────────
-
-    getTrialStatus(tenantId) { return this.get(`/plg/trial-status/${tenantId}`); }
-    getPlgPlans()            { return this.get('/plg/plans'); }
-    upgradePlan(data)        { return this.post('/plg/upgrade', data); }
-    suspendPlg(id)           { return this.post(`/plg/suspend/${id}`); }
-    resumePlg(id)            { return this.post(`/plg/resume/${id}`); }
-    runExpiryCheck()         { return this.post('/plg/run-expiry-check'); }
-
     // ─────────────────────────────────────────────────────────────────────────
     // UTILITAIRES UI
     // ─────────────────────────────────────────────────────────────────────────
@@ -309,12 +300,6 @@
       });
     }
 
-    /** Formatage montant FCFA */
-    formatFCFA(amount) {
-      if (!amount && amount !== 0) return '—';
-      return new Intl.NumberFormat('fr-CM').format(amount) + ' FCFA';
-    }
-
     /** Couleur de risque (0–100) */
     riskColor(score) {
       if (score >= 80) return 'var(--red)';
@@ -323,19 +308,15 @@
       return 'var(--teal)';
     }
 
-    /** Badge plan */
-    planBadge(plan) {
+    /** Badge de criticité d'un périmètre supervisé */
+    criticiteBadge(criticite) {
       const map = {
-        trial:      { label: 'Essai',      color: 'var(--accent)' },
-        starter:    { label: 'Starter',    color: 'var(--teal)' },
-        business:   { label: 'Business',   color: 'var(--amber)' },
-        enterprise: { label: 'Enterprise', color: '#b97aff' },
-        contrat_public: { label: 'Public', color: 'var(--accent)' },
-        suspended:  { label: 'Suspendu',   color: 'var(--red)' },
-        expired:    { label: 'Expiré',     color: 'var(--red)' },
-        none:       { label: '—',          color: 'var(--text-3)' },
+        critique: { label: 'Critique', color: 'var(--red)' },
+        sensible: { label: 'Sensible', color: 'var(--amber)' },
+        standard: { label: 'Standard', color: 'var(--accent)' },
+        none:     { label: '—',        color: 'var(--text-3)' },
       };
-      return map[plan] || map.none;
+      return map[criticite] || map.none;
     }
   }
 

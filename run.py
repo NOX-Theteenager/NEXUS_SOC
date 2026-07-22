@@ -160,18 +160,16 @@ try:
 except Exception as e:
     print(f"[run] ✗ Frontend ignoré — {e}")
 
-# ─── Redirection racine → landing page (vitrine) ─────────────────────────────
-# Le point d'entrée web est la landing (présentation du produit) ;
-# le point d'entrée PWA (start_url dans manifest.json) reste login.html
-# pour que l'app installée ouvre directement sur la connexion.
+# ─── Redirection racine → connexion ──────────────────────────────────────────
+# Outil interne du CENADI : pas de vitrine publique. La racine mène directement
+# à la connexion (également start_url de la PWA dans manifest.json).
 from fastapi.responses import RedirectResponse
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse(url="/app/landing.html")
+    return RedirectResponse(url="/app/login.html")
 
 print("[run] NEXUS SOC démarré")
-print("[run]   Landing  : http://localhost:8000/app/landing.html")
 print("[run]   Login    : http://localhost:8000/app/login.html  (PWA start_url)")
 print("[run]   Docs     : http://localhost:8000/app/docs.html")
 print("[run]   Contact  : http://localhost:8000/app/contact.html")

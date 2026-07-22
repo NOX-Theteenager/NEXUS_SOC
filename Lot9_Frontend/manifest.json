@@ -1,7 +1,7 @@
 {
   "name": "NEXUS SOC",
   "short_name": "NEXUS SOC",
-  "description": "Plateforme SOC-as-a-Service souveraine pour le Cameroun",
+  "description": "Plateforme SOC open source et souveraine, exploitée en interne par le CENADI",
   "start_url": "/app/login.html",
   "scope": "/app/",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "theme_color": "#0A0F1C",
   "background_color": "#0A0F1C",
   "lang": "fr",
-  "categories": ["security", "productivity", "business"],
+  "categories": ["security", "productivity"],
   "icons": [
     {
       "src": "icons/icon-192.png",

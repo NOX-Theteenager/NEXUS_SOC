@@ -738,16 +738,13 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
         <span class="nav-icon">⬡</span> Tableau de bord
       </div>
       <div class="nav-item admin-only" data-sec="tenants" onclick="goto('tenants')">
-        <span class="nav-icon">🏢</span> Tenants
+        <span class="nav-icon">🏢</span> Périmètres
       </div>
       <div class="nav-item admin-only" data-sec="agents" onclick="goto('agents')">
         <span class="nav-icon">⬡</span> Agents
       </div>
       <div class="nav-item admin-only" data-sec="health" onclick="goto('health')">
         <span class="nav-icon">♡</span> Santé système
-      </div>
-      <div class="nav-item admin-only" data-sec="billing" onclick="goto('billing')">
-        <span class="nav-icon">◈</span> Facturation PLG
       </div>
 
       <!-- SOC sections -->
@@ -820,9 +817,9 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
     <!-- ══ TENANTS ════════════════════════════════════════════════════════ -->
     <section class="section" id="sec-tenants">
       <div class="sec-head">
-        <div class="sec-title">Tenants</div>
+        <div class="sec-title">Périmètres supervisés</div>
         <div class="sec-actions">
-          <button class="btn btn-primary" onclick="openModal('modal-tenant')">+ Nouveau tenant</button>
+          <button class="btn btn-primary" onclick="openModal('modal-tenant')">+ Nouveau périmètre</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -830,27 +827,25 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
           <input class="tbl-search" id="search-tenant" placeholder="Rechercher…" oninput="renderTenants()"/>
           <select class="tbl-select" id="filter-tenant-type" onchange="renderTenants()">
             <option value="">Tous les types</option>
-            <option value="administration">Administration</option>
-            <option value="microfinance">Microfinance</option>
-            <option value="assurance">Assurance</option>
-            <option value="cabinet_comptable">Cabinet</option>
+            <option value="application_metier">Application métier</option>
+            <option value="reseau">Réseau</option>
+            <option value="infrastructure">Infrastructure</option>
+            <option value="poste_utilisateur">Poste utilisateur</option>
           </select>
           <select class="tbl-select" id="filter-tenant-plan" onchange="renderTenants()">
-            <option value="">Tous les plans</option>
-            <option value="trial">Essai</option>
-            <option value="starter">Starter</option>
-            <option value="business">Business</option>
-            <option value="enterprise">Enterprise</option>
-            <option value="contrat_public">Public</option>
+            <option value="">Toutes criticités</option>
+            <option value="critique">Critique</option>
+            <option value="sensible">Sensible</option>
+            <option value="standard">Standard</option>
           </select>
         </div>
         <div style="overflow-x:auto">
           <table>
             <thead>
               <tr>
-                <th>Organisation</th>
+                <th>Périmètre</th>
                 <th>Type</th>
-                <th>Plan</th>
+                <th>Criticité</th>
                 <th>Statut</th>
                 <th>Agents</th>
                 <th>Créé le</th>
@@ -953,76 +948,46 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
       </div>
     </section>
 
-    <!-- ══ FACTURATION ════════════════════════════════════════════════════ -->
-    <section class="section" id="sec-billing">
-      <div class="sec-head">
-        <div class="sec-title">Facturation & PLG</div>
-        <button class="btn btn-ghost btn-sm" onclick="runExpiryCheck()">⚡ Vérifier essais expirés</button>
-      </div>
-      <div id="billing-kpis" class="kpi-grid" style="margin-bottom:18px"></div>
-      <div class="table-wrap">
-        <div style="overflow-x:auto">
-          <table>
-            <thead>
-              <tr>
-                <th>Organisation</th>
-                <th>Plan</th>
-                <th>Montant</th>
-                <th>Statut</th>
-                <th>Échéance</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="billing-tbody">
-              <tr><td colspan="6"><div class="skeleton sk-row"></div></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
   </main>
 </div>
 
 <!-- ════════════════════════ MODALS ════════════════════════════════════════ -->
 
-<!-- Modal : créer tenant -->
+<!-- Modal : créer périmètre supervisé -->
 <div class="overlay" id="modal-tenant">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-tenant')">✕</button>
-    <div class="modal-title">Nouveau tenant</div>
+    <div class="modal-title">Nouveau périmètre supervisé</div>
     <div class="form-field">
-      <label>Nom de l'organisation</label>
-      <input type="text" id="t-nom" placeholder="Ex. Ministère des Finances"/>
+      <label>Nom du périmètre</label>
+      <input type="text" id="t-nom" placeholder="Ex. SIGIPES, ANTILOPE, Réseau/LAN CENADI"/>
     </div>
     <div class="form-row">
       <div class="form-field">
         <label>Type</label>
         <select id="t-type">
-          <option value="administration">Administration publique</option>
-          <option value="microfinance">Microfinance (COBAC)</option>
-          <option value="assurance">Assurance (CIMA)</option>
-          <option value="cabinet_comptable">Cabinet comptable</option>
+          <option value="application_metier">Application métier</option>
+          <option value="reseau">Réseau</option>
+          <option value="infrastructure">Infrastructure</option>
+          <option value="poste_utilisateur">Poste utilisateur</option>
         </select>
       </div>
       <div class="form-field">
-        <label>Plan</label>
+        <label>Criticité</label>
         <select id="t-plan">
-          <option value="trial">Essai gratuit</option>
-          <option value="starter">Starter (25 000 FCFA)</option>
-          <option value="business">Business (75 000 FCFA)</option>
-          <option value="enterprise">Enterprise (200 000 FCFA)</option>
-          <option value="contrat_public">Contrat public</option>
+          <option value="critique">Critique</option>
+          <option value="sensible">Sensible</option>
+          <option value="standard">Standard</option>
         </select>
       </div>
     </div>
     <div class="form-field">
-      <label>E-mail DSI (compte principal)</label>
-      <input type="email" id="t-email" placeholder="dsi@organisation.cm"/>
+      <label>E-mail du responsable de périmètre (compte principal)</label>
+      <input type="email" id="t-email" placeholder="resp.perimetre@cenadi.cm"/>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-tenant')">Annuler</button>
-      <button class="btn btn-primary" onclick="createTenant()">Créer le tenant</button>
+      <button class="btn btn-primary" onclick="createTenant()">Créer le périmètre</button>
     </div>
   </div>
 </div>
@@ -1034,7 +999,7 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
     <div class="modal-title">Provisioner un agent</div>
     <div class="form-row">
       <div class="form-field">
-        <label>Tenant</label>
+        <label>Périmètre</label>
         <select id="p-tenant" style="width:100%"></select>
       </div>
       <div class="form-field">
@@ -1124,7 +1089,7 @@ function setupUI() {
   document.getElementById('user-initials').textContent = initials;
   document.getElementById('user-role').textContent     = role;
   document.getElementById('brand-role').textContent    =
-    role === 'analyste_soc' ? 'Analyste SOC' : 'Administration';
+    role === 'analyste_soc' ? 'Analyste SOC — CENADI' : 'Opérateur CENADI';
 
   if (role === 'analyste_soc') {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
@@ -1134,9 +1099,9 @@ function setupUI() {
 
 /* ─── Navigation ───────────────────────────────────────────────────────── */
 const TITLES = {
-  dashboard: 'Tableau de bord', tenants: 'Tenants', agents: 'Agents',
+  dashboard: 'Tableau de bord', tenants: 'Périmètres supervisés', agents: 'Agents',
   alerts: 'File d\'alertes', soar: 'Approbation SOAR',
-  health: 'Santé système', billing: 'Facturation & PLG',
+  health: 'Santé système',
 };
 
 async function goto(sec) {
@@ -1148,7 +1113,7 @@ async function goto(sec) {
   closeSidebar();
   const loaders = {
     dashboard: loadDashboard, tenants: loadTenants, agents: loadAgents,
-    alerts: loadAlerts, soar: loadSOAR, health: loadHealth, billing: loadBilling,
+    alerts: loadAlerts, soar: loadSOAR, health: loadHealth,
   };
   if (loaders[sec]) await loaders[sec]();
 }
@@ -1157,7 +1122,7 @@ function refresh() {
   const active = document.querySelector('.nav-item.active')?.dataset.sec || 'dashboard';
   const loaders = {
     dashboard: loadDashboard, tenants: loadTenants, agents: loadAgents,
-    alerts: loadAlerts, soar: loadSOAR, health: loadHealth, billing: loadBilling,
+    alerts: loadAlerts, soar: loadSOAR, health: loadHealth,
   };
   if (loaders[active]) loaders[active]();
 }
@@ -1208,7 +1173,7 @@ async function loadDashboard() {
 
 function renderKPIs(tenantCount, agentCount, alertCount, activeAgents) {
   document.getElementById('kpi-grid').innerHTML = [
-    { label: 'Tenants actifs', value: tenantCount, sub: 'toutes offres', icon: '🏢' },
+    { label: 'Périmètres actifs', value: tenantCount, sub: 'tous types', icon: '🏢' },
     { label: 'Agents en ligne', value: activeAgents + '/' + agentCount, sub: 'sur l\'ensemble du parc', icon: '⬡' },
     { label: 'Alertes ouvertes', value: alertCount, sub: 'à traiter', icon: '⚠', accent: alertCount > 0 },
     { label: 'Disponibilité API', value: '✓', sub: 'Scoring service UP', icon: '♡' },
@@ -1230,25 +1195,34 @@ async function loadTenants() {
   } catch (e) { tbodyError('tenants-tbody', 7, e); }
 }
 
+const CRITICITE_BADGE = {
+  critique: { label: 'Critique', color: 'var(--red)' },
+  sensible: { label: 'Sensible', color: 'var(--amber)' },
+  standard: { label: 'Standard', color: 'var(--accent)' },
+};
+function criticiteBadge(c) {
+  return CRITICITE_BADGE[c] || { label: c || '—', color: 'var(--text-3)' };
+}
+
 function renderTenants() {
   const q     = (document.getElementById('search-tenant')?.value || '').toLowerCase();
   const type  = document.getElementById('filter-tenant-type')?.value || '';
-  const plan  = document.getElementById('filter-tenant-plan')?.value || '';
+  const crit  = document.getElementById('filter-tenant-plan')?.value || '';
 
   const rows = STATE.tenants.filter(t => {
     const matchQ = !q || t.nom?.toLowerCase().includes(q) || t.id?.toLowerCase().includes(q);
     const matchT = !type || t.type === type;
-    const matchP = !plan || t.plan === plan || t.offre === plan;
-    return matchQ && matchT && matchP;
+    const matchC = !crit || t.criticite === crit;
+    return matchQ && matchT && matchC;
   });
 
   const tbody = document.getElementById('tenants-tbody');
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🏢</div><p>Aucun tenant trouvé</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🏢</div><p>Aucun périmètre trouvé</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(t => {
-    const p = NexusAPI.planBadge(t.plan || t.offre);
+    const p = criticiteBadge(t.criticite);
     const actif = (t.statut || 'actif') === 'actif';
     return `
     <tr>
@@ -1270,36 +1244,32 @@ function renderTenants() {
 }
 
 async function createTenant() {
-  const nom   = document.getElementById('t-nom').value.trim();
-  const type  = document.getElementById('t-type').value;
-  const plan  = document.getElementById('t-plan').value;
-  const email = document.getElementById('t-email').value.trim();
+  const nom       = document.getElementById('t-nom').value.trim();
+  const type      = document.getElementById('t-type').value;
+  const criticite = document.getElementById('t-plan').value;
+  const email     = document.getElementById('t-email').value.trim();
   if (!nom || !email) { showToast('Nom et e-mail sont requis.', 'error'); return; }
-  // Le backend exige `offre` (colonne tenants, CHECK sans 'trial') et `email_admin`.
-  // Un essai gratuit est commercialisé comme une offre Starter en période d'essai.
-  const offre = { trial: 'starter', starter: 'starter', business: 'business',
-                  enterprise: 'enterprise', contrat_public: 'contrat_public' }[plan] || 'starter';
   try {
-    await NexusAPI.createTenant({ nom, type, offre, email_admin: email });
+    await NexusAPI.createTenant({ nom, type, criticite, email_admin: email });
     closeModal('modal-tenant');
-    showToast('Tenant créé avec succès.', 'success');
+    showToast('Périmètre créé avec succès.', 'success');
     await loadTenants();
-  } catch (e) { showToast(e.detail || 'Erreur création tenant.', 'error'); }
+  } catch (e) { showToast(e.detail || 'Erreur création périmètre.', 'error'); }
 }
 
 async function suspendTenant(id) {
-  if (!confirm('Suspendre ce tenant ? L\'ingestion sera coupée immédiatement.')) return;
+  if (!confirm('Suspendre ce périmètre ? La supervision sera mise en pause immédiatement.')) return;
   try {
-    await NexusAPI.suspendTenant(id) || await NexusAPI.suspendPlg(id);
-    showToast('Tenant suspendu.', 'info');
+    await NexusAPI.suspendTenant(id);
+    showToast('Périmètre suspendu.', 'info');
     await loadTenants();
   } catch (e) { showToast(e.detail || 'Erreur.', 'error'); }
 }
 
 async function activateTenant(id) {
   try {
-    await NexusAPI.activateTenant(id) || await NexusAPI.resumePlg(id);
-    showToast('Tenant réactivé.', 'success');
+    await NexusAPI.activateTenant(id);
+    showToast('Périmètre réactivé.', 'success');
     await loadTenants();
   } catch (e) { showToast(e.detail || 'Erreur.', 'error'); }
 }
@@ -1486,7 +1456,7 @@ async function openAlertDetail(id) {
     </blockquote>
     ${raisons ? `<ul style="padding-left:18px;font-size:12px;color:var(--text-2);margin-bottom:14px">${raisons}</ul>` : ''}
     <div style="font-size:11px;font-family:var(--mono);color:var(--text-3)">
-      Créée le ${NexusAPI.formatDate(a.cree_le, LANG)} · Tenant ${esc(a.tenant_id?.slice(0,8) || '')}
+      Créée le ${NexusAPI.formatDate(a.cree_le, LANG)} · Périmètre ${esc(a.tenant_id?.slice(0,8) || '')}
     </div>`;
 
   document.getElementById('modal-alert-footer').innerHTML = `
@@ -1615,59 +1585,6 @@ async function loadHealth() {
   } catch (e) {
     el.innerHTML = `<div class="empty-state"><div class="icon">♡</div><p>API injoignable : ${esc(e.detail || '')}</p></div>`;
   }
-}
-
-/* ─── FACTURATION ──────────────────────────────────────────────────────── */
-async function loadBilling() {
-  try {
-    const data = await NexusAPI.getBilling();
-    const rows = Array.isArray(data) ? data : (data?.tenants || data?.items || []);
-    // KPIs
-    const arr = (await NexusAPI.getTenants() || []);
-    const trial = arr.filter(t => t.plan === 'trial').length;
-    const paid  = arr.filter(t => ['starter','business','enterprise','contrat_public'].includes(t.plan)).length;
-    document.getElementById('billing-kpis').innerHTML = [
-      { label: 'Tenants payants',  value: paid,  sub: 'abonnements actifs', icon: '◈' },
-      { label: 'Tenants en essai', value: trial, sub: '30 jours gratuits',  icon: '⬡' },
-    ].map(k => `
-      <div class="kpi-card">
-        <div class="kpi-icon">${k.icon}</div>
-        <div class="kpi-label">${k.label}</div>
-        <div class="kpi-value">${k.value}</div>
-        <div class="kpi-sub">${k.sub}</div>
-      </div>`).join('');
-
-    const tbody = document.getElementById('billing-tbody');
-    if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>Aucune facturation</p></div></td></tr>`;
-      return;
-    }
-    tbody.innerHTML = rows.map(b => {
-      const p = NexusAPI.planBadge(b.plan || b.offre);
-      return `
-      <tr>
-        <td class="td-name">${esc(b.nom || b.tenant_name || '—')}</td>
-        <td><span class="badge" style="color:${p.color};border-color:${p.color}40;background:${p.color}12">${p.label}</span></td>
-        <td class="td-mono">${esc(b.montant_fr || b.amount_fcfa ? NexusAPI.formatFCFA(b.amount_fcfa) : '—')}</td>
-        <td><span class="badge ${b.status === 'active' || b.statut === 'actif' ? 'badge-green' : 'badge-red'}">${esc(b.status || b.statut || '—')}</span></td>
-        <td class="td-mono">${esc(b.echeance || b.ends_at ? NexusAPI.formatDate(b.ends_at || b.echeance, LANG) : '—')}</td>
-        <td>
-          <button class="btn btn-ghost btn-sm" onclick="suspendTenant('${b.tenant_id || b.id}')">Suspendre</button>
-        </td>
-      </tr>`;
-    }).join('');
-  } catch (e) {
-    document.getElementById('billing-tbody').innerHTML =
-      `<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:20px">Erreur : ${esc(e.detail || '')}</td></tr>`;
-  }
-}
-
-async function runExpiryCheck() {
-  try {
-    const d = await NexusAPI.runExpiryCheck();
-    showToast(`${d.suspended_count || 0} essai(s) suspendu(s).`, 'info');
-    await loadBilling();
-  } catch (e) { showToast(e.detail || 'Erreur.', 'error'); }
 }
 
 /* ─── Utilitaires UI ───────────────────────────────────────────────────── */

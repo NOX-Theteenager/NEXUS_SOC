@@ -12,7 +12,6 @@ const OFFLINE_URL   = '/app/offline.html';
 // Assets à précacher au premier chargement
 const PRECACHE_URLS = [
   '/app/',
-  '/app/landing.html',
   '/app/login.html',
   '/app/docs.html',
   '/app/contact.html',
