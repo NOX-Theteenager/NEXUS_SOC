@@ -1,4 +1,4 @@
-# Terraform state et secrets
+# OpenTofu state et secrets (fichiers terraform.tfstate/tfvars conservés pour compat)
 *.tfstate
 *.tfstate.*
 *.tfstate.backup

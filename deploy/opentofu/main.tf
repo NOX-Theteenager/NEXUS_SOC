@@ -1,5 +1,5 @@
 # =============================================================================
-# NEXUS SOC — Module Terraform : Déploiement Souverain
+# NEXUS SOC — Module OpenTofu : Déploiement Souverain
 #
 # Déploie la pile complète NEXUS SOC sur un serveur bare-metal ou VM
 # appartenant à l'institution souveraine, via SSH.

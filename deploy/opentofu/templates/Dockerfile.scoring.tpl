@@ -1,5 +1,5 @@
 # =============================================================================
-# NEXUS SOC — Dockerfile scoring-service (généré par Terraform)
+# NEXUS SOC — Dockerfile scoring-service (généré par OpenTofu)
 # Python 3.11 slim : FastAPI + modèles IA + Kafka + PostgreSQL
 # =============================================================================
 

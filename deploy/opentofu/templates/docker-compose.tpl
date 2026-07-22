@@ -1,6 +1,6 @@
 # =============================================================================
-#  NEXUS SOC — Docker Compose (généré par Terraform)
-#  Institution : Variables injectées depuis Terraform
+#  NEXUS SOC — Docker Compose (généré par OpenTofu)
+#  Institution : Variables injectées depuis OpenTofu
 #  Base        : Lot0_Socle/docker-compose.yml
 # =============================================================================
 name: nexus-soc
@@ -47,7 +47,7 @@ services:
     image: timescale/timescaledb:${timescale_version}
     container_name: nexus-postgres
     environment:
-      # $${VAR} → ${VAR} dans le fichier généré (Terraform échappe $$)
+      # $${VAR} → ${VAR} dans le fichier généré (OpenTofu échappe $$)
       POSTGRES_USER: $${POSTGRES_USER:-nexus}
       POSTGRES_PASSWORD: $${POSTGRES_PASSWORD:-change_me}
       POSTGRES_DB: $${POSTGRES_DB:-nexus_soc}

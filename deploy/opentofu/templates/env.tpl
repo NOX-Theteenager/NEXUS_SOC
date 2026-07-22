@@ -1,5 +1,5 @@
 # =============================================================================
-# NEXUS SOC — Variables d'environnement générées par Terraform
+# NEXUS SOC — Variables d'environnement générées par OpenTofu
 # Institution : ${institution}
 # Domaine     : ${nexus_domain}
 # ATTENTION   : Ce fichier contient des secrets. Ne pas committer. chmod 600.

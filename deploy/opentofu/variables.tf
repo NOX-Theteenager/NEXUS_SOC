@@ -1,5 +1,5 @@
 # =============================================================================
-# NEXUS SOC — Variables du module Terraform Déploiement Souverain
+# NEXUS SOC — Variables du module OpenTofu Déploiement Souverain
 # Toutes les valeurs sensibles (mots de passe, clés) peuvent être passées
 # via variables d'environnement TF_VAR_* ou un fichier terraform.tfvars
 # =============================================================================
@@ -9,7 +9,7 @@
 # --------------------------------------------------------------------------- #
 
 variable "server_host" {
-  description = "Adresse IP ou FQDN du serveur cible (ex: 192.168.1.10 ou srv-soc.minfi.cm)"
+  description = "Adresse IP ou FQDN du serveur cible (ex: 192.168.1.10 ou srv-soc.cenadi.cm)"
   type        = string
 }
 
@@ -43,8 +43,9 @@ variable "ssh_port" {
 # --------------------------------------------------------------------------- #
 
 variable "institution_name" {
-  description = "Nom de l'institution souveraine (ex: MINFI, DGI, DGCOOP)"
+  description = "Nom de l'institution souveraine exploitant la plateforme"
   type        = string
+  default     = "CENADI"
 
   validation {
     condition     = length(var.institution_name) >= 2
@@ -53,8 +54,9 @@ variable "institution_name" {
 }
 
 variable "nexus_domain" {
-  description = "FQDN de l'instance NEXUS SOC (ex: soc.minfi.gov.cm)"
+  description = "FQDN de l'instance NEXUS SOC (ex: soc.cenadi.gov.cm)"
   type        = string
+  default     = "soc.cenadi.gov.cm"
 }
 
 variable "install_dir" {

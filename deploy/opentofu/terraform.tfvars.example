@@ -4,7 +4,7 @@
 # UTILISATION :
 #   cp terraform.tfvars.example terraform.tfvars
 #   nano terraform.tfvars          # adapter à votre environnement
-#   terraform apply
+#   tofu apply
 #
 # SÉCURITÉ :
 #   - terraform.tfvars est dans .gitignore (contient des secrets)
@@ -18,8 +18,8 @@ ssh_private_key_path = "~/.ssh/nexus_deploy"  # Clé privée SSH locale
 ssh_port             = 22
 
 # ── Institution souveraine ───────────────────────────────────────────────────
-institution_name = "MINFI"
-nexus_domain     = "soc.minfi.gov.cm"
+institution_name = "CENADI"
+nexus_domain     = "soc.cenadi.gov.cm"
 install_dir      = "/opt/nexus-soc"
 
 # ── Secrets (laisser vides pour génération automatique) ─────────────────────

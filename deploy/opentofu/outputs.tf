@@ -1,6 +1,6 @@
 # =============================================================================
 # NEXUS SOC — Outputs du déploiement souverain
-# Ces valeurs sont affichées après `terraform apply` et stockées dans le state.
+# Ces valeurs sont affichées après `tofu apply` et stockées dans le state.
 # ATTENTION : les outputs sensitive=true ne s'affichent pas en clair dans le
 # terminal mais restent dans le tfstate — chiffrer le state en production.
 # =============================================================================
@@ -116,9 +116,9 @@ output "next_steps" {
      Console opér.  : ouvrir console_fournisseur.html en local
 
   5. CHANGER LES MOTS DE PASSE PAR DÉFAUT
-     terraform output -raw postgres_password     # PostgreSQL
-     terraform output -raw jwt_secret            # API JWT
-     terraform output -raw wazuh_admin_password  # Wazuh
+     tofu output -raw postgres_password     # PostgreSQL
+     tofu output -raw jwt_secret            # API JWT
+     tofu output -raw wazuh_admin_password  # Wazuh
 
   6. CONFORMITÉ ANTIC
      - Déclarer le système auprès de l'ANTIC (www.antic.cm)
