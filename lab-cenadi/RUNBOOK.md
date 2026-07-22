@@ -1,13 +1,13 @@
 # CENADI — RUNBOOK de démonstration (déploiement souverain)
 
 Démo ~30 min du déploiement souverain de NEXUS SOC au CENADI. Complémentaire
-au RUNBOOK SaaS (`../lab/RUNBOOK.md`) : ici, l'angle est **souveraineté +
+à un déploiement mutualisé : ici, l'angle est **souveraineté +
 sécurisation**, pas produit-led growth.
 
 ## Message central à faire passer au jury
 
 > « Le MÊME produit NEXUS SOC sert deux marchés avec deux modèles de
-> déploiement. Pour une microfinance : SaaS multi-tenant (démo `../lab/`).
+> déploiement souverain on-premise, exploité en interne par le CENADI.
 > Pour l'État — le CENADI — : déploiement souverain on-premise, zéro donnée
 > sortante, PKI interne, air-gap de la solde. Voici le second. »
 
@@ -54,7 +54,7 @@ Afficher `00-architecture-cenadi.md`. Dialogue :
 
 > « Le CENADI héberge ANTILOPE — la solde de centaines de milliers d'agents de
 > l'État — et PROBMIS, le budget national. Ces données ne peuvent PAS partir
-> chez un fournisseur SaaS ni sortir du territoire. NEXUS SOC se déploie donc
+> chez un tiers ni sortir du territoire. NEXUS SOC se déploie donc
 > DANS le datacenter, en 6 zones, dont une en air-gap total. »
 
 ## Bloc 2 — Sécurisation (6 min)
@@ -120,4 +120,4 @@ docker exec nexus-postgres psql -U nexus -d nexus_soc -c \
   `SECURISATION.md` couche 2) et `ufw status`.
 - Firefox refuse le certificat → l'AC racine CENADI n'a pas été importée sur
   vm-rssi (relancer `vm-rssi-setup.sh` après scp du `cenadi-root-ca.crt`).
-- Pour revenir en mode SaaS : `cp .env` d'origine et `systemctl restart nexus-soc`.
+- Pour restaurer une configuration antérieure : `cp .env` d'origine et `systemctl restart nexus-soc`.

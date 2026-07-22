@@ -256,7 +256,7 @@ docker exec nexus-postgres psql -U nexus -d nexus_soc -c \
 
 ## Le `.env` souverain type (CENADI)
 
-Différences clés vs le `.env` SaaS :
+Points clés du `.env` souverain :
 ```env
 # Pas d'Internet — tout est interne
 NEXUS_SERVER_URL=https://soc.cenadi.local
@@ -271,7 +271,7 @@ SMTP_MODE=live
 # Pas d'enrichissement Internet
 VIRUSTOTAL_ENABLED=false
 
-# Pas de paiement (déploiement, pas SaaS)
+# Pas de paiement (outil interne souverain)
 CINETPAY_MODE=stub
 
 # Secrets RÉGÉNÉRÉS (jamais les valeurs par défaut)

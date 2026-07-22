@@ -3,8 +3,7 @@
 # CENADI Scénario 1 : SOUVERAINETÉ TOTALE DU DATACENTER
 # =============================================================================
 # Prouve qu'AUCUNE donnée ne quitte le datacenter CENADI — pas même le SOC.
-# Contrairement au lab SaaS (qui a Cloudflare/Gmail), le déploiement souverain
-# n'a AUCUNE route Internet. Tout est interne.
+# Le déploiement souverain n'a AUCUNE route Internet. Tout est interne.
 #
 # À exécuter DEPUIS LE HÔTE (cœur SOC).
 # =============================================================================
@@ -65,11 +64,11 @@ cat <<EOF
     2. Le TLS repose sur la PKI interne CENADI (pas d'AC étrangère)
     3. tcpdump : zéro paquet sortant vers Internet
 
-  Différence-clé avec le SaaS :
-  ──────────────────────────────
-  Le lab SaaS (../lab/) expose nexussoc.cm via Cloudflare et envoie les OTP
-  par Gmail. ICI, pour la solde de l'État et le budget national, RIEN ne sort :
-  ni vers Cloudflare, ni vers Google, ni vers VirusTotal. Le datacenter CENADI
-  est hermétique. C'est l'exigence non-négociable d'un client souverain.
+  Exigence souveraine :
+  ─────────────────────
+  Pour la solde de l'État et le budget national, RIEN ne sort du datacenter :
+  ni vers un service tiers, ni vers Internet, ni vers VirusTotal. Le datacenter
+  CENADI est hermétique. C'est l'exigence non-négociable de l'exploitation
+  souveraine interne.
 
 EOF

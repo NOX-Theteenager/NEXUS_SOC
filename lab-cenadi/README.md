@@ -1,16 +1,15 @@
 # NEXUS SOC — LAB de déploiement SOUVERAIN au CENADI
 
 Lab de démonstration du **déploiement souverain** de NEXUS SOC au **CENADI**
-(Centre National de Développement de l'Informatique du Cameroun), distinct du
-lab SaaS multi-tenant (`../lab/`).
+(Centre National de Développement de l'Informatique du Cameroun).
 
 > **Contexte du stage :** stage effectué au **CENADI**. Ce lab illustre comment
-> NEXUS SOC serait déployé *chez le client souverain*, sur son infrastructure,
-> sans aucune donnée quittant le territoire ni même le datacenter.
+> le CENADI déploie et exploite NEXUS SOC *sur sa propre infrastructure*, sans
+> aucune donnée quittant le territoire ni même le datacenter.
 
 ---
 
-## 1. Pourquoi un déploiement SOUVERAIN (et pas SaaS) pour le CENADI ?
+## 1. Pourquoi un déploiement souverain pour le CENADI ?
 
 Le CENADI héberge et exploite les systèmes d'information critiques de l'État
 camerounais :
@@ -22,38 +21,35 @@ camerounais :
 | **Systèmes DGI / DGTCFM** | Recettes fiscales, trésor | Très élevée |
 | **Annuaire / messagerie gouvernementale** | Identités, communications | Élevée |
 
-Pour ce type de client, le modèle SaaS (`nexussoc.cm`, données chez le
-fournisseur) est **inacceptable** :
+Pour ces systèmes, l'hébergement des données de sécurité chez un tiers ou hors
+du territoire est **inacceptable** :
 
 - Les données de paie et de budget de l'État **ne peuvent pas** transiter par
   un tiers, ni sortir du territoire (règlement CEMAC 2020, souveraineté
   numérique nationale).
-- Le CENADI dispose de sa **propre infrastructure** (datacenter, personnel IT).
+- Le CENADI dispose de sa **propre infrastructure** (datacenter, personnel IT)
+  et **exploite lui-même** la plateforme, dont il possède et audite le code.
 - Exigence d'**air-gap partiel** : la zone la plus sensible n'a aucune route
   vers Internet.
 
-C'est le second canal du produit NEXUS SOC — le **déploiement souverain
-on-premise** — que ce lab démontre.
-
-Le PLG (`Lot8_PLG/plg_api.py`) implémente déjà cette bascule : toute inscription
-depuis un domaine `*.gov.cm`, `minfi.gov.cm`, `cenadi.cm`… est **automatiquement
-refusée** au flux SaaS et redirigée vers le contact « déploiement souverain ».
+C'est exactement ce que NEXUS SOC est conçu pour faire : une plateforme
+100 % open source, déployée **on-premise** et cloisonnée par **périmètre
+supervisé** (SIGIPES, ANTILOPE, réseau/LAN interne).
 
 ---
 
-## 2. Différences SaaS (`../lab/`) vs Souverain CENADI (ce lab)
+## 2. Principes du lab souverain
 
-| Critère | Lab SaaS (`../lab/`) | Lab Souverain CENADI (ce lab) |
-|---------|----------------------|-------------------------------|
-| Hébergement du SOC | Chez le fournisseur (hôte + Cloudflare) | **Dans le datacenter CENADI** |
-| Exposition Internet | `https://nexussoc.cm` (Cloudflare Tunnel) | **Aucune** (ou reverse-proxy interne only) |
-| Tenants | Multi-tenant (Afriland, UBA…) | **Mono-tenant** (CENADI uniquement) |
-| Clients surveillés | Microfinances via agent Internet | **Serveurs applicatifs gouvernementaux internes** |
-| E-mail OTP | Gmail SMTP (Internet) | **Serveur SMTP interne** (Postfix on-premise) |
-| Paiement | CinetPay | **Sans objet** (pas de facturation SaaS) |
-| Enrichissement IOC | VirusTotal (Internet) | **Base de menaces locale** (miroir hors-ligne) |
-| Certificats TLS | Cloudflare / Let's Encrypt | **PKI interne CENADI** (autorité racine souveraine) |
-| Zone sensible | — | **Air-gap** (VLAN paie/budget sans route Internet) |
+| Critère | Choix du lab souverain CENADI |
+|---------|-------------------------------|
+| Hébergement du SOC | **Dans le datacenter CENADI** |
+| Exposition Internet | **Aucune** (reverse-proxy interne uniquement) |
+| Cloisonnement | Par **périmètre supervisé** (RLS interne, un seul opérateur : le CENADI) |
+| Systèmes surveillés | **Serveurs applicatifs gouvernementaux internes** |
+| Notifications | Canal **in-app** (+ serveur SMTP interne Postfix on-premise si besoin) |
+| Enrichissement IOC | **Base de menaces locale** (miroir hors-ligne) ou désactivé |
+| Certificats TLS | **PKI interne CENADI** (autorité racine souveraine) |
+| Zone sensible | **Air-gap** (VLAN paie/budget sans route Internet) |
 
 ---
 
@@ -120,7 +116,7 @@ refusée** au flux SaaS et redirigée vers le contact « déploiement souverain 
 | 2 | **Air-gap de la zone sensible** | vm-antilope (VLAN 30) ne peut joindre NI Internet NI les autres zones, seulement envoyer sa télémétrie au SOC |
 | 3 | **Détection d'exfiltration de données de paie** | Un poste compromis tente d'aspirer ANTILOPE → Modèle 1/2 + SOAR |
 | 4 | **PKI souveraine** — certificats émis par l'AC CENADI | Le portail SOC est en HTTPS via une autorité racine **interne**, pas Let's Encrypt |
-| 5 | **Notifications sans Internet** — SMTP interne | OTP/alertes délivrés par le Postfix on-premise (pas Gmail) |
+| 5 | **Notifications sans Internet** | Alertes délivrées en in-app (et Postfix on-premise si e-mail requis), sans dépendance externe |
 
 ---
 
@@ -158,8 +154,7 @@ lab-cenadi/
 6. Configurer chaque VM : **`scripts/vm-*-setup.sh`**
 7. Répéter la démo avec **`RUNBOOK.md`**
 
-> Ce lab réutilise **le même code** NEXUS SOC que le lab SaaS. Seuls la
+> Ce lab exécute **le même code** NEXUS SOC que le reste du dépôt : seules la
 > configuration (`.env` souverain), le réseau (aucune sortie), la PKI (AC
-> interne) et le SMTP (Postfix local) changent. C'est la preuve que le
-> **même produit** sert les deux marchés — SaaS pour les microfinances,
-> souverain pour l'État.
+> interne) et, le cas échéant, le SMTP (Postfix local) sont adaptés au contexte
+> on-premise du CENADI.

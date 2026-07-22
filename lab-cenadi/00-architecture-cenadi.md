@@ -73,16 +73,16 @@ Ligne = source, colonne = destination. `✓` autorisé, `✗` bloqué (ACL Mikro
                                    (AIR-GAP)
 ```
 
-**Différence-clé avec le GNS3 SaaS :** l'interface WAN de pfSense est
+**Particularité souveraine :** l'interface WAN de pfSense est
 **désactivée** (ou non câblée). Il n'y a physiquement aucun lien vers un cloud
 « Internet ». Le pare-feu ne fait que du filtrage inter-zone interne.
 
 ---
 
-## 4. Prérequis (identiques au lab SaaS, sans les images cloud)
+## 4. Prérequis (sans les images cloud)
 
 - libvirt / virt-manager / KVM
-- GNS3 + images pfSense CE + MikroTik CHR (voir `../lab/00-prerequisites.md §4`)
+- GNS3 + images pfSense CE + MikroTik CHR
 - ISOs : Ubuntu Server (app, antilope), Ubuntu Desktop (rssi), Kali (menace)
 - Le projet NEXUS SOC déjà installé sur le hôte (PostgreSQL + uvicorn en systemd)
 

@@ -1,6 +1,6 @@
 # CENADI — Spécifications des VMs
 
-Le HÔTE joue le cœur SOC (comme le lab SaaS). 4 VMs à créer dans virt-manager.
+Le HÔTE joue le cœur SOC. 4 VMs à créer dans virt-manager.
 
 | VM | ISO | RAM | vCPU | Disque | Réseau libvirt | MAC | IP |
 |----|-----|-----|------|--------|----------------|-----|-----|

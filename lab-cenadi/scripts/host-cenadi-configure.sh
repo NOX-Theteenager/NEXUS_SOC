@@ -11,7 +11,7 @@
 #      Internet
 #   4) Caddy TLS avec le certificat de l'AC interne
 #
-# NB : réutilise le MÊME code NEXUS SOC que le déploiement SaaS. Seule la
+# NB : réutilise le MÊME code NEXUS SOC que le reste du dépôt. Seule la
 # configuration change → preuve du produit unique bi-marché.
 #
 # À exécuter UNE FOIS sur le hôte, après 01-network-setup.sh.
@@ -103,7 +103,7 @@ OTP_TTL_S=300
 # Pas d'enrichissement Internet (base de menaces locale à la place)
 VIRUSTOTAL_ENABLED=false
 
-# Pas de paiement (déploiement souverain, pas SaaS)
+# Pas de paiement (déploiement souverain, outil interne)
 CINETPAY_MODE=stub
 
 NEXUS_BASE_URL=http://localhost:8000
