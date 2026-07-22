@@ -27,45 +27,60 @@ virsh net-autostart default
 
 ---
 
-### 2. Les VMs ne récupèrent pas leur IP fixe
+### 2. Les VMs ne récupèrent pas leur IP fixe de VLAN
 
-**Symptôme :** `ip a` dans vm-soc affiche une IP en `10.42.0.15X` (DHCP dynamique)
-au lieu de `10.42.0.10`.
+**Symptôme :** `ip a` dans vm-cible affiche une IP dynamique (ex. `10.42.10.15X`)
+au lieu de `10.42.10.20`, ou aucune IP du tout.
 
-**Cause :** La MAC address de la VM ne correspond pas à la réservation DHCP.
+**Cause :** La MAC de la VM ne correspond pas à la réservation DHCP, OU la VM
+est branchée sur le mauvais bridge VLAN.
 
 **Diagnostic :**
 ```bash
-virsh dumpxml vm-soc | grep mac
-# doit afficher : mac address='52:54:00:aa:00:10'
+virsh dumpxml vm-cible | grep -E "mac|source network"
+# doit afficher : mac address='52:54:00:aa:00:20'
+#                 <source network='nexus-vlan10'/>
 ```
 
-**Fix :** Édit XML de la VM :
+**Fix :** Éditer l'interface de la VM :
 ```bash
-virsh edit vm-soc
-# Changer <mac address='...'/> pour la valeur exacte du script 01
-virsh destroy vm-soc && virsh start vm-soc
+virsh edit vm-cible
+# Corriger <mac address='...'/> et <source network='nexus-vlan10'/>
+virsh destroy vm-cible && virsh start vm-cible
 ```
+
+Rappel des associations (MAC / IP / VLAN) :
+| VM        | MAC                 | IP           | Réseau       |
+|-----------|---------------------|--------------|--------------|
+| vm-cible  | 52:54:00:aa:00:20   | 10.42.10.20  | nexus-vlan10 |
+| vm-dsi    | 52:54:00:aa:00:40   | 10.42.10.40  | nexus-vlan10 |
+| vm-cibleB | 52:54:00:aa:00:50   | 10.42.20.20  | nexus-vlan20 |
+| vm-kali   | 52:54:00:aa:00:30   | 10.42.30.30  | nexus-vlan30 |
 
 ---
 
-### 3. `docker: command not found` sur vm-soc après le script setup
+### 3. Une VM ne joint pas le HÔTE SOC (10.42.0.1)
 
-**Symptôme :** Le script `vm-soc-setup.sh` a bien installé Docker, mais
-`docker` n'est pas dans le PATH de l'utilisateur.
+**Symptôme :** Depuis vm-cible, `curl http://10.42.0.1:8000/health` timeout,
+alors que la VM a bien son IP de VLAN.
 
-**Cause :** L'utilisateur `nexus` a été ajouté au groupe `docker`, mais
-la session SSH courante n'a pas rechargé les groupes.
+**Cause :** Le routage inter-VLAN (MikroTik) ou l'ACL vers mgmt n'est pas
+configuré, OU ufw bloque virbr-mgmt côté hôte.
 
-**Fix :**
+**Diagnostic :**
 ```bash
-exit                              # sortir du SSH
-ssh nexus@10.42.0.10               # se reconnecter
-groups                            # doit afficher : nexus adm sudo ... docker
-docker ps                         # doit fonctionner sans sudo
+# Depuis la VM
+ping -c 2 10.42.10.1     # gateway VLAN (MikroTik ether2) → doit répondre
+ping -c 2 10.42.0.1      # HÔTE SOC → doit répondre si routage OK
+
+# Sur le hôte
+sudo ufw status | grep virbr-mgmt
 ```
 
-Puis relancer le script setup, il détecte docker installé et passe à l'étape suivante.
+**Fix :**
+- Vérifier l'ACL MikroTik : `/ip firewall filter print` doit contenir la
+  règle `dst-address=10.42.0.1 action=accept` (voir `03-gns3-architecture.md §5.2`)
+- Côté hôte, ré-exécuter `scripts/host-configure.sh` (ajoute les règles ufw)
 
 ---
 
@@ -83,28 +98,25 @@ sudo update-ca-certificates
 
 ---
 
-### 5. Le script `vm-soc-setup.sh` échoue au step docker compose
+### 5. Un Cloud node GNS3 ne se connecte pas au bridge libvirt
 
-**Symptôme :** `docker compose up` échoue avec "no configuration file provided".
+**Symptôme :** Dans GNS3, le lien entre un Cloud node et le MikroTik est
+"vert" mais les VMs du VLAN correspondant n'ont pas de connectivité.
 
-**Cause :** Le chemin `Lot0_Socle/docker-compose.yml` n'existe pas — le
-tarball du projet a été extrait dans un mauvais dossier.
+**Cause :** Le Cloud node GNS3 n'est pas mappé sur le bon bridge libvirt,
+ou le bridge n'existe pas encore.
 
 **Diagnostic :**
 ```bash
-ls ~/NEXUS_SOC/Lot0_Socle/docker-compose.yml
+# Sur le hôte : les 4 bridges doivent exister
+ip -br link show | grep virbr-
+# attendu : virbr-mgmt, virbr-vlan10, virbr-vlan20, virbr-vlan30
 ```
 
-**Fix :** Retransférer le tarball depuis le hôte :
-```bash
-# Sur le hôte :
-tar czf /tmp/nexus-soc.tar.gz -C ~/Documents/Projets NEXUS_SOC \
-    --exclude='.venv' --exclude='__pycache__' --exclude='.git' --exclude='.env'
-scp /tmp/nexus-soc.tar.gz nexus@10.42.0.10:/tmp/
-# Sur vm-soc :
-rm -rf ~/NEXUS_SOC
-tar xzf /tmp/nexus-soc.tar.gz -C ~
-```
+**Fix :**
+- Si un bridge manque : relancer `./01-network-setup.sh`
+- Dans GNS3 : clic-droit Cloud node → Configure → onglet Ethernet interfaces
+  → cocher le bon `virbr-vlanXX` (voir `03-gns3-architecture.md §3.4`)
 
 ---
 
@@ -153,11 +165,11 @@ Vérifier le dossier Spam de `nguetsajunior@gmail.com`.
 
 **Fallback pendant la démo (< 30 s) :**
 ```bash
-# Récupérer l'OTP directement en DB
-ssh nexus@10.42.0.10 'docker exec nexus-postgres psql -U nexus -d nexus_soc \
+# Sur le HÔTE (qui est le SOC) — récupérer l'OTP directement en DB
+docker exec nexus-postgres psql -U nexus -d nexus_soc \
     -tA -c "SELECT verification_otp FROM plg_registrations \
-    WHERE email='"'"'DEMO_EMAIL@example.com'"'"' \
-    ORDER BY verification_sent_at DESC LIMIT 1;"'
+    WHERE email='DEMO_EMAIL@example.com' \
+    ORDER BY verification_sent_at DESC LIMIT 1;"
 ```
 
 Puis saisir cet OTP dans le formulaire. Dire : « pour la démo, j'affiche
@@ -170,30 +182,33 @@ l'OTP côté serveur — en production c'est bien envoyé par mail. »
 **Symptôme :** Login OK (JWT reçu) mais les données ne chargent pas.
 
 **Cause probable :** CORS strict rejette les XHR car le navigateur envoie
-`Origin: https://soc.minfi.local` mais le backend attend `https://nexussoc.cm`.
+`Origin: https://soc.nexus.local:8443` mais le backend n'autorise que
+`https://nexussoc.cm`.
 
 **Diagnostic :** Ouvrir console développeur Firefox (F12) → onglet
 Console → chercher `CORS`.
 
-**Fix :** Sur vm-soc :
+**Fix :** Sur le HÔTE (les XHR du lab viennent de `soc.nexus.local:8443`,
+il faut donc autoriser cette origine en plus de nexussoc.cm) :
 ```bash
-sed -i "s|^NEXUS_CORS_ORIGINS=.*|NEXUS_CORS_ORIGINS=https://soc.minfi.local,https://portail.soc.minfi.local|" ~/NEXUS_SOC/.env
+sed -i "s|^NEXUS_CORS_ORIGINS=.*|NEXUS_CORS_ORIGINS=https://nexussoc.cm,https://soc.nexus.local:8443,https://portail.soc.nexus.local:8443|" \
+    /home/noxtheteenager/Documents/Projets/NEXUS_SOC/.env
 sudo systemctl restart nexus-soc
 ```
 
 ---
 
-### 9. Firefox refuse le certificat `soc.minfi.local`
+### 9. Firefox refuse le certificat `soc.nexus.local`
 
 **Symptôme :** Écran "Cette connexion n'est pas sécurisée" dans Firefox
 sur vm-dsi.
 
-**Cause :** Le CA racine mkcert de vm-soc n'a pas été importé sur vm-dsi.
+**Cause :** Le CA racine mkcert du HÔTE n'a pas été importé sur vm-dsi.
 
 **Fix :**
 ```bash
-# Sur vm-soc :
-scp ~/.local/share/mkcert/rootCA.pem dsi@10.42.0.40:/tmp/
+# Sur le HÔTE (host-configure.sh a copié le CA dans ~/certs-lab/) :
+scp ~/certs-lab/rootCA.pem dsi@10.42.10.40:/tmp/
 
 # Sur vm-dsi :
 sudo cp /tmp/rootCA.pem /usr/local/share/ca-certificates/nexus-mkcert.crt
@@ -211,11 +226,14 @@ Alternative rapide (accepte le certif à la main pour la démo) :
 **Symptôme :** Pendant le scénario 1, le tcpdump n'affiche jamais de paquets
 même quand on force du trafic ping.
 
-**Cause :** L'utilisateur n'est pas root et tcpdump a besoin de CAP_NET_ADMIN.
+**Cause :** L'utilisateur n'est pas root et tcpdump a besoin de CAP_NET_ADMIN,
+ou on écoute le mauvais bridge.
 
 **Fix :**
 ```bash
-sudo tcpdump -nn -i virbr-lab ...
+# Le trafic des VMs vers le SOC arrive sur virbr-mgmt (routé par MikroTik)
+sudo tcpdump -nn -i virbr-mgmt ...
+# Pour un VLAN précis : virbr-vlan10 / virbr-vlan20 / virbr-vlan30
 ```
 
 ---
@@ -226,7 +244,7 @@ sudo tcpdump -nn -i virbr-lab ...
 
 **Diagnostic :**
 ```bash
-# Sur vm-soc :
+# Sur le HÔTE (qui est le SOC) :
 docker exec nexus-postgres psql -U nexus -d nexus_soc -tA -c \
     "SELECT COUNT(*) FROM notifications WHERE created_at > NOW() - INTERVAL '2 minutes';"
 ```
@@ -252,7 +270,7 @@ Rafraîchir Firefox (F5) sur vm-dsi.
 
 **Diagnostic :**
 ```bash
-curl -v http://10.42.0.10:8000/ingest \
+curl -v http://10.42.0.1:8000/ingest \
     -H "Authorization: Bearer $(cat /etc/nexus-agent/bearer)" \
     -H "Content-Type: application/json" -d '{"test":true}'
 ```
@@ -299,15 +317,16 @@ sudo chown -R compta_agent:compta_agent /home/compta_agent/Documents
 **Cause :** Le SOAR tourne en mode `dry-run` ou en mode `--execute` avec
 `--high-override` bas.
 
-**Fix :** Sur vm-soc, vérifier les paramètres passés à SOAREngine :
+**Fix :** Sur le HÔTE, vérifier les paramètres passés à SOAREngine :
 ```bash
-grep -n "SOAREngine(" ~/NEXUS_SOC/Lot4_SOAR/soar_engine.py
+cd /home/noxtheteenager/Documents/Projets/NEXUS_SOC
+grep -n "SOAREngine(" Lot4_SOAR/soar_engine.py
 # doit contenir : auto_exec_max_impact=MEDIUM, high_override=None
 ```
 
 Pour la démo, lancer manuellement :
 ```bash
-cd ~/NEXUS_SOC && .venv/bin/python Lot4_SOAR/soar_engine.py --execute
+.venv/bin/python Lot4_SOAR/soar_engine.py --execute
 ```
 
 ---
@@ -320,8 +339,12 @@ cd ~/NEXUS_SOC && .venv/bin/python Lot4_SOAR/soar_engine.py --execute
 
 **Fix (à faire une fois pour toutes) :**
 ```bash
-for vm in vm-soc vm-cible vm-kali vm-dsi; do
+for vm in vm-cible vm-dsi vm-cibleB vm-kali; do
     virsh autostart "$vm"
+done
+# Et les 4 réseaux
+for net in nexus-mgmt nexus-vlan10 nexus-vlan20 nexus-vlan30; do
+    virsh net-autostart "$net"
 done
 ```
 
@@ -349,7 +372,7 @@ sudo journalctl -u caddy -f
 docker ps
 
 # Login CLI (utile pour tester)
-TOKEN=$(curl -s http://127.0.0.1:8000/auth/login -X POST \
+TOKEN=$(curl -s http://127.0.0.1:8000/auth/token -X POST \
     -H 'Content-Type: application/json' \
     -d '{"email":"admin@nexussoc.cm","password":"admin"}' | jq -r .access_token)
 

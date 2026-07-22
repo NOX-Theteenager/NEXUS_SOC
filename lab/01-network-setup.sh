@@ -1,158 +1,169 @@
 #!/usr/bin/env bash
 # =============================================================================
-# NEXUS SOC LAB — Phase 1 : Réseau libvirt isolé
+# NEXUS SOC LAB — Phase 1 : Réseaux libvirt multi-VLAN pour GNS3
 # =============================================================================
-# Crée le réseau 'nexus-lab' : 10.42.0.0/24, ISOLÉ (aucun accès Internet).
-# Ce réseau est la condition-clé du scénario Souveraineté : les VMs ne peuvent
-# PAS joindre l'extérieur, donc aucune donnée client ne peut fuiter.
+# Crée les 4 réseaux libvirt nécessaires à l'architecture GNS3 fusionnée :
 #
-# Idempotent : peut être relancé plusieurs fois sans casser l'existant.
+#   1. nexus-mgmt   (10.42.0.0/24)   — HÔTE SOC ↔ GNS3 (management)
+#   2. nexus-vlan10 (10.42.10.0/24)  — Client Afriland (VLAN 10)
+#   3. nexus-vlan20 (10.42.20.0/24)  — Client UBA      (VLAN 20)
+#   4. nexus-vlan30 (10.42.30.0/24)  — Attaquant externe (VLAN 30)
+#
+# Chaque réseau est ISOLÉ (pas de <forward>) : c'est le routeur MikroTik
+# (dans GNS3) qui gère le routage inter-VLAN + les ACLs.
+#
+# Idempotent : peut être relancé sans casser l'existant.
 #
 # Usage :
-#   ./01-network-setup.sh              # crée le réseau
-#   ./01-network-setup.sh --destroy    # supprime le réseau (avant modification)
+#   ./01-network-setup.sh              # crée les 4 réseaux
+#   ./01-network-setup.sh --destroy    # supprime les 4 réseaux
 #   ./01-network-setup.sh --status     # affiche l'état
 # =============================================================================
 set -euo pipefail
 
-NET_NAME="nexus-lab"
-NET_XML="/tmp/${NET_NAME}.xml"
-NET_BRIDGE="virbr-lab"
-NET_CIDR="10.42.0.0/24"
-NET_GATEWAY="10.42.0.1"
-NET_DHCP_START="10.42.0.100"
-NET_DHCP_END="10.42.0.200"
+# ── Configuration des réseaux ───────────────────────────────────────────────
+declare -A NETWORKS=(
+    [nexus-mgmt]="virbr-mgmt|10.42.0.0/24|10.42.0.1|Management (HÔTE SOC + GNS3)"
+    [nexus-vlan10]="virbr-vlan10|10.42.10.0/24|10.42.10.1|VLAN 10 (Client Afriland)"
+    [nexus-vlan20]="virbr-vlan20|10.42.20.0/24|10.42.20.1|VLAN 20 (Client UBA)"
+    [nexus-vlan30]="virbr-vlan30|10.42.30.0/24|10.42.30.1|VLAN 30 (Attaquant externe)"
+)
 
-# IPs statiques réservées via DHCP (matchées par MAC configurée dans virt-manager)
-# Les MACs sont générées ici et à réutiliser lors de la création des VMs.
-#
-# ⚠  IMPORTANT : dans ce lab, LE HÔTE joue le rôle de SOC (10.42.0.1 = gateway).
-#     Pas de vm-soc — on utilise la machine hôte Ubuntu qui a déjà
-#     PostgreSQL, uvicorn (nexus-soc.service) et cloudflared configurés en systemd.
-MAC_VM_CIBLE="52:54:00:aa:00:20"
-MAC_VM_KALI="52:54:00:aa:00:30"
-MAC_VM_DSI="52:54:00:aa:00:40"
-
-IP_HOTE_SOC="10.42.0.1"       # gateway libvirt = hôte Ubuntu = serveur NEXUS SOC
-IP_VM_CIBLE="10.42.0.20"
-IP_VM_KALI="10.42.0.30"
-IP_VM_DSI="10.42.0.40"
+# Réservations MAC → IP fixes (à utiliser à la création des VMs)
+MAC_VM_CIBLE="52:54:00:aa:00:20"      # → 10.42.10.20 (VLAN 10 Afriland)
+MAC_VM_DSI="52:54:00:aa:00:40"        # → 10.42.10.40 (VLAN 10 Afriland)
+MAC_VM_CIBLEB="52:54:00:aa:00:50"     # → 10.42.20.20 (VLAN 20 UBA)
+MAC_VM_KALI="52:54:00:aa:00:30"       # → 10.42.30.30 (VLAN 30 external)
 
 # ── Actions annexes ─────────────────────────────────────────────────────────
 
 if [[ "${1:-}" == "--status" ]]; then
     echo "─── Réseaux libvirt actifs ───"
     virsh net-list --all
-    if virsh net-info "$NET_NAME" >/dev/null 2>&1; then
-        echo
-        echo "─── Détail de $NET_NAME ───"
-        virsh net-info "$NET_NAME"
-        echo
-        echo "─── Baux DHCP actifs ───"
-        virsh net-dhcp-leases "$NET_NAME" 2>/dev/null || true
-    fi
+    for net in "${!NETWORKS[@]}"; do
+        if virsh net-info "$net" >/dev/null 2>&1; then
+            echo; echo "─── $net ───"
+            virsh net-info "$net" | grep -E "Name|Active|Bridge"
+            virsh net-dhcp-leases "$net" 2>/dev/null | head -8
+        fi
+    done
     exit 0
 fi
 
 if [[ "${1:-}" == "--destroy" ]]; then
-    echo "⚠  Suppression du réseau $NET_NAME (les VMs qui l'utilisent seront déconnectées)"
-    virsh net-destroy   "$NET_NAME" 2>/dev/null || true
-    virsh net-undefine  "$NET_NAME" 2>/dev/null || true
-    echo "✓ Réseau supprimé."
+    for net in "${!NETWORKS[@]}"; do
+        echo "⚠  Suppression de $net"
+        virsh net-destroy   "$net" 2>/dev/null || true
+        virsh net-undefine  "$net" 2>/dev/null || true
+    done
+    # Compat : ancien réseau du lab d'avant fusion GNS3
+    virsh net-destroy   "nexus-lab" 2>/dev/null || true
+    virsh net-undefine  "nexus-lab" 2>/dev/null || true
+    echo "✓ Réseaux supprimés."
     exit 0
 fi
 
 # ── Vérifications préalables ────────────────────────────────────────────────
-
-if ! command -v virsh >/dev/null 2>&1; then
+if ! command -v virsh >/dev/null; then
     echo "✗ virsh introuvable. Exécuter d'abord : sudo apt install libvirt-clients"
     exit 1
 fi
 
 if ! groups | grep -qw libvirt; then
     echo "✗ L'utilisateur '$USER' n'est pas dans le groupe libvirt."
-    echo "  Faire : sudo usermod -aG libvirt \$USER puis se reconnecter."
+    echo "  sudo usermod -aG libvirt \$USER puis se reconnecter."
     exit 1
 fi
 
 # Détection de conflit d'IP sur le hôte
-if ip -o addr show | grep -q "10.42.0"; then
-    echo "✗ Une interface du hôte utilise déjà la plage 10.42.0.x :"
-    ip -o addr show | grep "10.42.0"
-    echo "  → Changer NET_CIDR dans ce script (ex. 10.43.0.0/24) et relancer."
-    exit 1
-fi
+for cidr in "10.42.0" "10.42.10" "10.42.20" "10.42.30"; do
+    if ip -o addr show 2>/dev/null | grep -q "$cidr\."; then
+        # OK si c'est déjà l'un de nos bridges (idempotence)
+        BRIDGE_MATCH=$(ip -o addr show | grep "$cidr\." | grep -oE "virbr-[a-z0-9]+" | head -1)
+        if [[ -z "$BRIDGE_MATCH" || ! "$BRIDGE_MATCH" =~ ^virbr- ]]; then
+            echo "✗ Une interface du hôte utilise déjà $cidr.x :"
+            ip -o addr show | grep "$cidr\."
+            echo "  → Éditer le script pour changer les CIDR ($cidr → 10.43.$cidr par ex.)"
+            exit 1
+        fi
+    fi
+done
 
-# ── Génération du XML libvirt ───────────────────────────────────────────────
+# ── Création idempotente de chaque réseau ───────────────────────────────────
+for net in "${!NETWORKS[@]}"; do
+    IFS='|' read -r bridge cidr gateway description <<< "${NETWORKS[$net]}"
+    prefix="${cidr%.*}"                            # ex : 10.42.10
+    dhcp_start="${prefix}.100"
+    dhcp_end="${prefix}.200"
 
-cat > "$NET_XML" <<XML
+    # Génération XML
+    xml="/tmp/${net}.xml"
+    cat > "$xml" <<XML
 <network>
-  <name>${NET_NAME}</name>
-  <bridge name='${NET_BRIDGE}' stp='on' delay='0'/>
-  <!--
-    NB : PAS de balise <forward .../> → réseau ISOLÉ.
-    Les VMs se voient entre elles et voient le hôte via le bridge,
-    mais ne peuvent PAS atteindre Internet (pas de NAT, pas de route sortie).
-    C'est CE POINT qui rend le scénario Souveraineté démontrable.
-  -->
-  <domain name='minfi.local' localOnly='yes'/>
-  <ip address='${NET_GATEWAY}' netmask='255.255.255.0'>
+  <name>${net}</name>
+  <bridge name='${bridge}' stp='on' delay='0'/>
+  <!-- ISOLÉ : pas de forward → routage inter-VLAN passe par MikroTik dans GNS3 -->
+  <domain name='nexus.local' localOnly='yes'/>
+  <ip address='${gateway}' netmask='255.255.255.0'>
     <dhcp>
-      <range start='${NET_DHCP_START}' end='${NET_DHCP_END}'/>
-      <!-- Réservations DHCP → IP fixes prévisibles pour la démo -->
-      <host mac='${MAC_VM_CIBLE}' name='vm-cible' ip='${IP_VM_CIBLE}'/>
-      <host mac='${MAC_VM_KALI}'  name='vm-kali'  ip='${IP_VM_KALI}'/>
-      <host mac='${MAC_VM_DSI}'   name='vm-dsi'   ip='${IP_VM_DSI}'/>
+      <range start='${dhcp_start}' end='${dhcp_end}'/>
+XML
+
+    # Ajouter les réservations MAC/IP spécifiques par VLAN
+    case "$net" in
+        nexus-vlan10)
+            cat >> "$xml" <<XML
+      <host mac='${MAC_VM_CIBLE}' name='vm-cible' ip='10.42.10.20'/>
+      <host mac='${MAC_VM_DSI}'   name='vm-dsi'   ip='10.42.10.40'/>
+XML
+            ;;
+        nexus-vlan20)
+            cat >> "$xml" <<XML
+      <host mac='${MAC_VM_CIBLEB}' name='vm-cibleB' ip='10.42.20.20'/>
+XML
+            ;;
+        nexus-vlan30)
+            cat >> "$xml" <<XML
+      <host mac='${MAC_VM_KALI}' name='vm-kali' ip='10.42.30.30'/>
+XML
+            ;;
+    esac
+
+    cat >> "$xml" <<XML
     </dhcp>
   </ip>
-  <!-- DNS interne : les VMs résolvent soc.minfi.local vers le HÔTE (gateway) -->
-  <dns>
-    <host ip='${IP_HOTE_SOC}'>
-      <hostname>soc.minfi.local</hostname>
-      <hostname>api.soc.minfi.local</hostname>
-      <hostname>portail.soc.minfi.local</hostname>
-    </host>
-  </dns>
 </network>
 XML
 
-# ── Application ─────────────────────────────────────────────────────────────
-
-# Si le réseau existe déjà et est actif → recharger sa config proprement
-if virsh net-info "$NET_NAME" >/dev/null 2>&1; then
-    echo "ℹ Réseau existant détecté — recréation propre..."
-    virsh net-destroy  "$NET_NAME" 2>/dev/null || true
-    virsh net-undefine "$NET_NAME" 2>/dev/null || true
-fi
-
-virsh net-define "$NET_XML"
-virsh net-start  "$NET_NAME"
-virsh net-autostart "$NET_NAME"
+    # (Ré)appliquer
+    if virsh net-info "$net" >/dev/null 2>&1; then
+        virsh net-destroy  "$net" 2>/dev/null || true
+        virsh net-undefine "$net" 2>/dev/null || true
+    fi
+    virsh net-define    "$xml"
+    virsh net-start     "$net"
+    virsh net-autostart "$net"
+    printf "  ✓ %-15s %-25s %s\n" "$net" "$bridge" "$description"
+done
 
 # ── Résumé ──────────────────────────────────────────────────────────────────
-
 echo
 echo "════════════════════════════════════════════════════════════════════"
-echo "✓ Réseau '$NET_NAME' créé et actif."
+echo "✓ 4 réseaux libvirt créés — prêts pour la topologie GNS3"
 echo "════════════════════════════════════════════════════════════════════"
 echo
-echo "  Bridge          : $NET_BRIDGE"
-echo "  Subnet          : $NET_CIDR (ISOLÉ - aucun accès Internet)"
-echo "  Gateway / SOC   : $NET_GATEWAY  ← le HÔTE Ubuntu joue le rôle de vm-soc"
+echo "  Réservations IP fixes (à saisir dans virt-manager comme MAC forcé) :"
+echo "  ┌──────────┬────────────────┬──────────────┬─────────────────────┐"
+echo "  │ vm-cible │ 10.42.10.20    │ vlan10       │ ${MAC_VM_CIBLE} │"
+echo "  │ vm-dsi   │ 10.42.10.40    │ vlan10       │ ${MAC_VM_DSI} │"
+echo "  │ vm-cibleB│ 10.42.20.20    │ vlan20       │ ${MAC_VM_CIBLEB} │"
+echo "  │ vm-kali  │ 10.42.30.30    │ vlan30       │ ${MAC_VM_KALI} │"
+echo "  │ HÔTE     │ 10.42.0.1      │ mgmt         │ (gateway libvirt)   │"
+echo "  └──────────┴────────────────┴──────────────┴─────────────────────┘"
 echo
-echo "  IPs et MACs réservées (à saisir dans virt-manager) :"
-echo "  ┌──────────┬───────────────────┬───────────────────────┐"
-echo "  │ HÔTE     │ ${IP_HOTE_SOC}      │ (gateway libvirt)     │"
-echo "  │ vm-cible │ ${IP_VM_CIBLE}     │ ${MAC_VM_CIBLE}      │"
-echo "  │ vm-kali  │ ${IP_VM_KALI}     │ ${MAC_VM_KALI}      │"
-echo "  │ vm-dsi   │ ${IP_VM_DSI}     │ ${MAC_VM_DSI}      │"
-echo "  └──────────┴───────────────────┴───────────────────────┘"
-echo
-echo "  DNS interne (résolu par les VMs) :"
-echo "  soc.minfi.local          → ${IP_HOTE_SOC} (hôte)"
-echo "  api.soc.minfi.local      → ${IP_HOTE_SOC}"
-echo "  portail.soc.minfi.local  → ${IP_HOTE_SOC}"
-echo
-echo "Prochaine étape : lancer scripts/host-configure.sh sur le hôte"
-echo "puis créer les 3 VMs (vm-cible, vm-kali, vm-dsi) selon 02-vm-specs.md"
+echo "  Prochaines étapes :"
+echo "    1. Ouvrir GNS3 et suivre 03-gns3-architecture.md"
+echo "    2. Câbler les 4 Cloud nodes vers les bridges ci-dessus"
+echo "    3. Exécuter scripts/host-configure.sh"
+echo "    4. Créer les VMs (02-vm-specs.md)"
 echo "════════════════════════════════════════════════════════════════════"

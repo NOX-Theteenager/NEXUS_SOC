@@ -28,15 +28,14 @@ nécessite Internet réel.
    (`nguetsajunior@gmail.com`) — pour que le mail arrive visiblement
    en 5 secondes.
 
-3. Ouvrir un terminal côté hôte pour montrer les logs :
+3. Ouvrir un terminal côté hôte pour montrer les logs en direct
+   (le HÔTE est le serveur SOC + PLG public via cloudflared) :
 
    ```bash
-   ssh nexus@10.42.0.10       # PAS d'usage ici
-   # Plutôt, sur le hôte :
    sudo journalctl -u nexus-soc -f | grep -iE "PLG verify|SMTP"
    ```
 
-   (Cela suppose que le PLG public tourne aussi sur le hôte. Sinon, ce
+   (Le PLG public tourne sur le hôte, exposé via nexussoc.cm. Ce
    scénario tourne uniquement contre `nexussoc.cm`.)
 
 ## Déroulé de la démo (~6 min)

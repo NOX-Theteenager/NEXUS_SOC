@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# NEXUS SOC LAB — Setup de vm-cible (10.42.0.20)
+# NEXUS SOC LAB — Setup de vm-cible (10.42.10.20)
 # =============================================================================
-# Ubuntu 22.04 Server jouant le rôle d'un poste comptable simulé (MINFI).
+# Ubuntu 22.04 Server jouant le rôle d'un poste comptable Afriland (VLAN 10).
 #
 # Cette VM :
 #   • Émet de la télémétrie normale (bruit de fond réaliste)
@@ -11,24 +11,26 @@
 #   • A un utilisateur "compta_agent" qui simule un employé
 #
 # Prérequis :
-#   • ip a → 10.42.0.20/24
-#   • vm-soc DOIT être installée et accessible sur 10.42.0.10:8000
+#   • ip a → 10.42.10.20/24
+#   • le HÔTE SOC DOIT être accessible sur 10.42.0.1:8000 (via routeur MikroTik)
 # =============================================================================
 set -euo pipefail
 
-TENANT_MINFI="MINFI"
-AGENT_HOSTNAME="POSTE-COMPTA-01"
-SOC_HOST="10.42.0.10"      # vm-soc
-SOC_URL="http://${SOC_HOST}:8000"    # ingest direct sans TLS (LAN interne)
+# Tenant Afriland : client de test principal (VLAN 10 dans le lab)
+TENANT_AFRILAND="Afriland First Bank Microfinance"
+AGENT_HOSTNAME="POSTE-COMPTA-01"           # doit matcher le seed_demo
+SOC_HOST="10.42.0.1"                        # HÔTE (route MikroTik VLAN 10 → mgmt)
+SOC_URL="http://${SOC_HOST}:8000"           # ingest direct sans TLS (LAN interne)
 
-# ── 0. Vérifier connectivité vm-soc ─────────────────────────────────────────
-echo "═══ 0/5 Vérification vm-soc ═══"
+# ── 0. Vérifier connectivité HÔTE SOC ───────────────────────────────────────
+echo "═══ 0/5 Vérification HÔTE SOC ═══"
 if ! curl -s "${SOC_URL}/health" | grep -q '"status":"ok"'; then
-    echo "✗ vm-soc (${SOC_URL}) injoignable ou pas prête."
-    echo "  Faire d'abord tourner scripts/vm-soc-setup.sh sur vm-soc."
+    echo "✗ HÔTE SOC (${SOC_URL}) injoignable ou pas prêt."
+    echo "  Vérifier : (1) host-configure.sh a bien tourné sur le hôte,"
+    echo "             (2) le routeur MikroTik route VLAN 10 → mgmt (10.42.0.1)."
     exit 1
 fi
-echo "✓ vm-soc accessible."
+echo "✓ HÔTE SOC accessible."
 
 # ── 1. Paquets système ──────────────────────────────────────────────────────
 echo "═══ 1/5 Paquets système ═══"
@@ -49,7 +51,7 @@ fi
 sudo -u compta_agent bash <<'BASH'
 mkdir -p ~/Documents/Rapports ~/Documents/Mandats ~/Documents/Budgets
 for i in {1..20}; do
-    echo "Rapport financier ${i} - MINFI - $(date -I)" > ~/Documents/Rapports/rapport_$i.txt
+    echo "Rapport financier ${i} - Afriland First Bank - $(date -I)" > ~/Documents/Rapports/rapport_$i.txt
     echo "Mandat de paiement N°$i - Bénéficiaire: Fournisseur_$i - Montant: $((RANDOM % 500000)) FCFA" > ~/Documents/Mandats/mandat_$i.txt
     echo "Budget exercice 2026 - Section $i - Allocation: $((RANDOM % 10000000)) FCFA" > ~/Documents/Budgets/budget_$i.txt
 done
@@ -59,23 +61,35 @@ echo "✓ 60 fichiers créés dans ~compta_agent/Documents (cible du ransomware)
 # ── 3. Enregistrer un agent NEXUS auprès du SOC ─────────────────────────────
 echo "═══ 3/5 Enregistrement agent NEXUS ═══"
 # Récupérer un JWT admin (compte de démo, mdp 'admin')
-ACCESS_TOKEN=$(curl -s -X POST "${SOC_URL}/auth/login" \
+ACCESS_TOKEN=$(curl -s -X POST "${SOC_URL}/auth/token" \
     -H "Content-Type: application/json" \
     -d '{"email":"admin@nexussoc.cm","password":"admin"}' | jq -r '.access_token // empty')
 
 if [[ -z "$ACCESS_TOKEN" ]]; then
-    echo "✗ Login admin échoué. Vérifier que le seed demo a été appliqué sur vm-soc."
+    echo "✗ Login admin échoué. Vérifier que le seed demo a été appliqué sur le HÔTE SOC."
     exit 1
 fi
 
-# Créer un token de provisioning pour le tenant MINFI
+# Résoudre le tenant_id (UUID) depuis le nom via /admin/tenants
+TENANT_ID=$(curl -s -H "Authorization: Bearer ${ACCESS_TOKEN}" "${SOC_URL}/admin/tenants" \
+    | jq -r --arg n "$TENANT_AFRILAND" '.[] | select(.nom==$n) | .id' | head -1)
+
+if [[ -z "$TENANT_ID" ]]; then
+    echo "✗ Tenant « ${TENANT_AFRILAND} » introuvable. Le seed a-t-il été appliqué ?"
+    exit 1
+fi
+echo "  tenant_id = ${TENANT_ID}"
+
+# Créer un token de provisioning (l'API attend tenant_id, pas tenant_name).
+# one_time=false → token réutilisable pour la télémétrie continue du lab.
 PROV=$(curl -s -X POST "${SOC_URL}/provision/token" \
     -H "Authorization: Bearer ${ACCESS_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d "{\"tenant_name\":\"${TENANT_MINFI}\",\"hostname\":\"${AGENT_HOSTNAME}\"}")
+    -d "{\"tenant_id\":\"${TENANT_ID}\",\"hostname\":\"${AGENT_HOSTNAME}\",\"os\":\"linux\",\"one_time\":false}")
 
-BEARER=$(echo "$PROV" | jq -r '.bearer // .token // empty')
+BEARER=$(echo "$PROV" | jq -r '.bearer_token // empty')
 AGENT_ID=$(echo "$PROV" | jq -r '.agent_id // empty')
+HMAC_KEY=$(echo "$PROV" | jq -r '.hmac_key // empty')
 
 if [[ -z "$BEARER" ]]; then
     echo "✗ Provisioning refusé. Réponse : $PROV"
@@ -83,32 +97,55 @@ if [[ -z "$BEARER" ]]; then
 fi
 echo "✓ Agent enregistré : id=${AGENT_ID}"
 
-# Sauvegarder le token pour les scénarios
+# Sauvegarder les identifiants pour les scénarios (bearer + hmac + ids)
 sudo mkdir -p /etc/nexus-agent
-echo "$BEARER" | sudo tee /etc/nexus-agent/bearer >/dev/null
+echo "$BEARER"   | sudo tee /etc/nexus-agent/bearer   >/dev/null
+echo "$HMAC_KEY" | sudo tee /etc/nexus-agent/hmac_key >/dev/null
 echo "$AGENT_ID" | sudo tee /etc/nexus-agent/agent_id >/dev/null
 sudo chmod 600 /etc/nexus-agent/*
-echo "SOC_URL=${SOC_URL}"       | sudo tee /etc/nexus-agent/env  >/dev/null
-echo "AGENT_HOSTNAME=${AGENT_HOSTNAME}" | sudo tee -a /etc/nexus-agent/env >/dev/null
+sudo tee /etc/nexus-agent/env >/dev/null <<EOF
+SOC_URL=${SOC_URL}
+AGENT_HOSTNAME=${AGENT_HOSTNAME}
+AGENT_ID=${AGENT_ID}
+TENANT_ID=${TENANT_ID}
+EOF
 
-# ── 4. Client d'ingestion en Python (simplifié pour le lab) ─────────────────
+# ── 4. Client d'ingestion en Python (format /ingest + signature HMAC) ───────
 echo "═══ 4/5 Client d'ingestion ═══"
 sudo tee /usr/local/bin/nexus-emit >/dev/null <<'PYEOF'
 #!/usr/bin/env python3
-"""Émet un événement de télémétrie vers le SOC (JSON POST)."""
-import json, sys, urllib.request, urllib.error, os
+"""Émet un événement de télémétrie vers le SOC.
 
-with open("/etc/nexus-agent/bearer") as f: BEARER = f.read().strip()
+Contrat /ingest :
+  - Body  : {"agent_id", "tenant_id", "events":[<event>]}
+  - Header: Authorization: Bearer nexus_...  +  X-Signature: HMAC-SHA256(hmac_key, body)
+"""
+import json, sys, os, hmac, hashlib, urllib.request, urllib.error
+
+with open("/etc/nexus-agent/bearer") as f:   BEARER = f.read().strip()
+with open("/etc/nexus-agent/hmac_key") as f: HMAC_KEY = f.read().strip()
 with open("/etc/nexus-agent/env") as f:
-    env = dict(l.strip().split("=", 1) for l in f if "=" in l)
+    env = dict(l.strip().split("=", 1) for l in f if "=" in l and not l.startswith("#"))
 
-payload = json.loads(sys.stdin.read())
-payload.setdefault("hostname", env.get("AGENT_HOSTNAME", "unknown"))
+event = json.loads(sys.stdin.read())
+event.setdefault("hostname", env.get("AGENT_HOSTNAME", "unknown"))
+
+batch = {
+    "agent_id":  env.get("AGENT_ID", ""),
+    "tenant_id": env.get("TENANT_ID", ""),
+    "events":    [event],
+}
+body = json.dumps(batch).encode()
+sig  = hmac.new(HMAC_KEY.encode(), body, hashlib.sha256).hexdigest()
 
 req = urllib.request.Request(
     f"{env['SOC_URL']}/ingest",
-    data=json.dumps(payload).encode(),
-    headers={"Content-Type": "application/json", "Authorization": f"Bearer {BEARER}"},
+    data=body,
+    headers={
+        "Content-Type":  "application/json",
+        "Authorization": f"Bearer {BEARER}",
+        "X-Signature":   sig,
+    },
     method="POST",
 )
 try:

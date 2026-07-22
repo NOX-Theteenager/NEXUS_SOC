@@ -12,7 +12,7 @@ Valide le parcours de bout en bout contre une instance LANCÉE :
     pytest Lot6_Tests/test_api.py -v
 
 Prérequis : PostgreSQL accessible + schémas appliqués + 02_seed_demo.sql exécuté
-(comptes admin@nexussoc.cm / soc@nexussoc.cm / dsi@minfi.cm, mot de passe « admin »).
+(comptes admin@nexussoc.cm / soc@nexussoc.cm / dsi@afriland.cm, mot de passe « admin »).
 
 Variables d'environnement optionnelles :
     NEXUS_BASE_URL   (défaut http://localhost:8000)
@@ -35,7 +35,7 @@ PWD  = os.getenv("NEXUS_TEST_PWD", "admin")
 ACCOUNTS = {
     "admin":   ("admin@nexussoc.cm", "admin_plateforme"),
     "analyst": ("soc@nexussoc.cm",   "analyste_soc"),
-    "dsi":     ("dsi@minfi.cm",      "dsi_client"),
+    "dsi":     ("dsi@afriland.cm",   "dsi_client"),
 }
 
 

@@ -8,7 +8,11 @@
 --  Comptes créés (mot de passe = "admin" pour tous, à changer en prod) :
 --    admin@nexussoc.cm   → admin_plateforme  → Console (tous modules)
 --    soc@nexussoc.cm     → analyste_soc      → Console (alertes + SOAR)
---    dsi@minfi.cm        → dsi_client        → Portail DSI (tenant MINFI)
+--    dsi@afriland.cm     → dsi_client        → Portail (tenant Afriland - VLAN 10)
+--    dsi@uba.cm          → dsi_client        → Portail (tenant UBA - VLAN 20)
+--
+--  Nota : MINFI n'est PAS dans ce seed — MINFI relève du canal souverain
+--  (déploiement self-hosted) et n'est jamais un tenant SaaS.
 --
 --  Usage :
 --    psql "postgresql://nexus:change_me@localhost:5432/nexus_soc" -f 02_seed_demo.sql
@@ -20,10 +24,14 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ---------------------------------------------------------------------------
 -- 1. Tenants de démonstration (base : id, nom, type, offre)
 -- ---------------------------------------------------------------------------
+-- Tenants du SOC SaaS de NEXUS (clients hébergés chez le fournisseur)
+--   • Afriland : client de test (VLAN 10 dans le lab)
+--   • UBA      : client second (VLAN 20) pour prouver l'isolation cross-tenant
+--   • Cabinet Audit : trial (démo PLG passage à un abonnement payant)
 INSERT INTO tenants (id, nom, type, offre) VALUES
-  ('11111111-1111-1111-1111-111111111111', 'Ministère des Finances',  'administration',    'contrat_public'),
-  ('22222222-2222-2222-2222-222222222222', 'Microfinance Exemple SA', 'microfinance',      'business'),
-  ('33333333-3333-3333-3333-333333333333', 'Cabinet Audit & Co',      'cabinet_comptable', 'starter')
+  ('11111111-1111-1111-1111-111111111111', 'Afriland First Bank Microfinance', 'microfinance',      'business'),
+  ('22222222-2222-2222-2222-222222222222', 'UBA Cameroun Microfinance',        'microfinance',      'business'),
+  ('33333333-3333-3333-3333-333333333333', 'Cabinet Audit & Co',                'cabinet_comptable', 'starter')
 ON CONFLICT (id) DO UPDATE
   SET nom = EXCLUDED.nom, type = EXCLUDED.type, offre = EXCLUDED.offre;
 
@@ -32,13 +40,13 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns
              WHERE table_name = 'tenants' AND column_name = 'plan') THEN
-    UPDATE tenants SET plan = 'contrat_public', max_agents = 999, max_daily_events = 1000000
-      WHERE id = '11111111-1111-1111-1111-111111111111';
     UPDATE tenants SET plan = 'business', max_agents = 50, max_daily_events = 200000
-      WHERE id = '22222222-2222-2222-2222-222222222222';
+      WHERE id = '11111111-1111-1111-1111-111111111111';  -- Afriland
+    UPDATE tenants SET plan = 'business', max_agents = 50, max_daily_events = 200000
+      WHERE id = '22222222-2222-2222-2222-222222222222';  -- UBA
     UPDATE tenants SET plan = 'trial', max_agents = 5, max_daily_events = 10000,
                        trial_ends_at = now() + interval '21 days'
-      WHERE id = '33333333-3333-3333-3333-333333333333';
+      WHERE id = '33333333-3333-3333-3333-333333333333';  -- Cabinet Audit (trial)
   END IF;
 END $$;
 
@@ -48,24 +56,32 @@ END $$;
 INSERT INTO users (tenant_id, email, mot_de_passe, role) VALUES
   (NULL,                                     'admin@nexussoc.cm', crypt('admin', gen_salt('bf')), 'admin_plateforme'),
   (NULL,                                     'soc@nexussoc.cm',   crypt('admin', gen_salt('bf')), 'analyste_soc'),
-  ('11111111-1111-1111-1111-111111111111',   'dsi@minfi.cm',      crypt('admin', gen_salt('bf')), 'dsi_client')
+  ('11111111-1111-1111-1111-111111111111',   'dsi@afriland.cm',   crypt('admin', gen_salt('bf')), 'dsi_client'),
+  ('22222222-2222-2222-2222-222222222222',   'dsi@uba.cm',        crypt('admin', gen_salt('bf')), 'dsi_client')
 ON CONFLICT (email) DO UPDATE
   SET mot_de_passe = EXCLUDED.mot_de_passe,
       role         = EXCLUDED.role,
       tenant_id    = EXCLUDED.tenant_id,
       actif        = TRUE;
 
+-- Nettoyer un éventuel ancien compte dsi@minfi.cm (au cas où le seed a été
+-- appliqué avant cette refonte).
+DELETE FROM users WHERE email = 'dsi@minfi.cm';
+
 -- ---------------------------------------------------------------------------
 -- 3. Agents de démonstration (idempotent par id fixe)
 -- ---------------------------------------------------------------------------
+-- Agents Afriland (VLAN 10 dans le lab, tenant testé)
+--   POSTE-COMPTA-01 correspond au hostname de vm-cible dans le lab
 INSERT INTO agents (id, tenant_id, hostname, os, statut, vu_le) VALUES
   ('a0000001-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'SRV-BUDGET-01',    'linux',   'actif',      now() - interval '2 min'),
-  ('a0000002-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'POSTE-COMPTA-07',  'windows', 'actif',      now() - interval '5 min'),
+  ('a0000002-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'POSTE-COMPTA-01',  'windows', 'actif',      now() - interval '5 min'),
   ('a0000003-0000-0000-0000-000000000003', '22222222-2222-2222-2222-222222222222', 'SRV-CORE-01',      'linux',   'actif',      now() - interval '1 min'),
   ('a0000004-0000-0000-0000-000000000004', '22222222-2222-2222-2222-222222222222', 'DESK-CAISSIER-01', 'windows', 'actif',      now() - interval '8 min'),
   ('a0000005-0000-0000-0000-000000000005', '33333333-3333-3333-3333-333333333333', 'WS-AUDITEUR-01',   'windows', 'hors_ligne', now() - interval '14 h')
 ON CONFLICT (id) DO UPDATE
-  SET statut = EXCLUDED.statut, vu_le = EXCLUDED.vu_le;
+  SET tenant_id = EXCLUDED.tenant_id, hostname = EXCLUDED.hostname,
+      statut = EXCLUDED.statut, vu_le = EXCLUDED.vu_le;
 
 -- ---------------------------------------------------------------------------
 -- 4. Alertes de démonstration (idempotent par id fixe)

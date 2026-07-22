@@ -61,17 +61,21 @@ systemctl status libvirtd | head -5
 
 ## 3. Espace disque nécessaire
 
-| Élément                    | Taille |
-|----------------------------|--------|
-| ISO Ubuntu 22.04 Server    | 2.5 Go |
-| ISO Ubuntu 22.04 Desktop   | 4.7 Go |
-| ISO Kali Rolling           | 4.5 Go |
-| Disque virtuel vm-soc      | 60 Go  |
-| Disque virtuel vm-cible    | 40 Go  |
-| Disque virtuel vm-kali     | 40 Go  |
-| Disque virtuel vm-dsi      | 40 Go  |
-| Snapshots (x2 par VM)      | ~40 Go |
-| **TOTAL sur `/var/lib/libvirt/images`** | **~240 Go** |
+Le HÔTE est le serveur SOC (pas de VM vm-soc → pas de disque de 60 Go).
+
+| Élément                       | Taille |
+|-------------------------------|--------|
+| ISO Ubuntu 22.04 Server       | 2.5 Go |
+| ISO Ubuntu 22.04 Desktop      | 4.7 Go |
+| ISO Kali Rolling              | 4.5 Go |
+| ISO Alpine Standard           | 0.05 Go|
+| Images GNS3 (pfSense+MikroTik)| 1.0 Go |
+| Disque virtuel vm-cible       | 40 Go  |
+| Disque virtuel vm-dsi         | 40 Go  |
+| Disque virtuel vm-cibleB      | 8 Go   |
+| Disque virtuel vm-kali        | 40 Go  |
+| Snapshots (x1 par VM)         | ~25 Go |
+| **TOTAL sur `/var/lib/libvirt/images`** | **~165 Go** |
 
 Vérifier l'espace disponible :
 
@@ -79,9 +83,9 @@ Vérifier l'espace disponible :
 df -h /var/lib/libvirt/images
 ```
 
-Si moins de 250 Go, prévoir de :
+Si moins de 180 Go, prévoir de :
 - monter un SSD externe et changer le pool de stockage libvirt, OU
-- réduire les disques (30 Go min pour vm-soc, 20 Go pour les autres)
+- réduire les disques (20 Go min pour vm-cible/vm-dsi/vm-kali)
 
 ---
 
@@ -90,7 +94,7 @@ Si moins de 250 Go, prévoir de :
 ```bash
 mkdir -p ~/nexus-lab-isos && cd ~/nexus-lab-isos
 
-# Ubuntu 22.04 Server (pour vm-soc, vm-cible)
+# Ubuntu 22.04 Server (pour vm-cible)
 wget -c https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso
 
 # Ubuntu 22.04 Desktop (pour vm-dsi)
@@ -98,6 +102,9 @@ wget -c https://releases.ubuntu.com/22.04/ubuntu-22.04.5-desktop-amd64.iso
 
 # Kali Linux Rolling (pour vm-kali)
 wget -c https://cdimage.kali.org/kali-2026.2/kali-linux-2026.2-installer-amd64.iso
+
+# Alpine Linux 3.19 Standard (pour vm-cibleB — client UBA léger, ~50 Mo)
+wget -c https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-standard-3.19.1-x86_64.iso
 ```
 
 Vérifier les hashs SHA256 (contre les fichiers SHA256SUMS publiés) :
@@ -105,6 +112,15 @@ Vérifier les hashs SHA256 (contre les fichiers SHA256SUMS publiés) :
 ```bash
 sha256sum *.iso
 ```
+
+### Images GNS3 (équipements réseau)
+
+Voir `03-gns3-architecture.md §2.2` pour le détail. À télécharger séparément :
+
+| Image                  | Source                              |
+|------------------------|-------------------------------------|
+| pfSense CE 2.7 (ISO)   | https://www.pfsense.org/download/   |
+| MikroTik RouterOS CHR  | https://mikrotik.com/download#chr   |
 
 ---
 
@@ -124,20 +140,20 @@ ip addr | grep "10.42"
 
 ## 6. Fichiers hosts sur le hôte (pour la démo)
 
-Pour que le navigateur du hôte puisse accéder au portail DSI de vm-soc via
-le nom `soc.minfi.local` (pas juste par IP), ajouter cette ligne à
-`/etc/hosts` (une seule fois) :
+Le HÔTE est lui-même le serveur SOC (IP lab `10.42.0.1`). Pour que Firefox
+sur le hôte résolve `soc.nexus.local` vers le service local, ajouter cette
+ligne à `/etc/hosts` (une seule fois) :
 
 ```bash
-echo "10.42.0.10  soc.minfi.local  api.soc.minfi.local  portail.soc.minfi.local" \
+echo "10.42.0.1  soc.nexus.local  api.soc.nexus.local  portail.soc.nexus.local" \
     | sudo tee -a /etc/hosts
 ```
 
 Vérifier :
 
 ```bash
-getent hosts soc.minfi.local
-# doit répondre : 10.42.0.10       soc.minfi.local api.soc.minfi.local ...
+getent hosts soc.nexus.local
+# doit répondre : 10.42.0.1       soc.nexus.local api.soc.nexus.local ...
 ```
 
 ---
@@ -186,7 +202,7 @@ sudo systemctl restart cloudflared
 - [ ] `groups | grep libvirt` — l'utilisateur est dans le groupe libvirt
 - [ ] 250 Go libres sur `/var/lib/libvirt/images`
 - [ ] Les 3 ISOs téléchargées et hashes vérifiés
-- [ ] `/etc/hosts` contient l'entrée `soc.minfi.local`
+- [ ] `/etc/hosts` contient l'entrée `soc.nexus.local`
 - [ ] `curl https://nexussoc.cm/health` renvoie 200
 
 Une fois tous cochés → passer à **`01-network-setup.sh`**.

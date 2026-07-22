@@ -9,7 +9,7 @@
 #
 # Le Modèle 2 (UEBA — Isolation Forest) du SOC détecte automatiquement :
 #   → Alerte critique dans la DB
-#   → Notification push envoyée au portail DSI MINFI
+#   → Notification push envoyée au portail DSI Afriland
 #   → Rapport HTML téléchargeable généré
 #
 # À exécuter DEPUIS vm-cible.
@@ -22,7 +22,7 @@ if [[ ! -f /etc/nexus-agent/bearer ]]; then
     exit 1
 fi
 
-source /etc/nexus-agent/env
+source /etc/nexus-agent/env    # définit SOC_URL=http://10.42.0.1:8000
 BEARER=$(cat /etc/nexus-agent/bearer)
 
 BOLD="\033[1m"
@@ -146,9 +146,9 @@ banner "PREUVES CÔTÉ SOC — l'alerte a-t-elle été créée ?"
 # Login analyste pour interroger l'API
 echo
 echo "→ Login en tant qu'analyste_soc..."
-TOKEN=$(curl -s -X POST "$SOC_URL/auth/login" \
+TOKEN=$(curl -s -X POST "$SOC_URL/auth/token" \
     -H "Content-Type: application/json" \
-    -d '{"email":"analyste@nexussoc.cm","password":"admin"}' \
+    -d '{"email":"soc@nexussoc.cm","password":"admin"}' \
     | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
 
 if [[ -z "$TOKEN" ]]; then
@@ -159,15 +159,15 @@ fi
 echo "→ Récupération des alertes récentes (5 dernières minutes) :"
 echo
 curl -s -H "Authorization: Bearer $TOKEN" \
-    "$SOC_URL/analyst/alerts?since=5min" \
+    "$SOC_URL/analyst/alerts?limit=10" \
     | python3 -m json.tool | head -40
 
 echo
-echo "→ Récupération des notifications pour le tenant MINFI :"
+echo "→ Récupération des notifications pour le tenant Afriland :"
 echo
-DSI_TOKEN=$(curl -s -X POST "$SOC_URL/auth/login" \
+DSI_TOKEN=$(curl -s -X POST "$SOC_URL/auth/token" \
     -H "Content-Type: application/json" \
-    -d '{"email":"dsi@minfi.cm","password":"admin"}' \
+    -d '{"email":"dsi@afriland.cm","password":"admin"}' \
     | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
 
 curl -s -H "Authorization: Bearer $DSI_TOKEN" \
@@ -185,7 +185,7 @@ cat <<EOF
     T+15s : dérive détectée (5σ)
     T+30s : fraude critique émise (9.2σ)
     T+35s : alerte "Fraude interne" créée en DB
-    T+35s : notification push arrivée au portail DSI MINFI
+    T+35s : notification push arrivée au portail DSI Afriland
     T+35s : rapport HTML enrichi généré
 
   À montrer au jury :
@@ -195,8 +195,8 @@ cat <<EOF
   3. Le journal d'audit SOAR contient la décision (auto vs validation)
 
   Depuis vm-dsi :
-     firefox https://soc.minfi.local/app/portail.html
-     Login : dsi@minfi.cm / admin
+     firefox https://soc.nexus.local:8443/app/portail.html
+     Login : dsi@afriland.cm / admin
      Cliquer la cloche 🔔 → voir la notification "Fraude interne"
 
 EOF

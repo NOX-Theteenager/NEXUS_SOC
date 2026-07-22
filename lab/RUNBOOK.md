@@ -2,10 +2,15 @@
 
 Script **minute-par-minute** pour la soutenance du 24 août 2026.
 
-**Durée totale : 45 minutes** (30 min de démo + 15 min de questions/marge)
+**Durée totale : 50 minutes** (35 min de démo + 15 min de questions/marge)
 
-Ce runbook suppose que les 4 VMs sont installées, les scripts setup ont
-été exécutés, et les snapshots baseline existent.
+Ce runbook suppose que :
+- Le HÔTE est configuré (via `scripts/host-configure.sh`) et fait tourner
+  NEXUS SOC en systemd
+- La topologie GNS3 est active (pfSense + MikroTik + 4 clouds VLANs)
+- Les 3 VMs libvirt sont installées et connectées aux bons VLANs
+- Les scripts setup ont été exécutés
+- Les snapshots baseline existent
 
 ---
 
@@ -16,8 +21,10 @@ Ce runbook suppose que les 4 VMs sont installées, les scripts setup ont
 Ouvrir dans cet ordre exact, **écrans/onglets déjà positionnés** :
 
 - **Écran/moniteur principal** (projeté au jury) :
-  - Terminal 1 (grand) : SSH `nexus@10.42.0.10` (vm-soc)
-  - Terminal 2 (moyen) : SSH `compta@10.42.0.20` (vm-cible)
+  - Terminal 1 (grand) : sur le HÔTE (le SOC — logs, tcpdump, SQL)
+  - Terminal 2 (moyen) : SSH `compta@10.42.10.20` (vm-cible Afriland)
+  - Terminal 3 (petit) : SSH `kali@10.42.30.30` (vm-kali, pour le C2)
+  - Fenêtre GNS3 (topologie ouverte)
   - Firefox onglet 1 : `https://nexussoc.cm` (masqué en fond)
   - Firefox onglet 2 : Gmail `nguetsajunior@gmail.com` (masqué en fond)
 
@@ -28,10 +35,11 @@ Ouvrir dans cet ordre exact, **écrans/onglets déjà positionnés** :
 
 ### Dans les VMs (Snapshots)
 
-**Réinitialiser** chaque VM à son snapshot baseline (si démo répétée) :
+**Réinitialiser** chaque VM à son snapshot baseline (si démo répétée).
+Le HÔTE n'est PAS une VM — il tourne en continu (systemd).
 
 ```bash
-for vm in vm-soc vm-cible vm-kali vm-dsi; do
+for vm in vm-cible vm-dsi vm-cibleB vm-kali; do
     virsh snapshot-revert "$vm" "os-installed"
     virsh start "$vm"
 done
@@ -39,16 +47,18 @@ done
 # Attente boot complet (~ 90 s)
 sleep 90
 
-# Vérifier
-for ip in 10.42.0.10 10.42.0.20 10.42.0.30 10.42.0.40; do
-    ping -c 1 -W 2 "$ip" && echo "$ip UP" || echo "$ip ✗"
+# Vérifier (chaque VM dans son VLAN)
+for ip in 10.42.10.20 10.42.10.40 10.42.20.20 10.42.30.30; do
+    ping -c 1 -W 2 "$ip" >/dev/null && echo "$ip UP" || echo "$ip ✗"
 done
+# + le HÔTE SOC
+curl -s http://10.42.0.1:8000/health && echo " ← HÔTE SOC UP"
 ```
 
 ### Vérifications finales
 
 - [ ] `curl https://nexussoc.cm/health` répond 200
-- [ ] `curl https://soc.minfi.local/health` (dans le lab) répond 200
+- [ ] `curl -k https://soc.nexus.local:8443/health` (dans le lab) répond 200
 - [ ] Portail DSI accessible depuis vm-dsi (Firefox déjà lancé)
 - [ ] Console admin accessible : `curl -u admin@nexussoc.cm:admin ...`
 - [ ] Test SMTP Gmail : `.venv/bin/python -c "from smtp_client import send_otp_email; ..."`
@@ -58,18 +68,20 @@ done
 
 ## Timeline complète
 
-| Bloc                          | Début  | Fin    | Écran principal                  |
-|-------------------------------|--------|--------|----------------------------------|
-| 1. Introduction (contexte)    | T+0    | T+5    | Slides / topology.md             |
-| 2. **Scénario 4 — PLG SaaS**  | T+5    | T+11   | Firefox `nexussoc.cm` + Gmail    |
-| 3. **Scénario 1 — Souveraineté** | T+11 | T+16 | Terminal 1 (vm-soc + tcpdump)    |
-| 4. **Scénario 2 — Fraude UEBA** | T+16 | T+26  | Terminal 2 (vm-cible) + Firefox portail DSI |
-| 5. **Scénario 3 — Ransomware SOAR** | T+26 | T+38 | Terminal 2 + vm-dsi + vm-kali |
-| 6. Synthèse & questions       | T+38   | T+45   | Console admin + audit_log.csv    |
+| Bloc                          | Début  | Fin    | Écran principal                       |
+|-------------------------------|--------|--------|---------------------------------------|
+| 1. Introduction (contexte)    | T+0    | T+4    | Slides / topology.md                  |
+| 2. **Tour d'écran GNS3**      | T+4    | T+6    | GNS3 GUI (pfSense + MikroTik + VLANs) |
+| 3. **Scénario 4 — PLG SaaS**  | T+6    | T+12   | Firefox `nexussoc.cm` + Gmail         |
+| 4. **Scénario 1 — Souveraineté** | T+12 | T+17 | Terminal HÔTE + pfSense GUI           |
+| 5. **Scénario 2 — Fraude UEBA** | T+17 | T+27  | Terminal vm-cible + Firefox portail DSI |
+| 6. **Scénario 3 — Ransomware SOAR** | T+27 | T+39 | Terminal vm-cible + vm-dsi + vm-kali |
+| 7. **Scénario 5 — Cross-tenant** | T+39 | T+43 | Terminal vm-kali + comptes 2 DSI      |
+| 8. Synthèse & questions       | T+43   | T+50   | Console admin + audit_log.csv         |
 
 ---
 
-## Bloc 1 — Introduction (5 min)
+## Bloc 1 — Introduction (4 min)
 
 ### Slides à projeter
 
@@ -92,7 +104,34 @@ done
 
 ---
 
-## Bloc 2 — Scénario 4 : PLG SaaS avec OTP Gmail (6 min)
+## Bloc 2 — Tour d'écran GNS3 (2 min) 🆕
+
+### Objectif
+Prouver au jury que la topologie n'est pas un dessin PowerPoint : c'est un
+vrai lab réseau opérationnel.
+
+### Actions
+
+```
+[T+4:00] Basculer sur la fenêtre GNS3 (déjà ouverte)
+[T+4:20] Zoomer sur le projet "NEXUS-SOC-Lab"
+[T+4:40] Clic-droit pfSense → Console → montrer les règles firewall (`show rules`)
+[T+5:20] Clic-droit MikroTik → Console → montrer `/ip firewall filter print`
+[T+5:50] Retour vue globale : les VLANs sont visibles par couleur
+[T+6:00] Fin
+```
+
+### Dialogue
+
+> « Ce que vous voyez ici est la topologie réseau réelle du client :
+> un pare-feu pfSense de bord, un routeur MikroTik qui applique la
+> segmentation en 3 VLANs, chacun représentant un tenant client.
+> Ce n'est pas une simulation en JSON — c'est du vrai routage inter-VLAN,
+> avec des ACLs qui bloquent les paquets au niveau 3. »
+
+---
+
+## Bloc 3 — Scénario 4 : PLG SaaS avec OTP Gmail (6 min)
 
 Suivre le guide détaillé : **`scenarios/04-plg-otp-guide.md`**
 
@@ -124,20 +163,23 @@ Suivre le guide détaillé : **`scenarios/04-plg-otp-guide.md`**
 
 ---
 
-## Bloc 3 — Scénario 1 : Souveraineté (5 min)
+## Bloc 4 — Scénario 1 : Souveraineté (5 min)
 
 Suivre : **`scenarios/01-souverainete-check.sh`** (à exécuter DEPUIS LE HÔTE).
 
 ### Actions
 
 ```
-[T+11:00] Basculer sur Terminal 1 (SSH vm-soc)
-[T+11:30] Sur le hôte : sudo lab/scenarios/01-souverainete-check.sh
-[T+12:00] PREUVE 1 : virsh net-dumpxml → aucune balise <forward>
-[T+13:00] PREUVE 2 : tcpdump 30 secondes, sortie vide
-[T+15:00] PREUVE 3 : ping 8.8.8.8 depuis vm-soc → TIMEOUT
+[T+11:00] Basculer sur Terminal 1 (le HÔTE = SOC)
+[T+11:30] sudo lab/scenarios/01-souverainete-check.sh
+[T+12:00] PREUVE 1 : whois/DNS → domaine .cm hébergé au Cameroun
+[T+13:00] PREUVE 2 : dépendances tierces (Cloudflare/Gmail/CinetPay) géo-localisées
+[T+14:30] PREUVE 3 : tcpdump 30 s → aucune exfiltration vers AWS/GCP/Azure US/EU
 [T+16:00] Fin
 ```
+
+> Complément GNS3 : montrer aussi sur la GUI pfSense la règle "no Internet"
+> pour les clients qui exigent le mode strict (canal souverain type MINFI).
 
 ### Dialogue clé
 
@@ -152,7 +194,7 @@ Suivre : **`scenarios/01-souverainete-check.sh`** (à exécuter DEPUIS LE HÔTE)
 
 ---
 
-## Bloc 4 — Scénario 2 : Fraude interne UEBA (10 min)
+## Bloc 5 — Scénario 2 : Fraude interne UEBA (10 min)
 
 Suivre : **`scenarios/02-fraude-ueba.sh`** (à exécuter DEPUIS vm-cible).
 
@@ -165,7 +207,7 @@ Suivre : **`scenarios/02-fraude-ueba.sh`** (à exécuter DEPUIS vm-cible).
 [T+19:00] Phase 2 : dérive (5σ)
 [T+21:00] Phase 3 : fraude critique (9σ)
 [T+22:00] Basculer sur Firefox vm-dsi → portail
-[T+22:30] Login dsi@minfi.cm / admin
+[T+22:30] Login dsi@afriland.cm / admin
 [T+23:00] Cloche 🔔 → notification arrivée en direct
 [T+23:30] Clic sur la notification → rapport HTML enrichi
 [T+24:00] Bouton "Télécharger le rapport" → HTML sauvegardé
@@ -190,7 +232,7 @@ Suivre : **`scenarios/02-fraude-ueba.sh`** (à exécuter DEPUIS vm-cible).
 
 ---
 
-## Bloc 5 — Scénario 3 : Ransomware + SOAR (12 min)
+## Bloc 6 — Scénario 3 : Ransomware + SOAR (12 min)
 
 Suivre : **`scenarios/03-ransomware-soar.sh`** (à exécuter DEPUIS vm-cible).
 
@@ -216,7 +258,7 @@ Cette fenêtre reste visible → montre les callbacks arriver en direct.
 [T+30:00] Basculer vm-dsi : notification "Ransomware sur POSTE-COMPTA-01"
 [T+31:00] Onglet "Actions en attente" → "Isoler le poste" ⏸
 [T+32:00] Cliquer VALIDER → confirmation + audit
-[T+33:00] Revenir sur vm-cible → montrer que ping vers 10.42.0.10 échoue maintenant (isolation effective simulée)
+[T+33:00] Revenir sur vm-cible → ping vers 10.42.0.1 (SOC) échoue (isolation effective)
 [T+34:00] Retour vm-dsi → cliquer ROLLBACK (démo faux positif)
 [T+35:00] Poste réintégré au réseau
 [T+37:00] Montrer audit_log.csv complet
@@ -238,7 +280,40 @@ Cette fenêtre reste visible → montre les callbacks arriver en direct.
 
 ---
 
-## Bloc 6 — Synthèse et questions (7 min)
+## Bloc 7 — Scénario 5 : Isolation cross-tenant (4 min) 🆕
+
+Suivre : **`scenarios/05-cross-tenant-isolation.sh`** (à exécuter DEPUIS vm-kali).
+
+### Actions
+
+```
+[T+39:00] Terminal vm-kali : sudo lab/scenarios/05-cross-tenant-isolation.sh
+[T+39:30] Preuve 1 : nmap VLAN30 → VLAN10 → tous ports filtered
+[T+40:30] Preuve 2 : ping VLAN30 → VLAN10 → timeout
+[T+41:00] Preuve 3 : ping HÔTE SOC → OK (télémétrie autorisée)
+[T+41:30] Preuve 4 : deux DSI → deux vues d'alertes distinctes (RLS)
+[T+43:00] Fin
+```
+
+### Dialogue clé
+
+> « Voici la double isolation qui fait la crédibilité d'un SOC multi-tenant :
+>
+> - Au **niveau réseau**, le routeur MikroTik bloque physiquement les
+>   paquets entre VLANs. Un attaquant qui pénétrerait un tenant ne peut pas
+>   pivot vers un autre — c'est bloqué à L3, avant même le hôte du voisin.
+>
+> - Au **niveau applicatif**, même quelqu'un qui aurait un JWT volé ne
+>   voit que son tenant. Le Row-Level Security PostgreSQL filtre côté
+>   serveur, pas côté client.
+>
+> Pour compromettre les données d'un tenant client, il faut donc briser
+> simultanément 3 barrières indépendantes. C'est ce que l'ANSSI appelle
+> "défense en profondeur", et c'est ce qui est attendu d'un vrai SOC. »
+
+---
+
+## Bloc 8 — Synthèse et questions (7 min)
 
 ### Console admin
 
@@ -294,22 +369,22 @@ Montrer :
 Si tu répètes la démo en boucle (pour t'entraîner) :
 
 ```bash
-# 1. Revert des snapshots
-for vm in vm-soc vm-cible vm-kali vm-dsi; do
+# 1. Revert des snapshots (le HÔTE n'est pas une VM, il reste up)
+for vm in vm-cible vm-dsi vm-cibleB vm-kali; do
     virsh snapshot-revert "$vm" "os-installed"
 done
 
-# 2. Nettoyage DB (nouveau tenant PLG créé pendant démo précédente)
-ssh nexus@10.42.0.10 'docker exec nexus-postgres psql -U nexus -d nexus_soc -c "
-    DELETE FROM plg_registrations WHERE email LIKE %demo%;
-    DELETE FROM tenants WHERE nom LIKE %Démo%;
-"'
+# 2. Nettoyage DB — directement sur le HÔTE (qui est le SOC)
+docker exec nexus-postgres psql -U nexus -d nexus_soc -c "
+    DELETE FROM plg_registrations WHERE email LIKE '%demo%';
+    DELETE FROM tenants WHERE nom LIKE '%Démo%';
+"
 
 # 3. Nettoyage fichiers .locked sur vm-cible
-ssh compta@10.42.0.20 'sudo find /home/compta_agent -name "*.locked" -delete'
+ssh compta@10.42.10.20 'sudo find /home/compta_agent -name "*.locked" -delete'
 
-# 4. Vider audit_log
-ssh nexus@10.42.0.10 'rm -f ~/NEXUS_SOC/audit_log.csv'
+# 4. Vider audit_log (sur le HÔTE)
+rm -f /home/noxtheteenager/Documents/Projets/NEXUS_SOC/audit_log.csv
 ```
 
 ---
@@ -320,9 +395,9 @@ Voir **`troubleshooting.md`** — 15 pannes fréquentes avec fix en < 30 s.
 
 ### Les 3 pannes les plus probables
 
-1. **Mail Gmail bloqué** (spam ou 2FA) → utiliser lien magique dans logs uvicorn
-2. **Portail DSI 500** → `sudo systemctl restart nexus-soc` sur vm-soc
-3. **Réseau lab qui laisse fuiter** → `virsh net-destroy nexus-lab && virsh net-start nexus-lab`
+1. **Mail Gmail bloqué** (spam ou 2FA) → récupérer l'OTP en DB (troubleshooting #7)
+2. **Portail DSI 500** → `sudo systemctl restart nexus-soc` sur le HÔTE
+3. **VM ne joint pas le SOC** → vérifier routage MikroTik + `host-configure.sh` (troubleshooting #3)
 
 Chacune se résout en < 30 secondes. Prévoir un plan B texte à lire si l'une
 d'elles arrive.

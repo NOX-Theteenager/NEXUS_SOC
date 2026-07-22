@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# NEXUS SOC LAB — Setup de vm-kali (10.42.0.30)
+# NEXUS SOC LAB — Setup de vm-kali (10.42.30.30)
 # =============================================================================
 # Kali Linux joue le rôle d'attaquant externe pour le scénario ransomware.
 # Rôle : simuler un serveur C2 (Command & Control) qui reçoit les callbacks du
@@ -22,7 +22,7 @@ sudo tee /opt/c2-server/c2_listener.py >/dev/null <<'PY'
 """
 Serveur C2 factice — écoute les callbacks HTTP du ransomware simulé.
 Chaque requête POST est loggée. Ne fait RIEN d'autre.
-Objectif : générer du trafic sortant depuis vm-cible vers 10.42.0.30
+Objectif : générer du trafic sortant depuis vm-cible vers 10.42.30.30
 que le SIEM NEXUS peut détecter comme "communication vers IP non listée".
 """
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -81,7 +81,7 @@ echo "════════════════════════�
 echo "✓ Setup vm-kali terminé"
 echo "════════════════════════════════════════════════════════════════════"
 echo
-echo "  IP attaquante : 10.42.0.30"
+echo "  IP attaquante : 10.42.30.30"
 echo "  Port C2       : 8443"
 echo
 echo "  Démarrer le C2 au moment de la démo ransomware :"

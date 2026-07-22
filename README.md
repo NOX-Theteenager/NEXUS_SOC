@@ -32,6 +32,12 @@ Plateforme de détection, corrélation et réponse aux incidents — multi-tenan
 | Portail DSI (maquette) | `xdg-open Lot5_Restitution/portail/portal/index.html` |
 | Console (maquette) | `xdg-open Lot7_Console_Fournisseur/console_fournisseur.html` |
 
+### Tester tous les cas de figure
+
+Guide copier-coller par rôle (admin, analyste, DSI, PLG, provisioning, SOAR,
+sécurité) : voir **[§3bis — Guide de test complet par rôle](#3bis--guide-de-test-complet-par-rôle)**.
+Suite automatisée : `.venv/bin/pytest Lot6_Tests/test_api.py -v` → **18 passed**.
+
 ### Déploiement Souverain
 
 ```bash
@@ -280,15 +286,44 @@ curl http://localhost:8000/health
 
 ### Appliquer tous les schémas SQL
 
+> **IMPORTANT — ordre des schémas.** Les 8 fichiers ci-dessous doivent être
+> appliqués **dans cet ordre exact**. `01_schema_analyst.sql` ajoute les
+> colonnes `token_hash`/`hmac_key_hash` à la table `agents`, et
+> `01_schema_provisioning.sql` ajoute le cycle de vie des tokens : sans eux,
+> l'endpoint `/provision/token` renvoie **500** (`column "token_hash" does not
+> exist`). Le seed doit être appliqué **en dernier**.
+
 ```bash
 # Les schémas sont exécutés automatiquement si placés dans config/postgres/init/
-# Sinon, les appliquer manuellement :
+# Sinon, les appliquer manuellement — depuis la racine du projet :
 DB="postgresql://nexus:change_me@localhost:5432/nexus_soc"
-psql $DB -f ../Lot0_Socle/01_schema_patched.sql
-psql $DB -f ../Lot7_Console_Fournisseur/01_schema_analyst.sql
-psql $DB -f ../Lot7_Console_Fournisseur/01_schema_provisioning.sql
-psql $DB -f ../Lot0_Socle/01_schema_retention.sql
-psql $DB -f ../Lot8_PLG/01_schema_plg.sql
+
+psql $DB -f Lot0_Socle/01_schema_patched.sql            # 1. base (tenants, users, agents, alerts…)
+psql $DB -f Lot0_Socle/01_schema_retention.sql          # 2. rétention / purge
+psql $DB -f Lot7_Console_Fournisseur/01_schema_analyst.sql        # 3. token_hash + escalades analyste
+psql $DB -f Lot7_Console_Fournisseur/01_schema_provisioning.sql   # 4. cycle de vie des tokens + enrollment_log
+psql $DB -f Lot0_Socle/03_schema_notifications.sql      # 5. notifications push DSI + rapports HTML
+psql $DB -f Lot8_PLG/01_schema_plg.sql                  # 6. inscriptions PLG, quotas, abonnements
+psql $DB -f Lot8_PLG/02_schema_otp.sql                  # 7. OTP 6 chiffres (vérification e-mail)
+psql $DB -f Lot0_Socle/02_seed_demo.sql                 # 8. comptes + tenants + alertes de démo (EN DERNIER)
+```
+
+Variante **conteneur** (le `psql` local n'est pas requis) :
+
+```bash
+for f in \
+  Lot0_Socle/01_schema_patched.sql \
+  Lot0_Socle/01_schema_retention.sql \
+  Lot7_Console_Fournisseur/01_schema_analyst.sql \
+  Lot7_Console_Fournisseur/01_schema_provisioning.sql \
+  Lot0_Socle/03_schema_notifications.sql \
+  Lot8_PLG/01_schema_plg.sql \
+  Lot8_PLG/02_schema_otp.sql \
+  Lot0_Socle/02_seed_demo.sql \
+; do
+  echo "── $f"
+  docker exec -i nexus-postgres psql -U nexus -d nexus_soc -q < "$f"
+done
 ```
 
 ### Puis lancer le frontend connecté par-dessus la pile Docker
@@ -483,12 +518,9 @@ curl http://localhost:8000/health
 curl http://localhost:8000/health/detailed | python3 -m json.tool
 
 # --- Ingestion de télémétrie ---
-curl -X POST http://localhost:8000/ingest \
-  -H "Authorization: Bearer nexus_demo" \
-  -H "X-Signature: $(sha256sum Lot1_Agent_Go/telemetry_sample.json | cut -d' ' -f1)" \
-  -H "Content-Type: application/json" \
-  -d @Lot1_Agent_Go/telemetry_sample.json
-# → {"recus":59,"publies":59}
+# /ingest exige un token d'enrôlement (Bearer nexus_…) + un header X-Signature
+# = HMAC-SHA256(hmac_key, body) + un body {"agent_id","tenant_id","events":[…]}.
+# Le flux complet (provisioning → signature → ingest) est détaillé au §3bis-5.
 
 # --- Scoring Modèle 1 (anomalie réseau) ---
 curl -X POST http://localhost:8000/score/network \
@@ -519,6 +551,230 @@ curl http://localhost:8000/plg/plans | python3 -m json.tool
 # --- Admin tenants ---
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/admin/tenants
 ```
+
+---
+
+## 3bis — Guide de test complet par rôle
+
+Cette section permet de **tester tous les cas de figure** du projet en
+copier-coller. Elle suppose le serveur lancé (`uvicorn run:app --port 8000`),
+les **8 schémas appliqués** (voir §2) et le **seed exécuté**.
+
+### Comptes de démonstration (mot de passe `admin` pour tous)
+
+| E-mail | Rôle | Tenant | Accès |
+|---|---|---|---|
+| `admin@nexussoc.cm` | `admin_plateforme` | — (fournisseur) | Console admin : tenants, users, agents, billing |
+| `soc@nexussoc.cm` | `analyste_soc` | — (fournisseur) | Alertes tous tenants, file SOAR, escalades |
+| `dsi@afriland.cm` | `dsi_client` | Afriland First Bank | Portail : alertes + notifications **de Afriland uniquement** |
+| `dsi@uba.cm` | `dsi_client` | UBA Cameroun | Portail : alertes + notifications **de UBA uniquement** |
+
+### 0. Helper : obtenir un token pour un rôle
+
+```bash
+BASE=http://localhost:8000
+login() { curl -s -X POST $BASE/auth/token -H "Content-Type: application/json" \
+  -d "{\"email\":\"$1\",\"password\":\"admin\"}" | jq -r .access_token; }
+
+ADMIN=$(login admin@nexussoc.cm)
+ANALYSTE=$(login soc@nexussoc.cm)
+DSI_AFRILAND=$(login dsi@afriland.cm)
+DSI_UBA=$(login dsi@uba.cm)
+
+# Vérifier son identité / rôle
+curl -s -H "Authorization: Bearer $ADMIN" $BASE/auth/me | jq
+```
+
+### 1. Rôle ADMIN — console fournisseur
+
+```bash
+# Lister les 3 tenants de démo
+curl -s -H "Authorization: Bearer $ADMIN" $BASE/admin/tenants | jq '.[].nom'
+
+# Lister les utilisateurs et les agents
+curl -s -H "Authorization: Bearer $ADMIN" $BASE/admin/users | jq
+curl -s -H "Authorization: Bearer $ADMIN" $BASE/admin/agents | jq '.[].hostname'
+
+# Santé système + facturation
+curl -s -H "Authorization: Bearer $ADMIN" $BASE/admin/health  | jq
+curl -s -H "Authorization: Bearer $ADMIN" $BASE/admin/billing | jq
+
+# Créer / suspendre / réactiver / supprimer un tenant (cycle complet)
+NEW=$(curl -s -X POST $BASE/admin/tenants -H "Authorization: Bearer $ADMIN" \
+  -H "Content-Type: application/json" \
+  -d '{"nom":"Test SARL","type":"microfinance","offre":"starter"}' | jq -r .id)
+curl -s -X POST  $BASE/admin/tenants/$NEW/suspend  -H "Authorization: Bearer $ADMIN" | jq .statut
+curl -s -X POST  $BASE/admin/tenants/$NEW/activate -H "Authorization: Bearer $ADMIN" | jq .statut
+curl -s -X DELETE $BASE/admin/tenants/$NEW         -H "Authorization: Bearer $ADMIN" | jq
+```
+
+### 2. Rôle ANALYSTE SOC — supervision multi-tenants
+
+```bash
+# File d'alertes agrégée (TOUS les tenants) — l'analyste voit tout
+curl -s -H "Authorization: Bearer $ANALYSTE" $BASE/analyst/alerts | jq '.[] | {type,entite,risque}'
+
+# Détail d'une alerte
+AID=$(curl -s -H "Authorization: Bearer $ANALYSTE" $BASE/analyst/alerts | jq -r '.[0].id')
+curl -s -H "Authorization: Bearer $ANALYSTE" $BASE/analyst/alerts/$AID | jq
+
+# Actions SOAR en attente de validation humaine
+curl -s -H "Authorization: Bearer $ANALYSTE" $BASE/analyst/pending | jq
+
+# Tableau de bord analyste (KPIs)
+curl -s -H "Authorization: Bearer $ANALYSTE" $BASE/analyst/dashboard | jq
+
+# Marquer une alerte comme faux positif
+curl -s -X POST $BASE/analyst/false-positive/$AID -H "Authorization: Bearer $ANALYSTE" | jq
+```
+
+### 3. Rôle DSI — portail client + **isolation multi-tenant**
+
+C'est le test-clé de la sécurité multi-tenant : deux DSI, deux vues distinctes.
+
+```bash
+# DSI Afriland ne voit QUE les alertes Afriland
+curl -s -H "Authorization: Bearer $DSI_AFRILAND" $BASE/portal/alerts | jq '.[] | {type,entite}'
+# → Ransomware/POSTE-COMPTA-07, Fraude interne/agent_DGI_0421
+
+# DSI UBA ne voit QUE les alertes UBA
+curl -s -H "Authorization: Bearer $DSI_UBA" $BASE/portal/alerts | jq '.[] | {type,entite}'
+# → Anomalie réseau/SRV-CORE-01, Exécution suspecte/DESK-CAISSIER-01
+
+# Résumé KPI du tenant + notifications push
+curl -s -H "Authorization: Bearer $DSI_AFRILAND" $BASE/portal/summary | jq
+curl -s -H "Authorization: Bearer $DSI_AFRILAND" "$BASE/portal/notifications?unread_only=true" | jq
+
+# PREUVE D'ISOLATION : un DSI NE PEUT PAS accéder à la console admin
+curl -s -o /dev/null -w "DSI → /admin/tenants : HTTP %{http_code} (403 attendu)\n" \
+  -H "Authorization: Bearer $DSI_AFRILAND" $BASE/admin/tenants
+```
+
+### 4. Flux PLG (inscription SaaS self-service)
+
+```bash
+# Filtrage e-mail : jetable rejeté (422), domaine .gov.cm redirigé (422), valide accepté (200)
+curl -s -o /dev/null -w "jetable    : %{http_code}\n" -X POST $BASE/plg/check-email \
+  -H "Content-Type: application/json" -d '{"email":"x@yopmail.com"}'
+curl -s -o /dev/null -w "gov .cm    : %{http_code}\n" -X POST $BASE/plg/check-email \
+  -H "Content-Type: application/json" -d '{"email":"agent@minfi.gov.cm"}'
+curl -s -o /dev/null -w "valide     : %{http_code}\n" -X POST $BASE/plg/check-email \
+  -H "Content-Type: application/json" -d '{"email":"dsi@microfinance-xyz.com"}'
+
+# Inscription complète → OTP envoyé (voir logs si EMAIL_BACKEND=log, ou boîte mail si smtp)
+curl -s -X POST $BASE/plg/register -H "Content-Type: application/json" \
+  -d '{"email":"test-plg@example.com","organization_name":"Démo PLG","sector":"microfinance"}' | jq
+
+# Récupérer l'OTP côté serveur (pour tester sans mail réel)
+docker exec nexus-postgres psql -U nexus -d nexus_soc -tA -c \
+  "SELECT verification_otp FROM plg_registrations WHERE email='test-plg@example.com';"
+
+# Vérifier l'OTP (remplacer 123456)
+curl -s -X POST $BASE/plg/verify-otp -H "Content-Type: application/json" \
+  -d '{"email":"test-plg@example.com","otp":"123456"}' | jq
+
+# Plans tarifaires (public)
+curl -s $BASE/plg/plans | jq '.[] | {plan,amount_fcfa}'
+```
+
+### 5. Provisioning d'un agent + ingestion de télémétrie
+
+Contrat `/ingest` : `Authorization: Bearer nexus_…` **+** header `X-Signature`
+(HMAC-SHA256 du body avec la `hmac_key`) **+** body `{"agent_id","tenant_id","events":[…]}`.
+
+```bash
+# 1. Résoudre le tenant_id d'Afriland
+TID=$(curl -s -H "Authorization: Bearer $ADMIN" $BASE/admin/tenants \
+  | jq -r '.[] | select(.nom=="Afriland First Bank Microfinance") | .id')
+
+# 2. Générer un token d'enrôlement (one_time=false → réutilisable pour la démo)
+PROV=$(curl -s -X POST $BASE/provision/token -H "Authorization: Bearer $ADMIN" \
+  -H "Content-Type: application/json" \
+  -d "{\"tenant_id\":\"$TID\",\"hostname\":\"POSTE-TEST-01\",\"os\":\"linux\",\"one_time\":false}")
+BEARER=$(echo "$PROV" | jq -r .bearer_token)
+AID=$(echo "$PROV"    | jq -r .agent_id)
+HMAC=$(echo "$PROV"   | jq -r .hmac_key)
+
+# 3. Émettre un événement signé
+BODY="{\"agent_id\":\"$AID\",\"tenant_id\":\"$TID\",\"events\":[{\"type\":\"transaction\",\"amount_fcfa\":25000000,\"hour\":2}]}"
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$HMAC" | awk '{print $NF}')
+curl -s -o /dev/null -w "ingest : HTTP %{http_code} (200 attendu)\n" -X POST $BASE/ingest \
+  -H "Authorization: Bearer $BEARER" -H "X-Signature: $SIG" \
+  -H "Content-Type: application/json" -d "$BODY"
+
+# Autres formats de provisioning (installeur, one-liner, QR)
+curl -s "$BASE/provision/oneliner?token=$BEARER&hostname=POSTE-TEST-01&os=linux"
+curl -s -H "Authorization: Bearer $ADMIN" $BASE/provision/qr/$AID | jq -r .qr_ascii 2>/dev/null | head
+
+# Nettoyage
+docker exec nexus-postgres psql -U nexus -d nexus_soc -c \
+  "DELETE FROM agents WHERE hostname='POSTE-TEST-01';"
+```
+
+### 6. Scoring IA direct (sans agent)
+
+```bash
+# Modèle 1 — anomalie réseau (débit sortant massif → risque élevé)
+curl -s -X POST $BASE/score/network -H "Content-Type: application/json" \
+  -d '{"features":{"src_bytes":3200000,"dst_bytes":512,"duration":0}}' | jq
+
+# Modèle 2 — fraude interne UEBA (exfiltration → risque + raisons explicables)
+curl -s -X POST $BASE/score/user-day -H "Content-Type: application/json" \
+  -d '{"features":{"nb_exports":28,"volume_donnees_exportees":92000,"nb_acces_dossiers_sensibles":40,"nb_transactions":12,"montant_total_modifie":0,"nb_modifs_montant":0,"nb_connexions":3,"nb_actions_hors_heures":2,"nb_creations_compte":0,"nb_actions_total":45}}' | jq
+```
+
+### 7. Moteur SOAR (réponse automatisée)
+
+```bash
+# Dry-run : visualise les playbooks sans exécuter
+.venv/bin/python Lot4_SOAR/soar_engine.py
+
+# Exécution réelle : montre la validation humaine (fort impact) + rollback
+.venv/bin/python Lot4_SOAR/soar_engine.py --execute
+cat audit_log.csv   # journal d'audit généré
+```
+
+### 8. Tests de sécurité (cas négatifs)
+
+```bash
+# Login mauvais mot de passe → 401
+curl -s -o /dev/null -w "mauvais mdp     : %{http_code} (401)\n" -X POST $BASE/auth/token \
+  -H "Content-Type: application/json" -d '{"email":"admin@nexussoc.cm","password":"WRONG"}'
+
+# JWT invalide → 401
+curl -s -o /dev/null -w "JWT bidon       : %{http_code} (401)\n" \
+  -H "Authorization: Bearer fake.jwt.token" $BASE/admin/tenants
+
+# Endpoint admin sans header d'auth → 422/401
+curl -s -o /dev/null -w "sans auth       : %{http_code}\n" $BASE/admin/tenants
+
+# Ingest sans signature → 401
+curl -s -o /dev/null -w "ingest non signé: %{http_code} (401)\n" -X POST $BASE/ingest \
+  -H "Authorization: Bearer nexus_fake" -H "Content-Type: application/json" -d '{"events":[]}'
+```
+
+### 9. Suite de tests automatisée (18 tests)
+
+```bash
+# Serveur lancé + schémas + seed appliqués, puis :
+.venv/bin/pytest Lot6_Tests/test_api.py -v
+# → 18 passed  (auth par rôle, isolation tenant, admin, analyste, PLG, cycle de vie tenant)
+```
+
+### Récapitulatif — matrice de tests attendus
+
+| Test | Attendu |
+|---|---|
+| Login des 4 rôles | 200 + JWT avec bon `role` |
+| Admin : CRUD tenants | 200/201, cycle create→suspend→activate→delete |
+| Analyste : alertes tous tenants | 200, 4 alertes visibles |
+| DSI Afriland : `/portal/alerts` | 200, **2 alertes Afriland** |
+| DSI UBA : `/portal/alerts` | 200, **2 alertes UBA** (différentes) |
+| DSI → `/admin/*` | **403** (isolation rôle) |
+| PLG : e-mail gov `.cm` | **422** redirection souveraine |
+| Provision + ingest signé | 200 |
+| Login mauvais mdp | **401** |
+| pytest | **18 passed** |
 
 ---
 

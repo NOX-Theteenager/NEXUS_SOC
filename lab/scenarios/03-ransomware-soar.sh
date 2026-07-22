@@ -3,7 +3,7 @@
 # NEXUS SOC LAB — Scénario 3 : RANSOMWARE + RÉPONSE SOAR AUTOMATISÉE
 # =============================================================================
 # Simule un ransomware sur vm-cible :
-#   1) Callback vers un serveur C2 (vm-kali 10.42.0.30:8443)
+#   1) Callback vers un serveur C2 (vm-kali 10.42.30.30:8443)
 #   2) Chiffrement rapide de fichiers dans ~compta_agent/Documents/
 #   3) Émission de télémétrie caractéristique (débits, extensions, processus)
 #
@@ -29,7 +29,7 @@ if [[ ! -f /etc/nexus-agent/bearer ]]; then
 fi
 
 source /etc/nexus-agent/env
-C2_IP="10.42.0.30"
+C2_IP="10.42.30.30"      # vm-kali dans VLAN 30 (external)
 C2_PORT="8443"
 VICTIM_DIR="/home/compta_agent/Documents"
 
@@ -144,13 +144,13 @@ echo
 echo "→ Interrogation du SOC pour voir le playbook Ransomware s'exécuter..."
 sleep 3
 
-DSI_TOKEN=$(curl -s -X POST "$SOC_URL/auth/login" \
+DSI_TOKEN=$(curl -s -X POST "$SOC_URL/auth/token" \
     -H "Content-Type: application/json" \
-    -d '{"email":"dsi@minfi.cm","password":"admin"}' \
+    -d '{"email":"dsi@afriland.cm","password":"admin"}' \
     | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
 
 echo
-echo "→ Notifications reçues par le DSI MINFI :"
+echo "→ Notifications reçues par le DSI Afriland :"
 curl -s -H "Authorization: Bearer $DSI_TOKEN" \
     "$SOC_URL/portal/notifications?unread_only=true" \
     | python3 -c "
@@ -162,13 +162,13 @@ for n in data.get('notifications', [])[:3]:
 " 2>/dev/null || echo "  (aucune notification pour l'instant — attendre 10s de plus)"
 
 echo
-echo "→ Actions SOAR déclenchées (interrogation /analyst/pending-soar) :"
-ANALYST_TOKEN=$(curl -s -X POST "$SOC_URL/auth/login" \
+echo "→ Actions SOAR déclenchées (interrogation /analyst/pending) :"
+ANALYST_TOKEN=$(curl -s -X POST "$SOC_URL/auth/token" \
     -H "Content-Type: application/json" \
-    -d '{"email":"analyste@nexussoc.cm","password":"admin"}' \
+    -d '{"email":"soc@nexussoc.cm","password":"admin"}' \
     | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
 curl -s -H "Authorization: Bearer $ANALYST_TOKEN" \
-    "$SOC_URL/analyst/pending-soar" | python3 -m json.tool | head -20
+    "$SOC_URL/analyst/pending" | python3 -m json.tool | head -20
 
 echo
 echo -e "${YELLOW}⚠  Action 'Isoler le poste' (impact FORT) est EN ATTENTE${RESET}"
@@ -181,7 +181,7 @@ cat <<EOF
 
   À montrer au jury depuis vm-dsi :
   ──────────────────────────────────
-  1) Firefox → https://soc.minfi.local/app/portail.html
+  1) Firefox → https://soc.nexus.local:8443/app/portail.html
   2) Cloche 🔔 → notification "Ransomware sur POSTE-COMPTA-01"
   3) Clic sur le rapport → visualisation HTML détaillée
   4) Onglet "Actions en attente" → "Isoler le poste"
