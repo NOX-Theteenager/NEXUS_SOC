@@ -1,11 +1,11 @@
 -- =============================================================================
 --  NEXUS SOC — Lot 7 : Schéma SQL complémentaire
---  Rôle nexus_analyst (cross-tenant) + colonnes de provisioning agent
+--  Rôle nexus_analyst (cross-périmètre) + colonnes de provisioning agent
 --  À exécuter APRÈS 01_schema_patched.sql (Lot 0) avec le super-utilisateur.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- 1. Colonne statut sur la table tenants (suspension d'un tenant)
+-- 1. Colonne statut sur la table tenants (suspension d'un périmètre)
 -- ---------------------------------------------------------------------------
 ALTER TABLE tenants
     ADD COLUMN IF NOT EXISTS statut TEXT NOT NULL DEFAULT 'actif'
@@ -21,11 +21,12 @@ ALTER TABLE agents
     ADD COLUMN IF NOT EXISTS hmac_key_hash  TEXT;
 
 -- ---------------------------------------------------------------------------
--- 3. Rôle PostgreSQL nexus_analyst — lecture cross-tenant (BYPASSRLS)
+-- 3. Rôle PostgreSQL nexus_analyst — lecture cross-périmètre (BYPASSRLS)
 --
 --    Approche retenue : BYPASSRLS sur un rôle distinct, séparé de nexus_app.
---    nexus_app    → rôle applicatif client, soumis à la RLS (tenant isolé)
---    nexus_analyst → rôle analyste SOC, contourne la RLS (tous tenants)
+--    nexus_app    → rôle applicatif, filtré par la RLS (un seul périmètre visible)
+--    nexus_analyst → analyste SOC du CENADI, contourne la RLS pour superviser
+--                    l'ensemble des périmètres hébergés
 --
 --    ⚠ nexus_analyst a uniquement les droits SELECT sur les tables sensibles +
 --      UPDATE limité sur soar_audit (approbation). Jamais super-utilisateur.

@@ -12,7 +12,7 @@ Valide le parcours de bout en bout contre une instance LANCÉE :
     pytest Lot6_Tests/test_api.py -v
 
 Prérequis : PostgreSQL accessible + schémas appliqués + 02_seed_demo.sql exécuté
-(comptes admin@nexussoc.cm / soc@nexussoc.cm / dsi@afriland.cm, mot de passe « admin »).
+(comptes admin@nexussoc.cm / soc@nexussoc.cm / resp.sigipes@cenadi.cm, mot de passe « admin »).
 
 Variables d'environnement optionnelles :
     NEXUS_BASE_URL   (défaut http://localhost:8000)
@@ -35,7 +35,7 @@ PWD  = os.getenv("NEXUS_TEST_PWD", "admin")
 ACCOUNTS = {
     "admin":   ("admin@nexussoc.cm", "admin_plateforme"),
     "analyst": ("soc@nexussoc.cm",   "analyste_soc"),
-    "dsi":     ("dsi@afriland.cm",   "dsi_client"),
+    "dsi":     ("resp.sigipes@cenadi.cm", "dsi_client"),
 }
 
 
@@ -152,42 +152,17 @@ def test_analyst_dashboard(client):
     assert "open_alerts" in body
 
 
-# ── PLG ──────────────────────────────────────────────────────────────────────
-
-def test_plg_plans_public(client):
-    r = client.get("/plg/plans")
-    assert r.status_code == 200
-
-
-def test_plg_check_email_disposable_blocked(client):
-    r = client.post("/plg/check-email", json={"email": "test@mailinator.com"})
-    assert r.status_code == 422  # email jetable refusé
-
-
-def test_plg_check_email_gov_redirect(client):
-    r = client.post("/plg/check-email", json={"email": "agent@minfi.gov.cm"})
-    assert r.status_code == 422  # domaine souverain → flux Hub & Spoke
-    detail = r.json().get("detail", {})
-    if isinstance(detail, dict):
-        assert detail.get("code") == "GOV_DOMAIN_REDIRECT"
-
-
-def test_plg_check_email_valid(client):
-    r = client.post("/plg/check-email", json={"email": "dsi@caisse-abc.com"})
-    assert r.status_code == 200
-
-
-# ── Cycle complet tenant (admin) ──────────────────────────────────────────────
+# ── Cycle complet périmètre supervisé (admin) ─────────────────────────────────
 
 def test_tenant_lifecycle(client):
-    """Crée → suspend → réactive → supprime un tenant de test."""
+    """Crée → suspend → réactive → supprime un périmètre de test."""
     token = _login(client, "admin")
     h = _auth(token)
 
     # Création
     r = client.post("/admin/tenants", headers=h, json={
-        "nom": "TEST PYTEST SA", "type": "microfinance",
-        "offre": "starter", "email_admin": "test-pytest@example.com",
+        "nom": "PERIMETRE TEST PYTEST", "type": "application_metier",
+        "criticite": "standard", "email_admin": "test-pytest@example.com",
     })
     assert r.status_code == 201, r.text
     tid = r.json()["id"]

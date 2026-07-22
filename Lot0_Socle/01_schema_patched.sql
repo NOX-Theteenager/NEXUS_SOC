@@ -1,16 +1,21 @@
 -- =============================================================================
 --  NEXUS SOC — Schéma d'initialisation (PostgreSQL 16 + TimescaleDB)
---  Démontre : multi-tenant (isolation par tenant_id + Row-Level Security),
---  RBAC, stockage des alertes + audit SOAR, métriques en série temporelle.
+--  Démontre : cloisonnement des périmètres supervisés (colonne technique
+--  tenant_id + Row-Level Security), RBAC, stockage des alertes + audit SOAR,
+--  métriques en série temporelle.
+--
+--  « Périmètre supervisé » = une zone ou un système que le CENADI héberge et
+--  supervise (ex. SIGIPES, ANTILOPE, réseau/LAN interne). La colonne technique
+--  reste nommée tenant_id : c'est l'identifiant de cloisonnement porté par la RLS.
 -- =============================================================================
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ---------------------------------------------------------------------------
--- Rôle applicatif client (soumis à la RLS — ne possède PAS BYPASSRLS).
+-- Rôle applicatif (soumis à la RLS — ne possède PAS BYPASSRLS).
 -- C'est sous ce rôle que l'API positionne app.current_tenant pour isoler
--- chaque tenant. Créé ici car les schémas analyst/provisioning lui accordent
--- des droits (GRANT ... TO nexus_app).
+-- chaque périmètre supervisé. Créé ici car les schémas analyst/provisioning
+-- lui accordent des droits (GRANT ... TO nexus_app).
 -- ---------------------------------------------------------------------------
 DO $$
 BEGIN
@@ -22,13 +27,18 @@ END
 $$;
 
 -- ---------------------------------------------------------------------------
--- Tenants (organisations clientes)
+-- Périmètres supervisés (systèmes / zones hébergés et supervisés par le CENADI)
+-- La table conserve le nom « tenants » et la colonne « tenant_id » : ce sont les
+-- identifiants techniques portés par la RLS. Sémantiquement, une ligne = un
+-- périmètre (ex. SIGIPES, ANTILOPE, réseau/LAN interne), pas un client payant.
 -- ---------------------------------------------------------------------------
 CREATE TABLE tenants (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nom         TEXT NOT NULL,
-    type        TEXT NOT NULL CHECK (type IN ('administration','microfinance','assurance','cabinet_comptable')),
-    offre       TEXT CHECK (offre IN ('starter','business','enterprise','contrat_public')),
+    -- Catégorie du périmètre supervisé
+    type        TEXT NOT NULL CHECK (type IN ('application_metier','reseau','infrastructure','poste_utilisateur')),
+    -- Niveau de criticité (pilote la priorisation des incidents)
+    criticite   TEXT CHECK (criticite IN ('standard','sensible','critique')),
     cree_le     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -107,8 +117,8 @@ SELECT create_hypertable('metrics', 'ts');
 CREATE INDEX idx_metrics_tenant ON metrics(tenant_id, metrique, ts DESC);
 
 -- =============================================================================
---  ISOLATION MULTI-TENANT — Row-Level Security (RLS)
---  Chaque requête ne voit que les données de son tenant (variable de session
+--  CLOISONNEMENT DES PÉRIMÈTRES — Row-Level Security (RLS)
+--  Chaque requête ne voit que les données de son périmètre (variable de session
 --  app.current_tenant positionnée par l'API après authentification).
 -- =============================================================================
 ALTER TABLE alerts     ENABLE ROW LEVEL SECURITY;
@@ -125,14 +135,14 @@ CREATE POLICY tenant_isolation_audit ON soar_audit
 -- =============================================================================
 --  Données de démonstration
 -- =============================================================================
-INSERT INTO tenants (id, nom, type, offre) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'Ministère des Finances', 'administration', 'contrat_public'),
-    ('22222222-2222-2222-2222-222222222222', 'Microfinance Exemple SA', 'microfinance', 'business');
+INSERT INTO tenants (id, nom, type, criticite) VALUES
+    ('11111111-1111-1111-1111-111111111111', 'SIGIPES', 'application_metier', 'critique'),
+    ('22222222-2222-2222-2222-222222222222', 'Réseau/LAN CENADI', 'reseau', 'sensible');
 
 INSERT INTO users (tenant_id, email, mot_de_passe, role) VALUES
     (NULL, 'admin@nexussoc.cm', crypt('admin', gen_salt('bf')), 'admin_plateforme'),
-    ('11111111-1111-1111-1111-111111111111', 'dsi@minfi.cm', crypt('demo', gen_salt('bf')), 'dsi_client');
+    ('11111111-1111-1111-1111-111111111111', 'resp.sigipes@cenadi.cm', crypt('demo', gen_salt('bf')), 'dsi_client');
 
 INSERT INTO agents (tenant_id, hostname, os, statut, vu_le) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'SRV-BUDGET-01', 'linux', 'actif', now()),
-    ('11111111-1111-1111-1111-111111111111', 'POSTE-COMPTA-07', 'windows', 'actif', now());
+    ('11111111-1111-1111-1111-111111111111', 'SRV-SIGIPES-01', 'linux', 'actif', now()),
+    ('11111111-1111-1111-1111-111111111111', 'POSTE-RH-07', 'windows', 'actif', now());
