@@ -90,9 +90,9 @@ services:
       - ./config/wazuh_indexer/internal_users.yml:/usr/share/wazuh-indexer/opensearch-security/internal_users.yml
       - ./config/wazuh_indexer_ssl_certs/root-ca.pem:/usr/share/wazuh-indexer/certs/root-ca.pem
       - ./config/wazuh_indexer_ssl_certs/wazuh.indexer.pem:/usr/share/wazuh-indexer/certs/wazuh.indexer.pem
-      - ./config/wazuh_indexer_ssl_certs/wazuh.indexer-key.pem:/usr/share/wazuh-indexer/certs/wazuh.indexer-key.pem
+      - ./config/wazuh_indexer_ssl_certs/wazuh.indexer-key.pem:/usr/share/wazuh-indexer/certs/wazuh.indexer.key
       - ./config/wazuh_indexer_ssl_certs/admin.pem:/usr/share/wazuh-indexer/certs/admin.pem
-      - ./config/wazuh_indexer_ssl_certs/admin-key.pem:/usr/share/wazuh-indexer/certs/admin-key.pem
+      - ./config/wazuh_indexer_ssl_certs/admin-key.pem:/usr/share/wazuh-indexer/certs/admin.key
     networks: [nexus]
 
   wazuh.manager:
@@ -152,14 +152,33 @@ for i in $(seq 1 40); do
   sleep 5
 done
 
+# Fixer le mot de passe admin de l'indexer à « admin » (ce qu'attend le
+# healthcheck NEXUS). On génère le hash bcrypt via l'outil de l'indexer, puis on
+# l'injecte dans internal_users.yml (monté) AVANT le chargement de la config.
+echo "== Mot de passe admin de l'indexer -> 'admin' =="
+HASH=$(docker exec nexus-wazuh-indexer bash -lc \
+  'JAVA_HOME=/usr/share/wazuh-indexer/jdk bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p admin 2>/dev/null | tail -1')
+if [ -n "$HASH" ]; then
+  python3 - "$HASH" "$IDX_CFG/internal_users.yml" <<'PY'
+import sys, re
+h, p = sys.argv[1], sys.argv[2]
+s = open(p).read()
+s = re.sub(r'(admin:\s*\n\s*hash:\s*")[^"]+(")', lambda m: m.group(1)+h+m.group(2), s, count=1)
+open(p, "w").write(s)
+print("   internal_users.yml : hash admin mis à jour")
+PY
+fi
+
 echo "== Initialisation de la sécurité (securityadmin) =="
+# JAVA_HOME requis : le conteneur n'a pas 'which' utilisé par securityadmin.sh
 docker exec nexus-wazuh-indexer bash -lc '
-  export INSTALLATION_DIR=/usr/share/wazuh-indexer
-  CACERT=$INSTALLATION_DIR/certs/root-ca.pem
-  bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh \
-    -cd /usr/share/wazuh-indexer/opensearch-security/ -nhnv \
-    -cacert $CACERT -cert $INSTALLATION_DIR/certs/admin.pem \
-    -key $INSTALLATION_DIR/certs/admin-key.pem -p 9200 -icl' || \
+  export JAVA_HOME=/usr/share/wazuh-indexer/jdk
+  export PATH=$JAVA_HOME/bin:$PATH
+  D=/usr/share/wazuh-indexer
+  bash $D/plugins/opensearch-security/tools/securityadmin.sh \
+    -cd $D/opensearch-security/ -nhnv \
+    -cacert $D/certs/root-ca.pem -cert $D/certs/admin.pem \
+    -key $D/certs/admin.key -p 9200 -icl' || \
   echo "   (securityadmin : à relancer si l'indexer n'était pas prêt)"
 
 echo "== Démarrage manager + dashboard =="
