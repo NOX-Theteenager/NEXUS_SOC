@@ -36,10 +36,11 @@ fi
 pause
 
 banner "PREUVE 4/4 — Émission de télémétrie ANTILOPE vers le SOC"
-if [[ -f /usr/local/bin/nexus-emit ]]; then
-    echo '{"type":"user_activity","user":"agent_solde","action":"consultation_bulletin","count":3}' | nexus-emit >/dev/null 2>&1 \
-      && echo -e "${GREEN}✓ Télémétrie envoyée (flux SORTANT unidirectionnel autorisé)${RESET}" \
-      || echo -e "${YELLOW}⚠ nexus-emit a échoué (agent configuré ?)${RESET}"
+if [[ -f /opt/nexus-agent/nexus_collector.py ]]; then
+    SOC_URL="http://${SOC:-10.50.0.1}:8000" NEXUS_AGENT_DIR=/etc/nexus-agent \
+      sudo -E python3 /opt/nexus-agent/nexus_collector.py --once >/dev/null 2>&1 \
+      && echo -e "${GREEN}✓ Télémétrie réelle envoyée (flux SORTANT unidirectionnel autorisé)${RESET}" \
+      || echo -e "${YELLOW}⚠ collecteur en échec (agent configuré ?)${RESET}"
 else
     echo "  (agent NEXUS non configuré — lancer vm-antilope-setup.sh)"
 fi
