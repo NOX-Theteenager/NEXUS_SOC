@@ -6,7 +6,7 @@
  *   - Offline fallback pour les pages HTML
  */
 
-const CACHE_NAME    = 'nexus-soc-v2';
+const CACHE_NAME    = 'nexus-soc-v3';
 const OFFLINE_URL   = '/app/offline.html';
 
 // Assets à précacher au premier chargement
@@ -58,11 +58,41 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Assets statiques → Cache First
+  // Shell applicatif (pages HTML + code JS de l'app) → Network First :
+  // le code évolue souvent, il ne faut JAMAIS servir une version périmée du
+  // cache (sinon les correctifs console/portail n'arrivent jamais au navigateur).
+  const isAppShell =
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js');
+  if (isAppShell) {
+    event.respondWith(networkFirstShell(event.request));
+    return;
+  }
+
+  // Autres assets statiques (icônes, polices, manifest…) → Cache First
   event.respondWith(cacheFirst(event.request));
 });
 
 // ─── Stratégies ────────────────────────────────────────────────────────────
+
+async function networkFirstShell(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());   // rafraîchit le cache pour le mode hors-ligne
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    if (request.headers.get('accept')?.includes('text/html')) {
+      return caches.match(OFFLINE_URL);
+    }
+    throw new Error('Network error and no cache');
+  }
+}
 
 async function cacheFirst(request) {
   const cached = await caches.match(request);

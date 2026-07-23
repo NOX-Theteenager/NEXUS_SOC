@@ -1685,7 +1685,16 @@ const SUP_META = {
   'evenements_recus': { label: 'Événements ingérés',      color: 'var(--teal)',   unite: '',      max: null },
   'alertes_emises':   { label: 'Alertes émises',          color: 'var(--red)',    unite: '',      max: null },
 };
-function supColor(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || v; }
+function supColor(v){
+  // Résout une var CSS en couleur concrète. Ne renvoie JAMAIS "var(--x)" (que le
+  // canvas rejette silencieusement) : repli sur une couleur sûre si non définie.
+  if (typeof v === 'string' && v.startsWith('var(')) {
+    const name = v.slice(4, -1).trim();
+    const c = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return c || '#5EAAFF';
+  }
+  return v || '#5EAAFF';
+}
 
 let SUP_LAST = null;   // dernier jeu de données (pour redraw au resize)
 
@@ -1738,9 +1747,12 @@ async function loadSupervision(opts = {}) {
     </div>`;
   }).join('') + `</div>`;
 
-  // Dessin après stabilisation de la mise en page (largeurs correctes)
-  requestAnimationFrame(() => metriques.forEach(m =>
-    drawLineChart(`chart-${m}`, d.series[m] || [], SUP_META[m] || {})));
+  // Dessin après stabilisation de la mise en page (largeurs correctes).
+  // Chaque courbe est isolée : une erreur sur l'une ne doit pas bloquer les autres.
+  requestAnimationFrame(() => metriques.forEach(m => {
+    try { drawLineChart(`chart-${m}`, d.series[m] || [], SUP_META[m] || {}); }
+    catch (err) { console.error('chart', m, err); }
+  }));
 }
 
 function drawLineChart(canvasId, points, meta) {
@@ -1817,7 +1829,10 @@ window.addEventListener('resize', () => {
   if (!SUP_LAST || document.getElementById('sec-supervision')?.classList.contains('active') !== true) return;
   clearTimeout(_supResizeTO);
   _supResizeTO = setTimeout(() => {
-    (SUP_LAST.metriques || []).forEach(m => drawLineChart(`chart-${m}`, SUP_LAST.series[m] || [], SUP_META[m] || {}));
+    (SUP_LAST.metriques || []).forEach(m => {
+      try { drawLineChart(`chart-${m}`, SUP_LAST.series[m] || [], SUP_META[m] || {}); }
+      catch (err) { console.error('chart resize', m, err); }
+    });
   }, 150);
 });
 
