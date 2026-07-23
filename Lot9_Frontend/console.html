@@ -142,8 +142,12 @@ svg.ic, .ic { width: 1em; height: 1em; max-width: 100%; display: inline-block; v
 .nav-icon .ic, .nav-icon svg.ic { width: 17px; height: 17px; }
 .ic-lg, svg.ic-lg { width: 22px; height: 22px; }
 .empty-state .icon .ic, .empty-state .icon svg { width: 34px; height: 34px; }
-/* Supervision — grille de graphiques */
-.sup-charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+/* Supervision — grille de graphiques.
+   minmax(0,1fr) : les colonnes peuvent rétrécir sous la largeur de leur contenu,
+   donc 2 colonnes tiennent TOUJOURS (comme les tuiles KPI) au lieu de retomber
+   en une seule colonne empilée. Stack uniquement en dessous de 640px. */
+.sup-charts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 640px) { .sup-charts-grid { grid-template-columns: 1fr; } }
 .sup-chart-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 14px; padding: 16px 18px 12px; min-width: 0;
