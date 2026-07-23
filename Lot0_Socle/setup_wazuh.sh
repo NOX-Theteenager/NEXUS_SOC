@@ -131,8 +131,13 @@ services:
       - ./config/wazuh_indexer_ssl_certs/wazuh.dashboard-key.pem:/usr/share/wazuh-dashboard/certs/wazuh-dashboard-key.pem
     networks: [nexus]
 
-volumes: { indexer_data:, manager_data: }
-networks: { nexus: { name: nexus, external: true } }
+volumes:
+  indexer_data:
+  manager_data:
+networks:
+  nexus:
+    name: nexus
+    external: true
 YAML
 
 # Le réseau "nexus" doit exister (créé par la pile principale). Sinon on le crée.
