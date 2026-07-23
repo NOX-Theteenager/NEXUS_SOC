@@ -130,7 +130,25 @@ body::before {
   background: var(--accent);
   border-radius: 0 3px 3px 0;
 }
-.nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+.nav-icon { width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+/* Icônes SVG natives (trait, currentColor) — remplacent les émojis */
+.ic { width: 1em; height: 1em; display: inline-block; vertical-align: -0.14em; flex-shrink: 0; }
+.ic svg, svg.ic { width: 100%; height: 100%; display: block; }
+.nav-icon .ic { width: 17px; height: 17px; }
+.ic-lg { width: 22px; height: 22px; }
+.empty-state .icon .ic, .empty-state .icon svg { width: 34px; height: 34px; }
+/* Supervision — grille de graphiques */
+.sup-charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+.sup-chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px 18px 12px; min-width: 0;
+}
+.sup-chart-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
+.sup-chart-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 7px; }
+.sup-chart-title .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.sup-chart-cur { font-family: var(--mono); font-size: 15px; font-weight: 500; }
+.sup-canvas-wrap { position: relative; width: 100%; height: 160px; }
+.sup-canvas-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .nav-badge {
   margin-left: auto;
   background: var(--red);
@@ -735,29 +753,29 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
       <!-- Admin sections -->
       <div class="nav-section admin-only" id="nav-sec-admin">Administration</div>
       <div class="nav-item admin-only" data-sec="dashboard" onclick="goto('dashboard')">
-        <span class="nav-icon">⬡</span> Tableau de bord
+        <span class="nav-icon" data-ic="dashboard"></span> Tableau de bord
       </div>
       <div class="nav-item admin-only" data-sec="tenants" onclick="goto('tenants')">
-        <span class="nav-icon">🏢</span> Périmètres
+        <span class="nav-icon" data-ic="perimetre"></span> Périmètres
       </div>
       <div class="nav-item admin-only" data-sec="agents" onclick="goto('agents')">
-        <span class="nav-icon">⬡</span> Agents
+        <span class="nav-icon" data-ic="agents"></span> Agents
       </div>
       <div class="nav-item admin-only" data-sec="health" onclick="goto('health')">
-        <span class="nav-icon">♡</span> Santé système
+        <span class="nav-icon" data-ic="health"></span> Santé système
       </div>
       <div class="nav-item admin-only" data-sec="supervision" onclick="goto('supervision')">
-        <span class="nav-icon">📈</span> Supervision
+        <span class="nav-icon" data-ic="supervision"></span> Supervision
       </div>
 
       <!-- SOC sections -->
       <div class="nav-section">SOC Analyst</div>
       <div class="nav-item" data-sec="alerts" onclick="goto('alerts')">
-        <span class="nav-icon">⚠</span> Alertes
+        <span class="nav-icon" data-ic="alerts"></span> Alertes
         <span class="nav-badge" id="badge-alerts" style="display:none">0</span>
       </div>
       <div class="nav-item" data-sec="soar" onclick="goto('soar')">
-        <span class="nav-icon">⚡</span> Approbation SOAR
+        <span class="nav-icon" data-ic="soar"></span> Approbation SOAR
         <span class="nav-badge" id="badge-soar" style="display:none">0</span>
       </div>
     </nav>
@@ -768,7 +786,7 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
           <div class="user-email" id="user-email">…</div>
           <div class="user-role" id="user-role">…</div>
         </div>
-        <button class="logout-btn" onclick="NexusAPI.logout()" title="Se déconnecter">✕</button>
+        <button class="logout-btn" onclick="NexusAPI.logout()" title="Se déconnecter"><span data-ic="close"></span></button>
       </div>
     </div>
   </aside>
@@ -780,11 +798,11 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
 
   <!-- ── Header ────────────────────────────────────────────────────────── -->
   <header>
-    <button class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</button>
+    <button class="hamburger" id="hamburger" onclick="toggleSidebar()"><span data-ic="menu"></span></button>
     <span class="page-title" id="page-title">Tableau de bord</span>
     <span class="header-spacer"></span>
     <div class="header-actions">
-      <button class="btn btn-ghost btn-sm" onclick="refresh()">↻ Actualiser</button>
+      <button class="btn btn-ghost btn-sm" onclick="refresh()"><span data-ic="refresh"></span> Actualiser</button>
     </div>
   </header>
 
@@ -803,14 +821,14 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
         <div>
           <div class="sec-head" style="margin-bottom:10px">
             <div class="sec-title" style="font-size:15px">Alertes récentes</div>
-            <button class="btn btn-ghost btn-sm" onclick="goto('alerts')">Voir tout →</button>
+            <button class="btn btn-ghost btn-sm" onclick="goto('alerts')">Voir tout <span data-ic="arrow"></span></button>
           </div>
           <div id="dash-alerts" class="alert-grid"></div>
         </div>
         <div>
           <div class="sec-head" style="margin-bottom:10px">
             <div class="sec-title" style="font-size:15px">SOAR en attente</div>
-            <button class="btn btn-ghost btn-sm" onclick="goto('soar')">Voir tout →</button>
+            <button class="btn btn-ghost btn-sm" onclick="goto('soar')">Voir tout <span data-ic="arrow"></span></button>
           </div>
           <div id="dash-soar" class="soar-grid"></div>
         </div>
@@ -942,7 +960,7 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
     <section class="section" id="sec-health">
       <div class="sec-head">
         <div class="sec-title">Santé système</div>
-        <button class="btn btn-ghost btn-sm" onclick="loadHealth()">↻ Vérifier maintenant</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadHealth()"><span data-ic="refresh"></span> Vérifier maintenant</button>
       </div>
       <div id="health-services" class="service-grid">
         <div class="skeleton sk-row" style="border-radius:12px;height:100px"></div>
@@ -962,7 +980,7 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
             <option value="24" selected>24 h</option>
             <option value="168">7 j</option>
           </select>
-          <button class="btn btn-ghost btn-sm" onclick="loadSupervision()">↻ Rafraîchir</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadSupervision()"><span data-ic="refresh"></span> Rafraîchir</button>
         </div>
       </div>
       <div id="sup-kpis" class="kpi-grid" style="margin-bottom:18px"></div>
@@ -977,7 +995,7 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
 <!-- Modal : créer périmètre supervisé -->
 <div class="overlay" id="modal-tenant">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('modal-tenant')">✕</button>
+    <button class="modal-close" onclick="closeModal('modal-tenant')"><span data-ic="close"></span></button>
     <div class="modal-title">Nouveau périmètre supervisé</div>
     <div class="form-field">
       <label>Nom du périmètre</label>
@@ -1016,7 +1034,7 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
 <!-- Modal : provisioner agent -->
 <div class="overlay" id="modal-provision">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('modal-provision')">✕</button>
+    <button class="modal-close" onclick="closeModal('modal-provision')"><span data-ic="close"></span></button>
     <div class="modal-title">Provisioner un agent</div>
     <div class="form-row">
       <div class="form-field">
@@ -1065,7 +1083,7 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
 <!-- Modal : détail alerte -->
 <div class="overlay" id="modal-alert">
   <div class="modal wide">
-    <button class="modal-close" onclick="closeModal('modal-alert')">✕</button>
+    <button class="modal-close" onclick="closeModal('modal-alert')"><span data-ic="close"></span></button>
     <div class="modal-title" id="modal-alert-title">Détail de l'alerte</div>
     <div id="modal-alert-body"></div>
     <div class="modal-footer" id="modal-alert-footer"></div>
@@ -1078,6 +1096,30 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
 <!-- ════════════════════════ SCRIPTS ═══════════════════════════════════════ -->
 <script src="js/api.js"></script>
 <script>
+/* ─── Icônes SVG natives (trait fin, currentColor) ─────────────────────── */
+const ICONS = {
+  dashboard:  '<rect x="3" y="3" width="7.5" height="7.5" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.2"/>',
+  perimetre:  '<path d="M12 3l7 3v5.5c0 4.3-3 7.4-7 8.5-4-1.1-7-4.2-7-8.5V6l7-3z"/><path d="M9 12l2 2 4-4"/>',
+  agents:     '<rect x="3" y="4" width="18" height="7" rx="1.4"/><rect x="3" y="13" width="18" height="7" rx="1.4"/><path d="M6.5 7.5h.01M6.5 16.5h.01"/>',
+  health:     '<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>',
+  supervision:'<path d="M4 4v15.5a.5.5 0 00.5.5H21"/><path d="M7 14.5l3.5-4 3 2.8L20 7"/>',
+  alerts:     '<path d="M12 3.5l8.5 15a1 1 0 01-.87 1.5H4.37a1 1 0 01-.87-1.5l8.5-15a1 1 0 011.74 0z"/><path d="M12 9.5v4"/><path d="M12 17h.01"/>',
+  soar:       '<path d="M13 2.5L5.5 13H11l-1 8.5L18.5 11H13l1-8.5z"/>',
+  refresh:    '<path d="M20.5 12a8.5 8.5 0 11-2.4-5.9"/><path d="M20.5 4v4.2h-4.2"/>',
+  close:      '<path d="M6 6l12 12M18 6L6 18"/>',
+  check:      '<path d="M5 12.5l4.2 4.2L19 6.5"/>',
+  arrow:      '<path d="M5 12h13M13 6l6 6-6 6"/>',
+  menu:       '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  rollback:   '<path d="M9 7L4 12l5 5"/><path d="M4 12h10.5a5.5 5.5 0 015.5 5.5V18"/>',
+  metric:     '<path d="M4 20V4M4 20h16"/><rect x="7" y="12" width="3" height="5" rx="0.6"/><rect x="12" y="8" width="3" height="9" rx="0.6"/><rect x="17" y="14" width="3" height="3" rx="0.6"/>',
+  info:       '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+};
+function ic(name, cls) {
+  const p = ICONS[name] || ICONS.info;
+  return `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" `
+       + `stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+}
+
 /* ─── Données en cache ─────────────────────────────────────────────────── */
 let STATE = {
   tenants: [], agents: [], alerts: [], soar: [],
@@ -1091,7 +1133,14 @@ const USER = NexusAPI.user;
 /* ─── Guard + init ─────────────────────────────────────────────────────── */
 if (!NexusAPI.guard(['admin_plateforme', 'analyste_soc'])) { /* redirigé */ }
 
+function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-ic]').forEach(el => {
+    if (!el.dataset.icDone) { el.innerHTML = ic(el.dataset.ic); el.dataset.icDone = '1'; }
+  });
+}
+
 (async function init() {
+  hydrateIcons();
   setupUI();
   await goto('dashboard');
   startPolling();
@@ -1194,13 +1243,13 @@ async function loadDashboard() {
 
 function renderKPIs(tenantCount, agentCount, alertCount, activeAgents) {
   document.getElementById('kpi-grid').innerHTML = [
-    { label: 'Périmètres actifs', value: tenantCount, sub: 'tous types', icon: '🏢' },
-    { label: 'Agents en ligne', value: activeAgents + '/' + agentCount, sub: 'sur l\'ensemble du parc', icon: '⬡' },
-    { label: 'Alertes ouvertes', value: alertCount, sub: 'à traiter', icon: '⚠', accent: alertCount > 0 },
-    { label: 'Disponibilité API', value: '✓', sub: 'Scoring service UP', icon: '♡' },
+    { label: 'Périmètres actifs', value: tenantCount, sub: 'tous types', icon: 'perimetre', color: 'var(--accent)' },
+    { label: 'Agents en ligne', value: activeAgents + '/' + agentCount, sub: 'sur l\'ensemble du parc', icon: 'agents', color: 'var(--teal)' },
+    { label: 'Alertes ouvertes', value: alertCount, sub: 'à traiter', icon: 'alerts', color: alertCount > 0 ? 'var(--red)' : 'var(--text-3)', accent: alertCount > 0 },
+    { label: 'Disponibilité API', value: 'OK', sub: 'Scoring service UP', icon: 'health', color: 'var(--teal)' },
   ].map(k => `
     <div class="kpi-card">
-      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-icon" style="color:${k.color}">${ic(k.icon, 'ic-lg')}</div>
       <div class="kpi-label">${k.label}</div>
       <div class="kpi-value" style="${k.accent ? 'color:var(--red)' : ''}">${k.value}</div>
       <div class="kpi-sub">${k.sub}</div>
@@ -1239,7 +1288,7 @@ function renderTenants() {
 
   const tbody = document.getElementById('tenants-tbody');
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🏢</div><p>Aucun périmètre trouvé</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">${ic('perimetre')}</div><p>Aucun périmètre trouvé</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(t => {
@@ -1322,7 +1371,7 @@ function renderAgents() {
   );
   const tbody = document.getElementById('agents-tbody');
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">⬡</div><p>Aucun agent</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">${ic('agents')}</div><p>Aucun agent</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(a => {
@@ -1340,8 +1389,8 @@ function renderAgents() {
       <td class="td-mono">${NexusAPI.formatDate(a.vu_le, LANG)}</td>
       <td><span class="badge ${a.token_statut === 'actif' ? 'badge-green' : 'badge-muted'}">${a.token_statut || '—'}</span></td>
       <td>
-        <button class="btn btn-ghost btn-sm" onclick="rotateHmac('${a.id}')" title="Rotation HMAC">🔄</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="revokeAgent('${a.id}','${a.tenant_id}')" title="Révoquer">✕</button>
+        <button class="btn btn-ghost btn-sm" onclick="rotateHmac('${a.id}')" title="Rotation HMAC">${ic('refresh')}</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="revokeAgent('${a.id}','${a.tenant_id}')" title="Révoquer">${ic('close')}</button>
       </td>
     </tr>`;
   }).join('');
@@ -1408,7 +1457,7 @@ async function loadAlerts() {
     renderAlerts();
   } catch (e) {
     document.getElementById('alerts-list').innerHTML =
-      `<div class="empty-state"><div class="icon">⚠</div><p>Impossible de charger les alertes : ${esc(e.detail || '')}</p></div>`;
+      `<div class="empty-state"><div class="icon">${ic('alerts')}</div><p>Impossible de charger les alertes : ${esc(e.detail || '')}</p></div>`;
   }
 }
 
@@ -1422,7 +1471,7 @@ function renderAlerts() {
 
   const el = document.getElementById('alerts-list');
   if (!rows.length) {
-    el.innerHTML = `<div class="empty-state"><div class="icon">✓</div><p>Aucune alerte active — bonne nouvelle !</p></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="icon">${ic('check')}</div><p>Aucune alerte active — bonne nouvelle !</p></div>`;
     return;
   }
   el.innerHTML = rows.map(a => alertCard(a)).join('');
@@ -1505,7 +1554,7 @@ async function loadSOAR() {
     renderDashSOAR(STATE.soar.slice(0, 3));
   } catch (e) {
     document.getElementById('soar-list').innerHTML =
-      `<div class="empty-state"><div class="icon">⚡</div><p>Erreur : ${esc(e.detail || '')}</p></div>`;
+      `<div class="empty-state"><div class="icon">${ic('soar')}</div><p>Erreur : ${esc(e.detail || '')}</p></div>`;
   }
 }
 
@@ -1513,7 +1562,7 @@ function renderSOAR(containerId) {
   const el = document.getElementById(containerId);
   if (!el) return;
   if (!STATE.soar.length) {
-    el.innerHTML = `<div class="empty-state"><div class="icon">✓</div><p>Aucune action en attente</p></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="icon">${ic('check')}</div><p>Aucune action en attente</p></div>`;
     return;
   }
   el.innerHTML = STATE.soar.map(s => `
@@ -1529,9 +1578,9 @@ function renderSOAR(containerId) {
       </div>
       <div class="soar-context">${esc(s.context_fr || s.reason || 'Action à fort impact en attente de validation humaine.')}</div>
       <div class="soar-btns">
-        <button class="btn btn-teal btn-sm" onclick="approveSOAR('${s.id}')">✓ Approuver</button>
-        <button class="btn btn-red btn-sm" onclick="rejectSOAR('${s.id}')">✕ Refuser</button>
-        <button class="btn btn-ghost btn-sm" onclick="rollbackSOAR('${s.id}')">↩ Rollback</button>
+        <button class="btn btn-teal btn-sm" onclick="approveSOAR('${s.id}')">${ic('check')} Approuver</button>
+        <button class="btn btn-red btn-sm" onclick="rejectSOAR('${s.id}')">${ic('close')} Refuser</button>
+        <button class="btn btn-ghost btn-sm" onclick="rollbackSOAR('${s.id}')">${ic('rollback')} Rollback</button>
       </div>
     </div>`).join('');
 }
@@ -1604,7 +1653,7 @@ async function loadHealth() {
     }).join('');
     el.innerHTML = cards || `<div class="empty-state"><p>Aucun service détecté</p></div>`;
   } catch (e) {
-    el.innerHTML = `<div class="empty-state"><div class="icon">♡</div><p>API injoignable : ${esc(e.detail || '')}</p></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="icon">${ic('health')}</div><p>API injoignable : ${esc(e.detail || '')}</p></div>`;
   }
 }
 
@@ -1617,6 +1666,8 @@ const SUP_META = {
 };
 function supColor(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || v; }
 
+let SUP_LAST = null;   // dernier jeu de données (pour redraw au resize)
+
 async function loadSupervision() {
   const hours = parseInt(document.getElementById('sup-range')?.value || '24', 10);
   const kpis  = document.getElementById('sup-kpis');
@@ -1625,89 +1676,122 @@ async function loadSupervision() {
   charts.innerHTML = '';
   let d;
   try { d = await NexusAPI.getMetrics(hours); }
-  catch (e) { charts.innerHTML = `<div class="empty-state"><p>Erreur : ${esc(e.detail||'')}</p></div>`; kpis.innerHTML=''; return; }
+  catch (e) { charts.innerHTML = `<div class="empty-state"><div class="icon">${ic('alerts')}</div><p>Erreur : ${esc(e.detail||'')}</p></div>`; kpis.innerHTML=''; return; }
 
   const metriques = d.metriques || [];
   if (!metriques.length) {
     kpis.innerHTML = '';
-    charts.innerHTML = `<div class="empty-state"><div class="icon">📈</div>
-      <p>Aucune métrique sur la période. Lancez le collecteur :<br>
+    charts.innerHTML = `<div class="empty-state"><div class="icon">${ic('supervision')}</div>
+      <p>Aucune métrique sur la période.<br>Lancez le collecteur de télémétrie :<br>
       <code>python3 Lot1_Agent_Go/nexus_collector.py --loop</code></p></div>`;
+    SUP_LAST = null;
     return;
   }
+  SUP_LAST = d;
 
-  // KPI tiles (résumé par métrique)
+  // Tuiles de synthèse par métrique
   kpis.innerHTML = metriques.map(m => {
     const meta = SUP_META[m] || { label: m, color: 'var(--text-2)', unite: '' };
     const r = d.resume[m] || {};
     return `<div class="kpi-card">
-      <div class="kpi-icon" style="color:${meta.color}">▧</div>
+      <div class="kpi-icon" style="color:${meta.color}">${ic('metric', 'ic-lg')}</div>
       <div class="kpi-label">${esc(meta.label)}</div>
-      <div class="kpi-value">${(r.dernier ?? 0)}<span style="font-size:13px;color:var(--text-3)">${meta.unite}</span></div>
+      <div class="kpi-value">${(r.dernier ?? 0)}<span style="font-size:13px;color:var(--text-3)">${meta.unite||''}</span></div>
       <div class="kpi-sub">moy ${r.moyenne ?? 0} · max ${r.maxi ?? 0} · ${r.points ?? 0} pts</div>
     </div>`;
   }).join('');
 
-  // Un graphique par métrique
-  charts.innerHTML = metriques.map(m => {
-    const meta = SUP_META[m] || { label: m };
-    return `<div class="table-wrap" style="margin-bottom:16px;padding:14px 16px">
-      <div class="card-title" style="margin-bottom:8px">${esc(meta.label)}</div>
-      <canvas id="chart-${m}" height="150" style="width:100%;height:150px;display:block"></canvas>
+  // Un graphique par métrique, en grille responsive
+  charts.innerHTML = `<div class="sup-charts-grid">` + metriques.map(m => {
+    const meta = SUP_META[m] || { label: m, color: 'var(--accent)', unite: '' };
+    const r = d.resume[m] || {};
+    return `<div class="sup-chart-card">
+      <div class="sup-chart-head">
+        <div class="sup-chart-title"><span class="dot" style="background:${meta.color}"></span>${esc(meta.label)}</div>
+        <div class="sup-chart-cur" style="color:${meta.color}">${(r.dernier ?? 0)}${meta.unite||''}</div>
+      </div>
+      <div class="sup-canvas-wrap"><canvas id="chart-${m}"></canvas></div>
     </div>`;
-  }).join('');
+  }).join('') + `</div>`;
 
-  metriques.forEach(m => drawLineChart(`chart-${m}`, d.series[m] || [], SUP_META[m] || {}));
+  // Dessin après stabilisation de la mise en page (largeurs correctes)
+  requestAnimationFrame(() => metriques.forEach(m =>
+    drawLineChart(`chart-${m}`, d.series[m] || [], SUP_META[m] || {})));
 }
 
 function drawLineChart(canvasId, points, meta) {
   const cv = document.getElementById(canvasId);
-  if (!cv || !points.length) return;
+  if (!cv) return;
+  const wrap = cv.parentElement;
   const dpr = window.devicePixelRatio || 1;
-  const W = cv.clientWidth, H = cv.clientHeight;
+  const W = wrap.clientWidth, H = wrap.clientHeight || 160;
+  if (W === 0) { requestAnimationFrame(() => drawLineChart(canvasId, points, meta)); return; }
   cv.width = W * dpr; cv.height = H * dpr;
-  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
-  const pad = { l: 42, r: 12, t: 10, b: 22 };
-  const col = supColor(meta.color || 'var(--accent)');
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = { l: 40, r: 14, t: 12, b: 22 };
+  const col  = supColor(meta.color || 'var(--accent)');
   const grid = supColor('var(--border)');
   const txt  = supColor('var(--text-3)');
+  ctx.font = '10px "JetBrains Mono", monospace';
+
+  if (!points.length) {
+    ctx.fillStyle = txt; ctx.textAlign = 'center';
+    ctx.fillText('en attente de données…', W / 2, H / 2); ctx.textAlign = 'left'; return;
+  }
 
   const vals = points.map(p => p.v);
-  const vmax = meta.max != null ? meta.max : Math.max(1, ...vals) * 1.15;
+  const vmax = meta.max != null ? meta.max : Math.max(1, ...vals) * 1.2;
   const vmin = 0;
   const ts   = points.map(p => new Date(p.t).getTime());
   const tmin = Math.min(...ts), tmax = Math.max(...ts) || tmin + 1;
   const X = t => pad.l + (tmax === tmin ? 0.5 : (t - tmin) / (tmax - tmin)) * (W - pad.l - pad.r);
   const Y = v => H - pad.b - (v - vmin) / (vmax - vmin) * (H - pad.t - pad.b);
 
-  // Grille + graduations Y
-  ctx.strokeStyle = grid; ctx.fillStyle = txt; ctx.font = '10px monospace'; ctx.lineWidth = 1;
+  // Grille horizontale + graduations Y
+  ctx.strokeStyle = grid; ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const v = vmin + (vmax - vmin) * i / 4, y = Y(v);
-    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.globalAlpha = .35; ctx.stroke(); ctx.globalAlpha = 1;
-    ctx.fillText(Math.round(v), 6, y + 3);
+    ctx.globalAlpha = .5; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = txt; ctx.fillText(Math.round(v), 8, y + 3);
   }
-  // Seuil d'alerte à 70 pour les risques
+  // Seuil d'alerte 70 (métriques de risque)
   if (meta.max === 100) {
-    ctx.strokeStyle = supColor('var(--amber)'); ctx.setLineDash([4, 4]); ctx.globalAlpha = .7;
+    ctx.strokeStyle = supColor('var(--amber)'); ctx.setLineDash([4, 4]); ctx.globalAlpha = .8;
     ctx.beginPath(); ctx.moveTo(pad.l, Y(70)); ctx.lineTo(W - pad.r, Y(70)); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha = 1;
-    ctx.fillStyle = supColor('var(--amber)'); ctx.fillText('seuil 70', W - pad.r - 52, Y(70) - 4);
+    ctx.fillStyle = supColor('var(--amber)'); ctx.textAlign = 'right';
+    ctx.fillText('seuil 70', W - pad.r, Y(70) - 5); ctx.textAlign = 'left';
   }
-  // Aire + ligne
-  ctx.beginPath();
-  points.forEach((p, i) => { const x = X(ts[i]), y = Y(p.v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-  ctx.lineTo(X(ts[ts.length-1]), Y(0)); ctx.lineTo(X(ts[0]), Y(0)); ctx.closePath();
-  ctx.fillStyle = col; ctx.globalAlpha = .10; ctx.fill(); ctx.globalAlpha = 1;
-  ctx.beginPath();
-  points.forEach((p, i) => { const x = X(ts[i]), y = Y(p.v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
-  // Étiquettes temps (début/fin)
-  ctx.fillStyle = txt;
+  // Aire dégradée sous la courbe
+  const path = () => { ctx.beginPath(); points.forEach((p, i) => { const x = X(ts[i]), y = Y(p.v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); };
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  grad.addColorStop(0, col + '38'); grad.addColorStop(1, col + '00');
+  path(); ctx.lineTo(X(ts[ts.length - 1]), Y(0)); ctx.lineTo(X(ts[0]), Y(0)); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+  // Ligne
+  path(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  // Dernier point mis en évidence
+  const lx = X(ts[ts.length - 1]), ly = Y(vals[vals.length - 1]);
+  ctx.beginPath(); ctx.arc(lx, ly, 3.5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+  ctx.beginPath(); ctx.arc(lx, ly, 6, 0, Math.PI * 2); ctx.strokeStyle = col + '55'; ctx.lineWidth = 2; ctx.stroke();
+  // Étiquettes temps
   const fmt = t => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  ctx.fillStyle = txt;
   ctx.fillText(fmt(tmin), pad.l, H - 6);
-  ctx.fillText(fmt(tmax), W - pad.r - 34, H - 6);
+  ctx.textAlign = 'right'; ctx.fillText(fmt(tmax), W - pad.r, H - 6); ctx.textAlign = 'left';
 }
+
+// Redessine les graphiques de supervision au redimensionnement (mise en page correcte)
+let _supResizeTO;
+window.addEventListener('resize', () => {
+  if (!SUP_LAST || document.getElementById('sec-supervision')?.classList.contains('active') !== true) return;
+  clearTimeout(_supResizeTO);
+  _supResizeTO = setTimeout(() => {
+    (SUP_LAST.metriques || []).forEach(m => drawLineChart(`chart-${m}`, SUP_LAST.series[m] || [], SUP_META[m] || {}));
+  }, 150);
+});
 
 /* ─── Utilitaires UI ───────────────────────────────────────────────────── */
 function openModal(id) {
@@ -1740,8 +1824,9 @@ function showToast(msg, type = 'info') {
   const c = document.getElementById('toasts');
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  const icon = { success: '✓', error: '✕', info: 'ℹ' }[type] || 'ℹ';
-  t.innerHTML = `<span style="color:${type === 'success' ? 'var(--teal)' : type === 'error' ? 'var(--red)' : 'var(--accent)'}">${icon}</span><span>${esc(msg)}</span>`;
+  const name = { success: 'check', error: 'close', info: 'info' }[type] || 'info';
+  const col  = type === 'success' ? 'var(--teal)' : type === 'error' ? 'var(--red)' : 'var(--accent)';
+  t.innerHTML = `<span class="toast-ic" style="color:${col};display:inline-flex">${ic(name)}</span><span>${esc(msg)}</span>`;
   c.appendChild(t);
   setTimeout(() => t.remove(), 4000);
 }
