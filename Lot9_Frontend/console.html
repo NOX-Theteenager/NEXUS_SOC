@@ -746,6 +746,9 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
       <div class="nav-item admin-only" data-sec="health" onclick="goto('health')">
         <span class="nav-icon">♡</span> Santé système
       </div>
+      <div class="nav-item admin-only" data-sec="supervision" onclick="goto('supervision')">
+        <span class="nav-icon">📈</span> Supervision
+      </div>
 
       <!-- SOC sections -->
       <div class="nav-section">SOC Analyst</div>
@@ -948,6 +951,24 @@ tbody td.td-mono { font-family: var(--mono); font-size: 11px; }
       </div>
     </section>
 
+    <!-- ══ SUPERVISION (séries temporelles réelles) ═══════════════════════ -->
+    <section class="section" id="sec-supervision">
+      <div class="sec-head">
+        <div class="sec-title">Supervision — métriques temps réel</div>
+        <div class="sec-actions" style="display:flex;gap:8px;align-items:center">
+          <select class="tbl-select" id="sup-range" onchange="loadSupervision()">
+            <option value="1">1 h</option>
+            <option value="6">6 h</option>
+            <option value="24" selected>24 h</option>
+            <option value="168">7 j</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadSupervision()">↻ Rafraîchir</button>
+        </div>
+      </div>
+      <div id="sup-kpis" class="kpi-grid" style="margin-bottom:18px"></div>
+      <div id="sup-charts"></div>
+    </section>
+
   </main>
 </div>
 
@@ -1101,7 +1122,7 @@ function setupUI() {
 const TITLES = {
   dashboard: 'Tableau de bord', tenants: 'Périmètres supervisés', agents: 'Agents',
   alerts: 'File d\'alertes', soar: 'Approbation SOAR',
-  health: 'Santé système',
+  health: 'Santé système', supervision: 'Supervision',
 };
 
 async function goto(sec) {
@@ -1113,7 +1134,7 @@ async function goto(sec) {
   closeSidebar();
   const loaders = {
     dashboard: loadDashboard, tenants: loadTenants, agents: loadAgents,
-    alerts: loadAlerts, soar: loadSOAR, health: loadHealth,
+    alerts: loadAlerts, soar: loadSOAR, health: loadHealth, supervision: loadSupervision,
   };
   if (loaders[sec]) await loaders[sec]();
 }
@@ -1122,7 +1143,7 @@ function refresh() {
   const active = document.querySelector('.nav-item.active')?.dataset.sec || 'dashboard';
   const loaders = {
     dashboard: loadDashboard, tenants: loadTenants, agents: loadAgents,
-    alerts: loadAlerts, soar: loadSOAR, health: loadHealth,
+    alerts: loadAlerts, soar: loadSOAR, health: loadHealth, supervision: loadSupervision,
   };
   if (loaders[active]) loaders[active]();
 }
@@ -1585,6 +1606,107 @@ async function loadHealth() {
   } catch (e) {
     el.innerHTML = `<div class="empty-state"><div class="icon">♡</div><p>API injoignable : ${esc(e.detail || '')}</p></div>`;
   }
+}
+
+/* ─── SUPERVISION (séries temporelles réelles) ─────────────────────────── */
+const SUP_META = {
+  'risque_network':   { label: 'Risque réseau (M1)',      color: 'var(--accent)', unite: '/100', max: 100 },
+  'risque_user-day':  { label: 'Risque fraude UEBA (M2)', color: 'var(--purple)', unite: '/100', max: 100 },
+  'evenements_recus': { label: 'Événements ingérés',      color: 'var(--teal)',   unite: '',      max: null },
+  'alertes_emises':   { label: 'Alertes émises',          color: 'var(--red)',    unite: '',      max: null },
+};
+function supColor(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || v; }
+
+async function loadSupervision() {
+  const hours = parseInt(document.getElementById('sup-range')?.value || '24', 10);
+  const kpis  = document.getElementById('sup-kpis');
+  const charts= document.getElementById('sup-charts');
+  kpis.innerHTML = '<div class="skeleton sk-row" style="height:80px;border-radius:12px"></div>';
+  charts.innerHTML = '';
+  let d;
+  try { d = await NexusAPI.getMetrics(hours); }
+  catch (e) { charts.innerHTML = `<div class="empty-state"><p>Erreur : ${esc(e.detail||'')}</p></div>`; kpis.innerHTML=''; return; }
+
+  const metriques = d.metriques || [];
+  if (!metriques.length) {
+    kpis.innerHTML = '';
+    charts.innerHTML = `<div class="empty-state"><div class="icon">📈</div>
+      <p>Aucune métrique sur la période. Lancez le collecteur :<br>
+      <code>python3 Lot1_Agent_Go/nexus_collector.py --loop</code></p></div>`;
+    return;
+  }
+
+  // KPI tiles (résumé par métrique)
+  kpis.innerHTML = metriques.map(m => {
+    const meta = SUP_META[m] || { label: m, color: 'var(--text-2)', unite: '' };
+    const r = d.resume[m] || {};
+    return `<div class="kpi-card">
+      <div class="kpi-icon" style="color:${meta.color}">▧</div>
+      <div class="kpi-label">${esc(meta.label)}</div>
+      <div class="kpi-value">${(r.dernier ?? 0)}<span style="font-size:13px;color:var(--text-3)">${meta.unite}</span></div>
+      <div class="kpi-sub">moy ${r.moyenne ?? 0} · max ${r.maxi ?? 0} · ${r.points ?? 0} pts</div>
+    </div>`;
+  }).join('');
+
+  // Un graphique par métrique
+  charts.innerHTML = metriques.map(m => {
+    const meta = SUP_META[m] || { label: m };
+    return `<div class="table-wrap" style="margin-bottom:16px;padding:14px 16px">
+      <div class="card-title" style="margin-bottom:8px">${esc(meta.label)}</div>
+      <canvas id="chart-${m}" height="150" style="width:100%;height:150px;display:block"></canvas>
+    </div>`;
+  }).join('');
+
+  metriques.forEach(m => drawLineChart(`chart-${m}`, d.series[m] || [], SUP_META[m] || {}));
+}
+
+function drawLineChart(canvasId, points, meta) {
+  const cv = document.getElementById(canvasId);
+  if (!cv || !points.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
+  const pad = { l: 42, r: 12, t: 10, b: 22 };
+  const col = supColor(meta.color || 'var(--accent)');
+  const grid = supColor('var(--border)');
+  const txt  = supColor('var(--text-3)');
+
+  const vals = points.map(p => p.v);
+  const vmax = meta.max != null ? meta.max : Math.max(1, ...vals) * 1.15;
+  const vmin = 0;
+  const ts   = points.map(p => new Date(p.t).getTime());
+  const tmin = Math.min(...ts), tmax = Math.max(...ts) || tmin + 1;
+  const X = t => pad.l + (tmax === tmin ? 0.5 : (t - tmin) / (tmax - tmin)) * (W - pad.l - pad.r);
+  const Y = v => H - pad.b - (v - vmin) / (vmax - vmin) * (H - pad.t - pad.b);
+
+  // Grille + graduations Y
+  ctx.strokeStyle = grid; ctx.fillStyle = txt; ctx.font = '10px monospace'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = vmin + (vmax - vmin) * i / 4, y = Y(v);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.globalAlpha = .35; ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillText(Math.round(v), 6, y + 3);
+  }
+  // Seuil d'alerte à 70 pour les risques
+  if (meta.max === 100) {
+    ctx.strokeStyle = supColor('var(--amber)'); ctx.setLineDash([4, 4]); ctx.globalAlpha = .7;
+    ctx.beginPath(); ctx.moveTo(pad.l, Y(70)); ctx.lineTo(W - pad.r, Y(70)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.fillStyle = supColor('var(--amber)'); ctx.fillText('seuil 70', W - pad.r - 52, Y(70) - 4);
+  }
+  // Aire + ligne
+  ctx.beginPath();
+  points.forEach((p, i) => { const x = X(ts[i]), y = Y(p.v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.lineTo(X(ts[ts.length-1]), Y(0)); ctx.lineTo(X(ts[0]), Y(0)); ctx.closePath();
+  ctx.fillStyle = col; ctx.globalAlpha = .10; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.beginPath();
+  points.forEach((p, i) => { const x = X(ts[i]), y = Y(p.v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+  // Étiquettes temps (début/fin)
+  ctx.fillStyle = txt;
+  const fmt = t => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  ctx.fillText(fmt(tmin), pad.l, H - 6);
+  ctx.fillText(fmt(tmax), W - pad.r - 34, H - 6);
 }
 
 /* ─── Utilitaires UI ───────────────────────────────────────────────────── */

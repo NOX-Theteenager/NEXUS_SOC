@@ -205,6 +205,7 @@
     getHealth()            { return this.get('/health/detailed'); }
     getHealthSimple()      { return this.get('/health'); }
     getPerimetres()        { return this.get('/admin/perimetres'); }
+    getMetrics(hours=24)   { return this.get(`/admin/metrics?hours=${hours}`); }
     getModelDrift(days=7)  { return this.get(`/monitor/drift?days=${days}`); }
 
     // ── Provisioning ──────────────────────────────────────────────────────────

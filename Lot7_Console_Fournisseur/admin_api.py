@@ -364,6 +364,75 @@ def list_perimetres(db=Depends(get_db), _=Depends(require_admin)):
 
 
 # ---------------------------------------------------------------------------
+# E-bis. SUPERVISION — séries temporelles réelles (hypertable metrics)
+# ---------------------------------------------------------------------------
+@router.get("/metrics", summary="Séries temporelles de supervision (metrics)")
+def get_metrics(hours: int = 24, tenant_id: Optional[str] = None,
+                db=Depends(get_db), _=Depends(require_admin)):
+    """
+    Retourne les séries temporelles mesurées (table `metrics`) agrégées par
+    minute, pour alimenter les graphiques de supervision de la console.
+    Réponse : { metriques: [...], series: { <metrique>: [{t, v}, ...] }, resume: {...} }
+    """
+    hours = max(1, min(int(hours), 168))
+    params = [f"{hours} hours"]
+    filtre_tenant = ""
+    if tenant_id:
+        filtre_tenant = "AND tenant_id = %s::uuid"
+        params.append(tenant_id)
+
+    with db.cursor() as cur:
+        # Points agrégés par minute et par métrique
+        cur.execute(
+            f"""
+            SELECT date_trunc('minute', ts) AS t, metrique, avg(valeur) AS v
+              FROM metrics
+             WHERE ts > now() - %s::interval {filtre_tenant}
+             GROUP BY 1, 2
+             ORDER BY 1
+            """,
+            params,
+        )
+        rows = cur.fetchall()
+
+        # Résumé par métrique (dernier point, moyenne, max)
+        cur.execute(
+            f"""
+            SELECT metrique, count(*) AS points,
+                   round(avg(valeur)::numeric, 1) AS moyenne,
+                   max(valeur) AS maxi,
+                   (array_agg(valeur ORDER BY ts DESC))[1] AS dernier
+              FROM metrics
+             WHERE ts > now() - %s::interval {filtre_tenant}
+             GROUP BY metrique
+             ORDER BY metrique
+            """,
+            params,
+        )
+        resume_rows = cur.fetchall()
+
+    series: dict = {}
+    metriques: list = []
+    for r in rows:
+        m = r["metrique"]
+        if m not in series:
+            series[m] = []
+            metriques.append(m)
+        series[m].append({"t": r["t"].isoformat(), "v": round(float(r["v"]), 2)})
+
+    resume = {
+        r["metrique"]: {
+            "points":  int(r["points"]),
+            "moyenne": float(r["moyenne"]) if r["moyenne"] is not None else 0.0,
+            "maxi":    float(r["maxi"]) if r["maxi"] is not None else 0.0,
+            "dernier": float(r["dernier"]) if r["dernier"] is not None else 0.0,
+        }
+        for r in resume_rows
+    }
+    return {"hours": hours, "metriques": metriques, "series": series, "resume": resume}
+
+
+# ---------------------------------------------------------------------------
 # F. ANALYSTE SOC — lecture cross-périmètre (pas de filtre RLS)
 #    Note : ces endpoints utilisent le rôle nexus_analyst (BYPASSRLS)
 #    défini dans 01_schema_analyst.sql. La connexion doit utiliser ce rôle,
