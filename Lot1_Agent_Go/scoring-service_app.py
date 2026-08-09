@@ -370,23 +370,41 @@ def process_normalized_event(ev: dict, tenant_id: str = "", agent_id: str = "") 
 # --------------------------------------------------------------------------- #
 # Consommateur Kafka (tâche de fond)
 # --------------------------------------------------------------------------- #
-def consume_loop():
+def _producer_connected() -> bool:
+    """Vrai seulement si le producteur est RÉELLEMENT connecté à un broker.
+    Piège évité : KafkaProducer() ne lève pas quand le broker est injoignable
+    (connexion paresseuse) ; c'est .send() qui échoue ensuite en silence. On
+    teste donc la connexion effective avant de router vers Kafka."""
+    p = STATE["producer"]
+    if p is None:
+        return False
     try:
-        from kafka import KafkaConsumer
-        consumer = KafkaConsumer(
-            T_TELEMETRY, bootstrap_servers=KAFKA, group_id="scoring",
-            value_deserializer=lambda v: json.loads(v.decode("utf-8")),
-            auto_offset_reset="latest")
-    except Exception as e:
-        print(f"[scoring] consommateur Kafka indisponible : {e}")
-        return
-    print(f"[scoring] écoute du topic {T_TELEMETRY}…")
-    for msg in consumer:
+        return bool(p.bootstrap_connected())
+    except Exception:
+        return False
+
+
+def consume_loop():
+    """Consommateur Kafka de scoring, résilient : se reconnecte indéfiniment au
+    lieu de mourir au premier échec (sinon la télémétrie publiée n'est plus
+    jamais scorée — panne silencieuse). Le scoring inline de /ingest reste le
+    filet de sécurité si Kafka est totalement indisponible."""
+    while True:
         try:
-            # Événement non normalisé (télémétrie brute) → ignoré ici
-            process_normalized_event(msg.value)
+            from kafka import KafkaConsumer
+            consumer = KafkaConsumer(
+                T_TELEMETRY, bootstrap_servers=KAFKA, group_id="scoring",
+                value_deserializer=lambda v: json.loads(v.decode("utf-8")),
+                auto_offset_reset="latest")
+            print(f"[scoring] consommateur connecté — écoute du topic {T_TELEMETRY}")
+            for msg in consumer:
+                try:
+                    process_normalized_event(msg.value)
+                except Exception as e:
+                    print(f"[scoring] événement ignoré : {e}")
         except Exception as e:
-            print(f"[scoring] événement ignoré : {e}")
+            print(f"[scoring] consommateur Kafka interrompu ({e}) — reconnexion dans 15 s")
+            time.sleep(15)
 
 
 # --------------------------------------------------------------------------- #
@@ -399,9 +417,18 @@ def startup():
     print(f"[scoring] modèles chargés : M1={bool(STATE['m1'])} M2={bool(STATE['m2'])}")
     try:
         from kafka import KafkaProducer
-        STATE["producer"] = KafkaProducer(bootstrap_servers=KAFKA)
+        # max_block_ms borné : .send() lève vite si le broker est injoignable
+        # (au lieu de bufferiser en silence) → repli inline immédiat.
+        STATE["producer"] = KafkaProducer(
+            bootstrap_servers=KAFKA, acks=1, retries=1,
+            max_block_ms=5000, request_timeout_ms=5000)
+        connecte = _producer_connected()
+        print(f"[scoring] producteur Kafka (broker={KAFKA}, connecté={connecte})")
+        if not connecte:
+            print(f"[scoring] ⚠ broker {KAFKA} injoignable → scoring INLINE automatique")
     except Exception as e:
-        print(f"[scoring] producteur Kafka indisponible : {e}")
+        STATE["producer"] = None
+        print(f"[scoring] producteur Kafka indisponible ({e}) → scoring INLINE actif")
     if DB_DSN:
         try:
             import psycopg2
@@ -523,38 +550,41 @@ async def ingest(request: Request):
     if not _verify_ingest(raw, authorization, x_signature, agent_id):
         raise HTTPException(401, detail="Token ou signature invalide")
 
+    # ── Routage robuste : Kafka si RÉELLEMENT connecté, sinon scoring inline ──
+    # On ne route vers Kafka que si le producteur est connecté (bootstrap). Tout
+    # événement NON confié à Kafka (broker injoignable, ou échec de publication)
+    # est scoré inline juste après : la détection ne peut plus s'arrêter en
+    # silence, quelle que soit la santé de Kafka/du consommateur.
     n = 0
-    if STATE["producer"]:
+    publies = set()
+    if _producer_connected():
         meta = {
             "agent_id":  agent_id,
             "tenant_id": batch.get("tenant_id"),
             "host":      batch.get("host"),
         }
-        for ev in events:
+        for i, ev in enumerate(events):
             try:
-                # Routage : un événement DÉJÀ normalisé (kind + features) part sur
-                # le topic de télémétrie normalisée, que consomme le scoring.
-                # Un événement brut part sur le topic brut, en attente de
-                # normalisation par le pipeline SIEM (Lot 2).
+                # Événement normalisé (kind + features) → topic de télémétrie
+                # (consommé par le scoring). Événement brut → topic brut (SIEM).
                 topic = T_TELEMETRY if isinstance(ev, dict) and "features" in ev else T_RAW
                 STATE["producer"].send(topic, json.dumps({**meta, **ev}).encode("utf-8"))
+                publies.add(i)
                 n += 1
-            except Exception:
-                pass
-
-    # ── Scoring en direct des événements déjà normalisés ────────────────────
-    # Un événement portant `kind` + `features` est scoré immédiatement : la
-    # détection reste opérationnelle même sans Kafka (dégradation gracieuse).
-    # Quand Kafka est présent, le chemin nominal reste le pipeline asynchrone ;
-    # on évite alors le double traitement.
-    alertes = 0
-    if not STATE["producer"]:
-        for ev in events:
-            try:
-                if process_normalized_event(ev, tenant_id, agent_id):
-                    alertes += 1
             except Exception as e:
-                print(f"[ingestion] scoring direct échoué : {e}")
+                print(f"[ingestion] publication Kafka échouée (évt {i}) → repli scoring inline : {e}")
+
+    # Scoring inline de tout ce qui n'a PAS été confié à Kafka (évite le double
+    # traitement : les événements publiés seront scorés par le consommateur).
+    alertes = 0
+    for i, ev in enumerate(events):
+        if i in publies:
+            continue
+        try:
+            if process_normalized_event(ev, tenant_id, agent_id):
+                alertes += 1
+        except Exception as e:
+            print(f"[ingestion] scoring inline échoué : {e}")
 
     # ── Métriques réelles de volumétrie ─────────────────────────────────────
     if tenant_id:
