@@ -384,6 +384,35 @@ def _producer_connected() -> bool:
         return False
 
 
+def _producer_watchdog():
+    """Rétablit le chemin asynchrone après une coupure de Kafka : recrée le
+    producteur dès que le broker redevient joignable. Sans ce watchdog, après un
+    arrêt/redémarrage du broker le service resterait bloqué en scoring inline
+    jusqu'au prochain redémarrage manuel."""
+    from kafka import KafkaProducer
+    while True:
+        time.sleep(30)
+        if _producer_connected():
+            continue
+        try:
+            neuf = KafkaProducer(
+                bootstrap_servers=KAFKA, acks=1, retries=1,
+                max_block_ms=5000, request_timeout_ms=5000)
+            if neuf.bootstrap_connected():
+                ancien = STATE["producer"]
+                STATE["producer"] = neuf
+                print("[scoring] producteur Kafka reconnecté — chemin asynchrone rétabli")
+                if ancien is not None:
+                    try:
+                        ancien.close(timeout=1)
+                    except Exception:
+                        pass
+            else:
+                neuf.close(timeout=1)
+        except Exception:
+            pass  # broker toujours indisponible → on reste en inline (sûr), on retentera
+
+
 def consume_loop():
     """Consommateur Kafka de scoring, résilient : se reconnecte indéfiniment au
     lieu de mourir au premier échec (sinon la télémétrie publiée n'est plus
@@ -436,6 +465,7 @@ def startup():
         except Exception as e:
             print(f"[scoring] connexion Postgres indisponible : {e}")
     threading.Thread(target=consume_loop, daemon=True).start()
+    threading.Thread(target=_producer_watchdog, daemon=True).start()
 
 
 class Features(BaseModel):
