@@ -21,6 +21,13 @@
 # =============================================================================
 set -euo pipefail
 
+# libvirt : forcer la connexion SYSTÈME (démon libvirtd root). Pour un
+# utilisateur non-root, virsh utilise par défaut qemu:///session, dont le démon
+# tourne sans privilèges et NE PEUT PAS créer de bridge -> l'erreur
+# « creating bridge interface ... : Operation not permitted ». L'appartenance au
+# groupe libvirt (vérifiée plus bas) autorise l'accès système via polkit.
+export LIBVIRT_DEFAULT_URI="qemu:///system"
+
 declare -A NETWORKS=(
     [nexus-cenadi-mgmt]="virbr-cen-mgmt|10.50.0.0/24|10.50.0.1|Coeur SOC (HOTE)"
     [nexus-cenadi-dmz]="virbr-cen-dmz|10.50.10.0/24|10.50.10.1|DMZ interne"
