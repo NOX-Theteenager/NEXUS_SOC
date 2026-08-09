@@ -194,6 +194,43 @@ def _alerte_dupliquee(alert: dict) -> bool:
         return False
 
 
+# Playbook SOAR : à chaque type de menace correspond une action de réponse
+# proposée, mise en file d'attente de validation humaine (chaînon détection →
+# réponse). L'analyste l'approuve/refuse depuis la console (/analyst/pending).
+SOAR_PLAYBOOK = {
+    "Fraude interne":       ("freeze_account", "fort",
+                             "Gel du compte suspecté + préservation des journaux. "
+                             "Validation RSSI requise avant exécution."),
+    "Anomalie réseau / C2": ("block_ip", "moyen",
+                             "Blocage de l'IP source à la passerelle. "
+                             "Validation analyste requise."),
+}
+DEFAULT_SOAR = ("isolate_host", "fort",
+                "Isolation de l'hôte concerné du réseau. Validation requise.")
+
+
+def _proposer_soar(alert_id, alert: dict) -> None:
+    """Crée une proposition d'action SOAR en attente de validation pour l'alerte.
+    Transaction séparée : un échec ici ne doit jamais annuler l'alerte déjà
+    persistée."""
+    if not STATE["db"]:
+        return
+    action, impact, detail = SOAR_PLAYBOOK.get(alert.get("type"), DEFAULT_SOAR)
+    try:
+        with STATE["db"].cursor() as cur:
+            cur.execute(
+                "INSERT INTO soar_audit (alert_id, tenant_id, action, impact, statut, detail) "
+                "VALUES (%s::uuid, %s::uuid, %s, %s, 'EN ATTENTE DE VALIDATION', %s)",
+                (alert_id, alert.get("tenant"), action, impact, detail))
+        STATE["db"].commit()
+    except Exception as e:
+        try:
+            STATE["db"].rollback()
+        except Exception:
+            pass
+        print(f"[soar] proposition non créée : {e}")
+
+
 def emit_alert(alert: dict) -> bool:
     """Émet une alerte. Retourne True si elle a réellement été enregistrée
     (False si agrégée avec une alerte identique déjà ouverte)."""
@@ -209,12 +246,16 @@ def emit_alert(alert: dict) -> bool:
             with STATE["db"].cursor() as cur:
                 cur.execute(
                     "INSERT INTO alerts (tenant_id, source_modele, type, entite, risque, raisons, mitre) "
-                    "VALUES (%(tenant)s,%(src)s,%(type)s,%(entite)s,%(risque)s,%(raisons)s,%(mitre)s)",
+                    "VALUES (%(tenant)s,%(src)s,%(type)s,%(entite)s,%(risque)s,%(raisons)s,%(mitre)s) "
+                    "RETURNING id",
                     {**alert, "raisons": json.dumps(alert.get("raisons", []))})
+                alert_id = cur.fetchone()[0]
             STATE["db"].commit()
         except Exception as e:
             print(f"[scoring] insertion Postgres échouée : {e}")
             return False
+        # Chaînon réponse : proposer l'action SOAR correspondante (non bloquant).
+        _proposer_soar(alert_id, alert)
     return True
 
 
