@@ -231,6 +231,54 @@ def _proposer_soar(alert_id, alert: dict) -> None:
         print(f"[soar] proposition non créée : {e}")
 
 
+def _rapport_html(alert: dict, risque: int) -> str:
+    """Petit rapport d'incident HTML autoportant, téléchargeable depuis le portail."""
+    import html
+    esc = html.escape
+    raisons = alert.get("raisons", []) or ["profil globalement atypique"]
+    lignes = "".join(f"<li>{esc(str(r))}</li>" for r in raisons)
+    return (
+        "<article style=\"font-family:system-ui,sans-serif;max-width:640px;color:#0f172a\">"
+        f"<h2 style=\"margin:0 0 4px\">Incident — {esc(alert.get('type','?'))}</h2>"
+        f"<p style=\"margin:0 0 12px;color:#b91c1c;font-weight:600\">Score de risque {risque}/100</p>"
+        f"<p><b>Entité :</b> {esc(str(alert.get('entite','?')))}<br>"
+        f"<b>Détecté par :</b> {esc(str(alert.get('src','')))}<br>"
+        f"<b>MITRE ATT&amp;CK :</b> {esc(str(alert.get('mitre','—') or '—'))}</p>"
+        "<h3 style=\"margin:12px 0 4px\">Facteurs déclenchants</h3>"
+        f"<ul>{lignes}</ul>"
+        "<p style=\"color:#64748b;font-size:12px;margin-top:16px\">"
+        "Rapport généré automatiquement par NEXUS SOC — usage interne CENADI.</p>"
+        "</article>"
+    )
+
+
+def _notifier_portail(alert_id, alert: dict) -> None:
+    """Crée une notification pour le responsable du périmètre concerné (avec
+    rapport téléchargeable). Transaction séparée : ne doit jamais annuler l'alerte."""
+    if not STATE["db"]:
+        return
+    risque = int(alert.get("risque", 0) or 0)
+    severity = "critical" if risque >= 80 else "warning" if risque >= 50 else "info"
+    titre = f"{alert.get('type', 'Incident')} — {alert.get('entite', '?')}"
+    corps = f"Risque {risque}/100 détecté par {alert.get('src', 'le moteur de détection')}."
+    if alert.get("mitre"):
+        corps += f" Technique {alert['mitre']}."
+    try:
+        with STATE["db"].cursor() as cur:
+            cur.execute(
+                "INSERT INTO notifications (tenant_id, alert_id, type, severity, title, body, report_html) "
+                "VALUES (%s::uuid, %s::uuid, 'alert', %s, %s, %s, %s)",
+                (alert.get("tenant"), alert_id, severity, titre, corps,
+                 _rapport_html(alert, risque)))
+        STATE["db"].commit()
+    except Exception as e:
+        try:
+            STATE["db"].rollback()
+        except Exception:
+            pass
+        print(f"[notif] notification non créée : {e}")
+
+
 def emit_alert(alert: dict) -> bool:
     """Émet une alerte. Retourne True si elle a réellement été enregistrée
     (False si agrégée avec une alerte identique déjà ouverte)."""
@@ -256,6 +304,8 @@ def emit_alert(alert: dict) -> bool:
             return False
         # Chaînon réponse : proposer l'action SOAR correspondante (non bloquant).
         _proposer_soar(alert_id, alert)
+        # Chaînon information : notifier le responsable du périmètre (non bloquant).
+        _notifier_portail(alert_id, alert)
     return True
 
 
