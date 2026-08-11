@@ -1,0 +1,19 @@
+# OpenTofu state et secrets (fichiers terraform.tfstate/tfvars conservés pour compat)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Fichiers générés par ce module (contiennent des secrets)
+.generated/
+
+# Credentials
+*.pem
+*.key
+*.p12

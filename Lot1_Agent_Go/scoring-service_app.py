@@ -28,7 +28,7 @@ from pydantic import BaseModel
 # Libellés lisibles (explicabilité Modèle 2)
 LISIBLE = {
     "nb_connexions": "connexions", "nb_actions_hors_heures": "actions hors heures ouvrables",
-    "nb_transactions": "transactions budgétaires", "montant_total_modifie": "montant total modifié (FCFA)",
+    "nb_transactions": "transactions budgétaires", "montant_total_modifie": "montant total modifié",
     "nb_modifs_montant": "modifications de montants", "nb_creations_compte": "créations de comptes agents",
     "nb_exports": "exports de données", "volume_donnees_exportees": "volume de données exportées",
     "nb_acces_dossiers_sensibles": "accès à des dossiers sensibles", "nb_actions_total": "actions au total",
@@ -40,6 +40,8 @@ T_RAW = os.getenv("RAW_TOPIC", "nexus.telemetry.raw")
 T_ALERTS = os.getenv("ALERTS_TOPIC", "nexus.alerts")
 DB_DSN = os.getenv("DB_DSN")
 RISK_THRESHOLD = int(os.getenv("RISK_THRESHOLD", "70"))
+# Fenêtre d'agrégation anti-doublon des alertes (minutes ; 0 = désactivé)
+ALERT_DEDUP_MIN = int(os.getenv("ALERT_DEDUP_MIN", "15"))
 
 app = FastAPI(title="NEXUS SOC — Service de scoring", version="2.0")
 STATE = {"m1": None, "m2": None, "producer": None, "db": None}
@@ -160,95 +162,128 @@ def score_userday(features: dict):
 
 
 # --------------------------------------------------------------------------- #
-# PLG — Vérification des quotas trial (synchrone, psycopg2)
-# Voir Lot8_PLG/plg_api.py pour la version asyncpg complète
-# --------------------------------------------------------------------------- #
-def _enforce_trial_quota_sync(tenant_id: str, db) -> None:
-    """
-    Vérifie et incrémente les quotas trial pour le tenant.
-    Lève HTTP 402/429 si suspendu, expiré ou quota dépassé.
-    Appelé par le handler /ingest après validation du token.
-    """
-    import datetime as _dt
-    try:
-        with db.cursor() as cur:
-            cur.execute(
-                """
-                SELECT
-                    t.plan,
-                    t.suspended_at,
-                    t.trial_ends_at,
-                    t.max_agents,
-                    t.max_daily_events,
-                    COALESCE(q.agent_count, 0) AS agents_today,
-                    COALESCE(q.event_count, 0)  AS events_today
-                FROM tenants t
-                LEFT JOIN trial_quotas q
-                    ON q.tenant_id = t.id AND q.date = CURRENT_DATE
-                WHERE t.id = %s::uuid
-                """,
-                (tenant_id,),
-            )
-            row = cur.fetchone()
-    except Exception:
-        return  # table PLG absente → mode dégradé, pas de blocage
-
-    if not row:
-        return
-
-    plan, suspended_at, trial_ends_at, max_agents, max_daily_events, agents_today, events_today = row
-
-    if suspended_at is not None:
-        raise HTTPException(402, detail={
-            "code":        "TENANT_SUSPENDED",
-            "message":     "Ingestion suspendue. Renouvelez votre abonnement sur le portail.",
-            "upgrade_url": "https://nexussoc.cm/upgrade",
-        })
-
-    if plan == "trial":
-        now = _dt.datetime.now(_dt.timezone.utc)
-        if trial_ends_at and trial_ends_at.replace(tzinfo=_dt.timezone.utc) < now:
-            raise HTTPException(402, detail={
-                "code":        "TRIAL_EXPIRED",
-                "message":     "Période d'essai terminée. Souscrivez un abonnement pour continuer.",
-                "upgrade_url": "https://nexussoc.cm/upgrade",
-            })
-
-        if agents_today >= (max_agents or 5):
-            raise HTTPException(429, detail={
-                "code":        "AGENT_QUOTA_EXCEEDED",
-                "message":     f"Quota d'agents atteint ({max_agents} max en essai). Passez à un abonnement payant.",
-                "upgrade_url": "https://nexussoc.cm/upgrade",
-            })
-
-        if events_today >= (max_daily_events or 10000):
-            raise HTTPException(429, detail={
-                "code":        "DAILY_VOLUME_EXCEEDED",
-                "message":     f"Volume quotidien atteint ({max_daily_events:,} événements/jour en essai). Reprise demain.",
-                "upgrade_url": "https://nexussoc.cm/upgrade",
-            })
-
-        # Incrémenter le compteur quotidien
-        try:
-            with db.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO trial_quotas (tenant_id, date, event_count)
-                    VALUES (%s::uuid, CURRENT_DATE, 1)
-                    ON CONFLICT (tenant_id, date)
-                    DO UPDATE SET event_count = trial_quotas.event_count + 1
-                    """,
-                    (tenant_id,),
-                )
-            db.commit()
-        except Exception:
-            pass  # table absente → ignorer
-
-
-# --------------------------------------------------------------------------- #
 # Émission d'alerte → Kafka (consommée par le SOAR) + persistance Postgres
 # --------------------------------------------------------------------------- #
-def emit_alert(alert: dict):
+def _alerte_dupliquee(alert: dict) -> bool:
+    """
+    Anti-doublon : une alerte identique (même périmètre, type et entité) déjà
+    ouverte dans la fenêtre ALERT_DEDUP_MIN n'est pas recréée.
+
+    Sans ce garde-fou, une condition persistante (ex. un flux réseau continu
+    jugé anormal) génèrerait une alerte à chaque cycle de collecte et noierait
+    la file de l'analyste. C'est l'agrégation d'alertes pratiquée en SOC.
+    """
+    if not (STATE["db"] and ALERT_DEDUP_MIN > 0):
+        return False
+    try:
+        with STATE["db"].cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM alerts "
+                " WHERE tenant_id = %s::uuid AND type = %s AND entite = %s "
+                "   AND statut = 'ouverte' "
+                "   AND cree_le > now() - (%s || ' minutes')::interval "
+                " LIMIT 1",
+                (alert.get("tenant"), alert.get("type"), alert.get("entite"),
+                 str(ALERT_DEDUP_MIN)))
+            return cur.fetchone() is not None
+    except Exception:
+        try:
+            STATE["db"].rollback()
+        except Exception:
+            pass
+        return False
+
+
+# Playbook SOAR : à chaque type de menace correspond une action de réponse
+# proposée, mise en file d'attente de validation humaine (chaînon détection →
+# réponse). L'analyste l'approuve/refuse depuis la console (/analyst/pending).
+SOAR_PLAYBOOK = {
+    "Fraude interne":       ("freeze_account", "fort",
+                             "Gel du compte suspecté + préservation des journaux. "
+                             "Validation RSSI requise avant exécution."),
+    "Anomalie réseau / C2": ("block_ip", "moyen",
+                             "Blocage de l'IP source à la passerelle. "
+                             "Validation analyste requise."),
+}
+DEFAULT_SOAR = ("isolate_host", "fort",
+                "Isolation de l'hôte concerné du réseau. Validation requise.")
+
+
+def _proposer_soar(alert_id, alert: dict) -> None:
+    """Crée une proposition d'action SOAR en attente de validation pour l'alerte.
+    Transaction séparée : un échec ici ne doit jamais annuler l'alerte déjà
+    persistée."""
+    if not STATE["db"]:
+        return
+    action, impact, detail = SOAR_PLAYBOOK.get(alert.get("type"), DEFAULT_SOAR)
+    try:
+        with STATE["db"].cursor() as cur:
+            cur.execute(
+                "INSERT INTO soar_audit (alert_id, tenant_id, action, impact, statut, detail) "
+                "VALUES (%s::uuid, %s::uuid, %s, %s, 'EN ATTENTE DE VALIDATION', %s)",
+                (alert_id, alert.get("tenant"), action, impact, detail))
+        STATE["db"].commit()
+    except Exception as e:
+        try:
+            STATE["db"].rollback()
+        except Exception:
+            pass
+        print(f"[soar] proposition non créée : {e}")
+
+
+def _rapport_html(alert: dict, risque: int) -> str:
+    """Petit rapport d'incident HTML autoportant, téléchargeable depuis le portail."""
+    import html
+    esc = html.escape
+    raisons = alert.get("raisons", []) or ["profil globalement atypique"]
+    lignes = "".join(f"<li>{esc(str(r))}</li>" for r in raisons)
+    return (
+        "<article style=\"font-family:system-ui,sans-serif;max-width:640px;color:#0f172a\">"
+        f"<h2 style=\"margin:0 0 4px\">Incident — {esc(alert.get('type','?'))}</h2>"
+        f"<p style=\"margin:0 0 12px;color:#b91c1c;font-weight:600\">Score de risque {risque}/100</p>"
+        f"<p><b>Entité :</b> {esc(str(alert.get('entite','?')))}<br>"
+        f"<b>Détecté par :</b> {esc(str(alert.get('src','')))}<br>"
+        f"<b>MITRE ATT&amp;CK :</b> {esc(str(alert.get('mitre','—') or '—'))}</p>"
+        "<h3 style=\"margin:12px 0 4px\">Facteurs déclenchants</h3>"
+        f"<ul>{lignes}</ul>"
+        "<p style=\"color:#64748b;font-size:12px;margin-top:16px\">"
+        "Rapport généré automatiquement par NEXUS SOC — usage interne CENADI.</p>"
+        "</article>"
+    )
+
+
+def _notifier_portail(alert_id, alert: dict) -> None:
+    """Crée une notification pour le responsable du périmètre concerné (avec
+    rapport téléchargeable). Transaction séparée : ne doit jamais annuler l'alerte."""
+    if not STATE["db"]:
+        return
+    risque = int(alert.get("risque", 0) or 0)
+    severity = "critical" if risque >= 80 else "warning" if risque >= 50 else "info"
+    titre = f"{alert.get('type', 'Incident')} — {alert.get('entite', '?')}"
+    corps = f"Risque {risque}/100 détecté par {alert.get('src', 'le moteur de détection')}."
+    if alert.get("mitre"):
+        corps += f" Technique {alert['mitre']}."
+    try:
+        with STATE["db"].cursor() as cur:
+            cur.execute(
+                "INSERT INTO notifications (tenant_id, alert_id, type, severity, title, body, report_html) "
+                "VALUES (%s::uuid, %s::uuid, 'alert', %s, %s, %s, %s)",
+                (alert.get("tenant"), alert_id, severity, titre, corps,
+                 _rapport_html(alert, risque)))
+        STATE["db"].commit()
+    except Exception as e:
+        try:
+            STATE["db"].rollback()
+        except Exception:
+            pass
+        print(f"[notif] notification non créée : {e}")
+
+
+def emit_alert(alert: dict) -> bool:
+    """Émet une alerte. Retourne True si elle a réellement été enregistrée
+    (False si agrégée avec une alerte identique déjà ouverte)."""
+    if _alerte_dupliquee(alert):
+        return False
     if STATE["producer"]:
         try:
             STATE["producer"].send(T_ALERTS, json.dumps(alert).encode("utf-8"))
@@ -259,42 +294,146 @@ def emit_alert(alert: dict):
             with STATE["db"].cursor() as cur:
                 cur.execute(
                     "INSERT INTO alerts (tenant_id, source_modele, type, entite, risque, raisons, mitre) "
-                    "VALUES (%(tenant)s,%(src)s,%(type)s,%(entite)s,%(risque)s,%(raisons)s,%(mitre)s)",
+                    "VALUES (%(tenant)s,%(src)s,%(type)s,%(entite)s,%(risque)s,%(raisons)s,%(mitre)s) "
+                    "RETURNING id",
                     {**alert, "raisons": json.dumps(alert.get("raisons", []))})
+                alert_id = cur.fetchone()[0]
             STATE["db"].commit()
         except Exception as e:
             print(f"[scoring] insertion Postgres échouée : {e}")
+            return False
+        # Chaînon réponse : proposer l'action SOAR correspondante (non bloquant).
+        _proposer_soar(alert_id, alert)
+        # Chaînon information : notifier le responsable du périmètre (non bloquant).
+        _notifier_portail(alert_id, alert)
+    return True
+
+
+# --------------------------------------------------------------------------- #
+# Métriques série temporelle (hypertable `metrics`) — mesures réelles
+# --------------------------------------------------------------------------- #
+def record_metric(tenant_id, agent_id, metrique: str, valeur: float):
+    """Enregistre une mesure réelle dans l'hypertable TimescaleDB `metrics`."""
+    if not (STATE["db"] and tenant_id):
+        return
+    try:
+        with STATE["db"].cursor() as cur:
+            cur.execute(
+                "INSERT INTO metrics (ts, tenant_id, agent_id, metrique, valeur) "
+                "VALUES (now(), %s::uuid, NULLIF(%s,'')::uuid, %s, %s)",
+                (tenant_id, agent_id or "", metrique, float(valeur)))
+        STATE["db"].commit()
+    except Exception as e:
+        try:
+            STATE["db"].rollback()
+        except Exception:
+            pass
+        print(f"[metrics] insertion échouée ({metrique}) : {e}")
+
+
+def process_normalized_event(ev: dict, tenant_id: str = "", agent_id: str = "") -> bool:
+    """
+    Score un événement DÉJÀ normalisé (contenant `kind` + `features`) et émet une
+    alerte réelle si le risque dépasse le seuil. Enregistre aussi le score comme
+    métrique série temporelle.
+
+    Utilisé par le consommateur Kafka ET, en l'absence de Kafka, directement par
+    /ingest (dégradation gracieuse : la détection reste opérationnelle).
+    Retourne True si une alerte a été émise.
+    """
+    if not isinstance(ev, dict) or "features" not in ev:
+        return False
+    kind = ev.get("kind")
+    res = score_network(ev["features"]) if kind == "network" else score_userday(ev["features"])
+    if not res:
+        return False
+
+    tid = ev.get("tenant_id") or tenant_id
+    aid = ev.get("agent_id") or agent_id
+
+    # Mesure réelle : score de risque calculé sur la télémétrie reçue
+    record_metric(tid, aid, f"risque_{kind or 'inconnu'}", res["risque"])
+
+    if res.get("anomalie") and res["risque"] >= RISK_THRESHOLD:
+        return emit_alert({
+            "tenant": tid,
+            "src":    "Modèle 1 (réseau)" if kind == "network" else "Modèle 2 (UEBA)",
+            "type":   ev.get("type", "Anomalie réseau / C2" if kind == "network" else "Fraude interne"),
+            "entite": ev.get("entite", "?"),
+            "risque": res["risque"],
+            "raisons": res.get("raisons", []),
+            "mitre":  ev.get("mitre", ""),
+        })
+    return False
 
 
 # --------------------------------------------------------------------------- #
 # Consommateur Kafka (tâche de fond)
 # --------------------------------------------------------------------------- #
-def consume_loop():
+def _producer_connected() -> bool:
+    """Vrai seulement si le producteur est RÉELLEMENT connecté à un broker.
+    Piège évité : KafkaProducer() ne lève pas quand le broker est injoignable
+    (connexion paresseuse) ; c'est .send() qui échoue ensuite en silence. On
+    teste donc la connexion effective avant de router vers Kafka."""
+    p = STATE["producer"]
+    if p is None:
+        return False
     try:
-        from kafka import KafkaConsumer
-        consumer = KafkaConsumer(
-            T_TELEMETRY, bootstrap_servers=KAFKA, group_id="scoring",
-            value_deserializer=lambda v: json.loads(v.decode("utf-8")),
-            auto_offset_reset="latest")
-    except Exception as e:
-        print(f"[scoring] consommateur Kafka indisponible : {e}")
-        return
-    print(f"[scoring] écoute du topic {T_TELEMETRY}…")
-    for msg in consumer:
+        return bool(p.bootstrap_connected())
+    except Exception:
+        return False
+
+
+def _producer_watchdog():
+    """Rétablit le chemin asynchrone après une coupure de Kafka : recrée le
+    producteur dès que le broker redevient joignable. Sans ce watchdog, après un
+    arrêt/redémarrage du broker le service resterait bloqué en scoring inline
+    jusqu'au prochain redémarrage manuel."""
+    from kafka import KafkaProducer
+    while True:
+        time.sleep(30)
+        if _producer_connected():
+            continue
         try:
-            ev = msg.value
-            if not isinstance(ev, dict) or "features" not in ev:
-                continue   # événement non normalisé (télémétrie brute) → ignoré ici
-            kind = ev.get("kind")            # "network" | "user-day"
-            res = score_network(ev["features"]) if kind == "network" else score_userday(ev["features"])
-            if res and res.get("anomalie") and res["risque"] >= RISK_THRESHOLD:
-                emit_alert({
-                    "tenant": ev.get("tenant_id"), "src": "Modèle 1 (réseau)" if kind == "network" else "Modèle 2 (UEBA)",
-                    "type": ev.get("type", "Anomalie réseau / C2" if kind == "network" else "Fraude interne"),
-                    "entite": ev.get("entite", "?"), "risque": res["risque"],
-                    "raisons": res.get("raisons", []), "mitre": ev.get("mitre", "")})
+            neuf = KafkaProducer(
+                bootstrap_servers=KAFKA, acks=1, retries=1,
+                max_block_ms=5000, request_timeout_ms=5000)
+            if neuf.bootstrap_connected():
+                ancien = STATE["producer"]
+                STATE["producer"] = neuf
+                print("[scoring] producteur Kafka reconnecté — chemin asynchrone rétabli")
+                if ancien is not None:
+                    try:
+                        ancien.close(timeout=1)
+                    except Exception:
+                        pass
+            else:
+                neuf.close(timeout=1)
+        except Exception:
+            pass  # broker toujours indisponible → on reste en inline (sûr), on retentera
+
+
+def consume_loop():
+    """Consommateur Kafka de scoring, résilient : se reconnecte indéfiniment au
+    lieu de mourir au premier échec (sinon la télémétrie publiée n'est plus
+    jamais scorée — panne silencieuse). Le scoring inline de /ingest reste le
+    filet de sécurité si Kafka est totalement indisponible."""
+    while True:
+        try:
+            from kafka import KafkaConsumer
+            consumer = KafkaConsumer(
+                T_TELEMETRY, bootstrap_servers=KAFKA, group_id="scoring",
+                value_deserializer=lambda v: json.loads(v.decode("utf-8")),
+                auto_offset_reset="latest")
+            print(f"[scoring] consommateur connecté — écoute du topic {T_TELEMETRY}")
+            for msg in consumer:
+                try:
+                    process_normalized_event(msg.value)
+                except Exception as e:
+                    print(f"[scoring] événement ignoré : {e}")
         except Exception as e:
-            print(f"[scoring] événement ignoré : {e}")
+            print(f"[scoring] consommateur Kafka interrompu ({e}) — reconnexion dans 15 s")
+            time.sleep(15)
 
 
 # --------------------------------------------------------------------------- #
@@ -307,9 +446,18 @@ def startup():
     print(f"[scoring] modèles chargés : M1={bool(STATE['m1'])} M2={bool(STATE['m2'])}")
     try:
         from kafka import KafkaProducer
-        STATE["producer"] = KafkaProducer(bootstrap_servers=KAFKA)
+        # max_block_ms borné : .send() lève vite si le broker est injoignable
+        # (au lieu de bufferiser en silence) → repli inline immédiat.
+        STATE["producer"] = KafkaProducer(
+            bootstrap_servers=KAFKA, acks=1, retries=1,
+            max_block_ms=5000, request_timeout_ms=5000)
+        connecte = _producer_connected()
+        print(f"[scoring] producteur Kafka (broker={KAFKA}, connecté={connecte})")
+        if not connecte:
+            print(f"[scoring] ⚠ broker {KAFKA} injoignable → scoring INLINE automatique")
     except Exception as e:
-        print(f"[scoring] producteur Kafka indisponible : {e}")
+        STATE["producer"] = None
+        print(f"[scoring] producteur Kafka indisponible ({e}) → scoring INLINE actif")
     if DB_DSN:
         try:
             import psycopg2
@@ -317,6 +465,7 @@ def startup():
         except Exception as e:
             print(f"[scoring] connexion Postgres indisponible : {e}")
     threading.Thread(target=consume_loop, daemon=True).start()
+    threading.Thread(target=_producer_watchdog, daemon=True).start()
 
 
 class Features(BaseModel):
@@ -431,23 +580,47 @@ async def ingest(request: Request):
     if not _verify_ingest(raw, authorization, x_signature, agent_id):
         raise HTTPException(401, detail="Token ou signature invalide")
 
-    # PLG : vérification des quotas trial (no-op si table absente ou plan non-trial)
-    if tenant_id and STATE["db"]:
-        _enforce_trial_quota_sync(tenant_id, STATE["db"])
-
+    # ── Routage robuste : Kafka si RÉELLEMENT connecté, sinon scoring inline ──
+    # On ne route vers Kafka que si le producteur est connecté (bootstrap). Tout
+    # événement NON confié à Kafka (broker injoignable, ou échec de publication)
+    # est scoré inline juste après : la détection ne peut plus s'arrêter en
+    # silence, quelle que soit la santé de Kafka/du consommateur.
     n = 0
-    if STATE["producer"]:
+    publies = set()
+    if _producer_connected():
         meta = {
             "agent_id":  agent_id,
             "tenant_id": batch.get("tenant_id"),
             "host":      batch.get("host"),
         }
-        for ev in events:
+        for i, ev in enumerate(events):
             try:
-                STATE["producer"].send(T_RAW, json.dumps({**meta, **ev}).encode("utf-8"))
+                # Événement normalisé (kind + features) → topic de télémétrie
+                # (consommé par le scoring). Événement brut → topic brut (SIEM).
+                topic = T_TELEMETRY if isinstance(ev, dict) and "features" in ev else T_RAW
+                STATE["producer"].send(topic, json.dumps({**meta, **ev}).encode("utf-8"))
+                publies.add(i)
                 n += 1
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[ingestion] publication Kafka échouée (évt {i}) → repli scoring inline : {e}")
+
+    # Scoring inline de tout ce qui n'a PAS été confié à Kafka (évite le double
+    # traitement : les événements publiés seront scorés par le consommateur).
+    alertes = 0
+    for i, ev in enumerate(events):
+        if i in publies:
+            continue
+        try:
+            if process_normalized_event(ev, tenant_id, agent_id):
+                alertes += 1
+        except Exception as e:
+            print(f"[ingestion] scoring inline échoué : {e}")
+
+    # ── Métriques réelles de volumétrie ─────────────────────────────────────
+    if tenant_id:
+        record_metric(tenant_id, agent_id, "evenements_recus", len(events))
+        if alertes:
+            record_metric(tenant_id, agent_id, "alertes_emises", alertes)
 
     # Mettre à jour vu_le de l'agent en base
     if STATE["db"] and agent_id:
@@ -463,4 +636,4 @@ async def ingest(request: Request):
             pass
 
     print(f"[ingestion] {agent_id} : {len(events)} événements, {n} publiés")
-    return {"recus": len(events), "publies": n}
+    return {"recus": len(events), "publies": n, "alertes": alertes}

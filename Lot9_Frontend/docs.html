@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#0A0F1C"/>
-<meta name="description" content="NEXUS SOC — Documentation complète : démarrage rapide, installation, déploiements (VM, Docker, cloud, souverain), fonctionnalités, API."/>
+<meta name="description" content="NEXUS SOC — Documentation complète : démarrage rapide, installation, déploiement (Docker, VM, souverain OpenTofu), fonctionnalités, API."/>
 <title>NEXUS SOC — Documentation</title>
 <link rel="manifest" href="manifest.json"/>
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg"/>
@@ -297,13 +297,13 @@ h2, h3 { scroll-margin-top: 80px; }
 
 <!-- ── NAV ── -->
 <nav>
-  <a class="nav-brand" href="landing.html">
+  <a class="nav-brand" href="login.html">
     <span class="mark">NEXUS <em>SOC</em></span>
     <span class="sub">Documentation</span>
   </a>
   <span class="nav-spacer"></span>
   <div class="nav-links">
-    <a href="landing.html">Accueil</a>
+    <a href="login.html">Connexion</a>
     <a href="contact.html">Contact</a>
     <a href="login.html" class="btn-nav-ghost">Connexion</a>
   </div>
@@ -335,7 +335,7 @@ h2, h3 { scroll-margin-top: 80px; }
       <li><a href="#deploy-docker">Docker Compose</a></li>
       <li><a href="#deploy-vm">Machine virtuelle</a></li>
       <li><a href="#deploy-cloud">Cloud privé</a></li>
-      <li><a href="#deploy-sovereign">Souverain (Terraform)</a></li>
+      <li><a href="#deploy-sovereign">Souverain (OpenTofu)</a></li>
       <li><a href="#deploy-selfhosted">Auto-hébergé</a></li>
     </ul>
 
@@ -361,7 +361,7 @@ h2, h3 { scroll-margin-top: 80px; }
   <main>
 
     <h1>Documentation <em>NEXUS SOC</em></h1>
-    <p class="lead">Guide complet de la plateforme SOC-as-a-Service : démarrage en 15 minutes, déploiement des agents sur tout type de parc, et choix entre cinq modes de déploiement du serveur (Docker, VM, cloud privé, souverain, auto-hébergé).</p>
+    <p class="lead">Guide complet de la plateforme SOC open source et souveraine : démarrage en 15 minutes, déploiement des agents sur tout type de parc, et choix entre cinq modes de déploiement du serveur (Docker, VM, cloud privé, souverain, auto-hébergé).</p>
 
     <!-- ============================================================== -->
     <h2 id="quickstart">Démarrage rapide</h2>
@@ -386,7 +386,7 @@ until docker exec nexus-pg-test pg_isready -U nexus -d nexus_soc; do sleep 2; do
 for f in Lot0_Socle/01_schema_patched.sql \
          Lot7_Console_Fournisseur/01_schema_analyst.sql \
          Lot7_Console_Fournisseur/01_schema_provisioning.sql \
-         Lot8_PLG/01_schema_plg.sql \
+         Lot0_Socle/03_schema_notifications.sql \
          Lot0_Socle/02_seed_demo.sql; do
   docker exec -i nexus-pg-test psql -U nexus -d nexus_soc -v ON_ERROR_STOP=1 &lt; "$f"
 done
@@ -394,7 +394,7 @@ done
 <span class="cmt"># 3. venv + dépendances</span>
 python3 -m venv .venv
 .venv/bin/pip install fastapi "uvicorn[standard]" psycopg2-binary numpy joblib \
-  email-validator python-multipart asyncpg pytest httpx
+  email-validator python-multipart pytest httpx
 
 <span class="cmt"># 4. Serveur</span>
 export DB_DSN=<span class="str">"postgresql://nexus:change_me@localhost:5432/nexus_soc"</span>
@@ -425,13 +425,13 @@ NEXUS_BASE_URL=http://127.0.0.1:8000 NEXUS_TEST_PWD=admin \
       <tbody>
         <tr><td><code class="inline">admin@nexussoc.cm</code></td><td>admin_plateforme</td><td>Console (admin + SOC)</td></tr>
         <tr><td><code class="inline">soc@nexussoc.cm</code></td><td>analyste_soc</td><td>Console (file d'alertes + SOAR)</td></tr>
-        <tr><td><code class="inline">dsi@minfi.cm</code></td><td>dsi_client</td><td>Portail DSI (tenant MINFI)</td></tr>
+        <tr><td><code class="inline">resp.sigipes@cenadi.cm</code></td><td>dsi_client</td><td>Portail (périmètre SIGIPES)</td></tr>
       </tbody>
     </table>
 
     <!-- ============================================================== -->
     <h2 id="install-server">Installation du serveur</h2>
-    <p>Le point d'entrée unique est <code class="inline">run.py</code>. Il charge le service de scoring (Lot 1), monte les routeurs <code class="inline">/auth/*</code>, <code class="inline">/admin/*</code>, <code class="inline">/analyst/*</code>, <code class="inline">/provision/*</code>, <code class="inline">/plg/*</code>, initialise un pool asyncpg pour PLG, et sert le frontend sur <code class="inline">/app/</code> via StaticFiles.</p>
+    <p>Le point d'entrée unique est <code class="inline">run.py</code>. Il charge le service de scoring (Lot 1), monte les routeurs <code class="inline">/auth/*</code>, <code class="inline">/admin/*</code>, <code class="inline">/analyst/*</code>, <code class="inline">/portal/*</code> et <code class="inline">/provision/*</code>, et sert le frontend sur <code class="inline">/app/</code> via StaticFiles.</p>
 
     <h3><span class="num">a</span> Variables d'environnement minimales</h3>
     <div class="code">
@@ -448,7 +448,6 @@ NEXUS_CORS_ORIGINS=<span class="str">"https://soc.votre-domaine.cm"</span>   <sp
       <tbody>
         <tr><td><code class="inline">fastapi</code>, <code class="inline">uvicorn</code></td><td>Cœur du serveur</td></tr>
         <tr><td><code class="inline">psycopg2-binary</code></td><td>Auth, scoring, admin (synchrone)</td></tr>
-        <tr><td><code class="inline">asyncpg</code></td><td>Module PLG (pool sur <code class="inline">app.state.db</code>)</td></tr>
         <tr><td><code class="inline">python-multipart</code></td><td>Endpoints provisioning (Form data)</td></tr>
         <tr><td><code class="inline">email-validator</code></td><td>Validation EmailStr (Pydantic)</td></tr>
         <tr><td><code class="inline">numpy</code>, <code class="inline">joblib</code></td><td>Import des modèles IA (chargement <code class="inline">.joblib</code>)</td></tr>
@@ -523,16 +522,15 @@ ansible-playbook -i inventaire.ini \
 
     <!-- ============================================================== -->
     <h2 id="deployment">Déploiements alternatifs (serveur)</h2>
-    <p>Cinq modes de déploiement de la plateforme NEXUS SOC, du plus simple au plus contrôlé. Chacun correspond à un profil d'organisation et un niveau d'exigence souveraine.</p>
+    <p>Modes de déploiement de la plateforme, du plus simple au plus contrôlé. En exploitation CENADI, le mode <strong>souverain (OpenTofu)</strong> sur serveur interne est la cible ; les autres servent au développement et à la démonstration.</p>
 
     <table>
-      <thead><tr><th>Mode</th><th>Cible idéale</th><th>Effort</th><th>Souveraineté</th></tr></thead>
+      <thead><tr><th>Mode</th><th>Usage</th><th>Effort</th><th>Souveraineté</th></tr></thead>
       <tbody>
-        <tr><td>Docker Compose</td><td>Démo, PoC, petite équipe</td><td>★☆☆</td><td>★★★</td></tr>
-        <tr><td>Machine virtuelle</td><td>Microfinance / cabinet</td><td>★★☆</td><td>★★★</td></tr>
-        <tr><td>Cloud privé (VPC)</td><td>Assurance moyenne</td><td>★★☆</td><td>★★☆</td></tr>
-        <tr><td>Souverain (Terraform)</td><td>Administration publique</td><td>★★★</td><td>★★★</td></tr>
-        <tr><td>Auto-hébergé bare-metal</td><td>RSSI exigeant</td><td>★★★</td><td>★★★</td></tr>
+        <tr><td>Docker Compose</td><td>Démo, PoC, poste de développement</td><td>★☆☆</td><td>★★★</td></tr>
+        <tr><td>Machine virtuelle</td><td>Environnement d'intégration</td><td>★★☆</td><td>★★★</td></tr>
+        <tr><td>Souverain (OpenTofu)</td><td>Production CENADI (serveur interne)</td><td>★★★</td><td>★★★</td></tr>
+        <tr><td>Auto-hébergé bare-metal</td><td>Datacenter CENADI</td><td>★★★</td><td>★★★</td></tr>
       </tbody>
     </table>
 
@@ -567,21 +565,21 @@ curl http://localhost:8000/health</div>
     </ul>
     <div class="callout info"><div class="callout-head">Conformité</div><p>Pour un usage au Cameroun, privilégiez les régions les plus proches géographiquement (AWS Cape Town, Azure Johannesburg) en attendant une présence souveraine. Les administrations publiques doivent rester sur le mode souverain ci-dessous.</p></div>
 
-    <h3 id="deploy-sovereign"><span class="num">4</span> Déploiement souverain (Terraform Hub &amp; Spoke)</h3>
-    <p>C'est le mode <strong>recommandé pour les administrations publiques camerounaises</strong>. La pile est déployée par un module Terraform (<code class="inline">Lot8_PLG/terraform-souverain/</code>) directement sur un serveur fourni par l'institution. Aucune donnée ne quitte le site.</p>
+    <h3 id="deploy-sovereign"><span class="num">4</span> Déploiement souverain (OpenTofu)</h3>
+    <p>C'est le mode <strong>recommandé pour les administrations publiques camerounaises</strong>. La pile est déployée par un module OpenTofu (<code class="inline">deploy/opentofu/</code>) directement sur un serveur fourni par l'institution. Aucune donnée ne quitte le site.</p>
     <ol class="steps">
       <li>L'institution provisionne un serveur physique ou une VM (Ubuntu 22.04, 8 Go RAM minimum) avec accès SSH.</li>
       <li>Vous renseignez <code class="inline">terraform.tfvars</code> : IP serveur, clé SSH, nom de l'institution, domaine.</li>
-      <li><code class="inline">terraform apply</code> exécute 7 étapes en SSH : prérequis Docker, upload configs et sources, certificats Wazuh, démarrage de la pile, vérification de santé.</li>
-      <li>Les secrets (PostgreSQL, JWT, Wazuh admin) sont auto-générés et accessibles via <code class="inline">terraform output</code>.</li>
+      <li><code class="inline">tofu apply</code> exécute 7 étapes en SSH : prérequis Docker, upload configs et sources, certificats Wazuh, démarrage de la pile, vérification de santé.</li>
+      <li>Les secrets (PostgreSQL, JWT, Wazuh admin) sont auto-générés et accessibles via <code class="inline">tofu output</code>.</li>
       <li>Un cron de sauvegarde quotidienne (02h00) est installé automatiquement.</li>
     </ol>
     <div class="code">
-cd Lot8_PLG/terraform-souverain/
+cd deploy/opentofu/
 cp terraform.tfvars.example terraform.tfvars
 nano terraform.tfvars   <span class="cmt"># server_host, institution_name, nexus_domain</span>
-terraform init &amp;&amp; terraform plan &amp;&amp; terraform apply
-terraform output -raw postgres_password</div>
+tofu init &amp;&amp; tofu plan &amp;&amp; tofu apply
+tofu output -raw postgres_password</div>
 
     <h3 id="deploy-selfhosted"><span class="num">5</span> Auto-hébergé bare-metal</h3>
     <p>Pour un RSSI souhaitant contrôler chaque couche. Identique au mode VM, mais sur du matériel physique dédié, sans hyperviseur. Recommandations :</p>
@@ -626,8 +624,8 @@ terraform output -raw postgres_password</div>
     </ul>
 
     <h2 id="feat-multitenant">Fonctionnalités · Multi-tenant (RLS PostgreSQL)</h2>
-    <p>Une seule instance héberge tous les tenants. L'isolation est assurée par <strong>Row-Level Security</strong> PostgreSQL : chaque requête API positionne <code class="inline">app.current_tenant</code> avant d'exécuter ses requêtes.</p>
-    <p>Deux rôles : <code class="inline">nexus_app</code> (soumis à la RLS, vue d'un seul tenant) et <code class="inline">nexus_analyst</code> (BYPASSRLS, vue cross-tenants pour le SOC mutualisé). L'isolation est <strong>vérifiée par 8 assertions</strong> sur PostgreSQL réel.</p>
+    <p>Une seule instance héberge tous les périmètres. L'isolation est assurée par <strong>Row-Level Security</strong> PostgreSQL : chaque requête API positionne <code class="inline">app.current_tenant</code> avant d'exécuter ses requêtes.</p>
+    <p>Deux rôles : <code class="inline">nexus_app</code> (soumis à la RLS, vue d'un seul périmètre) et <code class="inline">nexus_analyst</code> (BYPASSRLS, vue cross-périmètre pour le SOC du CENADI). L'isolation est <strong>vérifiée par 8 assertions</strong> sur PostgreSQL réel.</p>
 
     <h2 id="feat-pwa">Fonctionnalités · Portail PWA</h2>
     <p>Le frontend (Lot 9) est une <strong>Progressive Web App</strong> installable. Le service worker met en cache les pages, sert les ressources en mode hors ligne, et reçoit les notifications push pour les alertes critiques.</p>
@@ -644,10 +642,10 @@ terraform output -raw postgres_password</div>
       <thead><tr><th>Préfixe</th><th>Rôle</th><th>Auth requise</th></tr></thead>
       <tbody>
         <tr><td><code class="inline">/auth/*</code></td><td>Login, refresh, profil</td><td>Anonyme (login) / JWT</td></tr>
-        <tr><td><code class="inline">/admin/*</code></td><td>Tenants, users, agents, billing, santé</td><td>admin_plateforme</td></tr>
-        <tr><td><code class="inline">/analyst/*</code></td><td>Alertes cross-tenants, SOAR pending, dashboard</td><td>analyste_soc / admin</td></tr>
+        <tr><td><code class="inline">/admin/*</code></td><td>Périmètres, users, agents, santé</td><td>admin_plateforme</td></tr>
+        <tr><td><code class="inline">/analyst/*</code></td><td>Alertes cross-périmètre, SOAR pending, dashboard</td><td>analyste_soc / admin</td></tr>
+        <tr><td><code class="inline">/portal/*</code></td><td>Vue filtrée du périmètre (responsable)</td><td>dsi_client</td></tr>
         <tr><td><code class="inline">/provision/*</code></td><td>Tokens, scripts, QR, bulk CSV, révocation</td><td>admin</td></tr>
-        <tr><td><code class="inline">/plg/*</code></td><td>Inscription, vérif email, pré-auth, quotas trial</td><td>Mixte (public + admin)</td></tr>
         <tr><td><code class="inline">/score/*</code></td><td>Scoring synchrone M1 / M2 (intégration)</td><td>—</td></tr>
         <tr><td><code class="inline">/ingest</code></td><td>Passerelle agents (HMAC + Bearer + rate limit)</td><td>HMAC + Bearer agent</td></tr>
         <tr><td><code class="inline">/health</code>, <code class="inline">/health/detailed</code></td><td>État des services</td><td>Anonyme</td></tr>
@@ -666,7 +664,7 @@ terraform output -raw postgres_password</div>
     </ul>
     <div class="callout danger">
       <div class="callout-head">À durcir en production</div>
-      <p>La pré-authorisation bancaire PLG est actuellement un <strong>stub</strong> — à remplacer par l'intégration CinetPay ou PayDunya avant tout déploiement réel facturé.</p>
+      <p>Les connecteurs SOAR (gel de compte AD/LDAP, isolation d'hôte, blocage IP périmétrique) sont <strong>simulés</strong> dans le démonstrateur — à raccorder aux annuaires et pare-feu réels du CENADI avant exploitation.</p>
     </div>
 
     <!-- ============================================================== -->
@@ -688,11 +686,11 @@ terraform output -raw postgres_password</div>
     <p>Non. Le mode <strong>template</strong> par défaut produit des explications déterministes en français et en anglais, sans risque d'hallucination. Le mode LLM est une amélioration optionnelle pour les explications longues.</p>
 
     <h3>Comment intégrer SIGIPES / SYDONIA ?</h3>
-    <p>Dans le mode souverain Terraform, l'intégration est faite manuellement par l'architecte NEXUS SOC pendant la phase d'onboarding. Le Modèle 2 UEBA est calibré sur les patterns d'audit observés. <a href="contact.html">Contactez un architecte →</a></p>
+    <p>Dans le mode souverain OpenTofu, l'intégration est faite manuellement par l'équipe SOC du CENADI pendant le raccordement du périmètre. Le Modèle 2 UEBA est calibré sur les patterns d'audit observés. <a href="contact.html">Contactez l'équipe SOC →</a></p>
 
     <div style="margin-top: 80px; padding-top: 32px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
-      <a href="landing.html" style="color: var(--text-2); text-decoration: none; font-size: 13px;">← Retour à l'accueil</a>
-      <a href="contact.html" style="color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600;">Contacter un architecte NEXUS SOC →</a>
+      <a href="login.html" style="color: var(--text-2); text-decoration: none; font-size: 13px;">← Retour à la connexion</a>
+      <a href="contact.html" style="color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600;">Contacter l'équipe SOC du CENADI →</a>
     </div>
 
   </main>

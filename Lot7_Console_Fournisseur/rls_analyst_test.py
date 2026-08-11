@@ -61,7 +61,7 @@ DROP ROLE IF EXISTS nexus_app;
 CREATE ROLE nexus_app LOGIN;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nexus_app;
 
--- ---- Rôle analyste SOC (BYPASSRLS — cross-tenant, read-only sur alerts) ----
+-- ---- Rôle analyste SOC (BYPASSRLS — cross-périmètre, read-only sur alerts) ----
 DROP ROLE IF EXISTS nexus_analyst;
 CREATE ROLE nexus_analyst LOGIN BYPASSRLS NOINHERIT NOSUPERUSER;
 GRANT CONNECT ON DATABASE nexus_rls_test_lot7 TO nexus_analyst;
@@ -69,8 +69,8 @@ GRANT USAGE ON SCHEMA public TO nexus_analyst;
 GRANT SELECT ON alerts, tenants TO nexus_analyst;
 """
 
-A = "11111111-1111-1111-1111-111111111111"   # Ministère des Finances
-B = "22222222-2222-2222-2222-222222222222"   # Microfinance Exemple
+A = "11111111-1111-1111-1111-111111111111"   # Périmètre SIGIPES
+B = "22222222-2222-2222-2222-222222222222"   # Périmètre Réseau/LAN CENADI
 
 
 def setup_db():
@@ -84,13 +84,13 @@ def setup_db():
     with conn.cursor() as c:
         c.execute(SCHEMA)
         c.execute("INSERT INTO tenants (id, nom) VALUES (%s, %s), (%s, %s)",
-                  (A, "Ministère des Finances", B, "Microfinance Exemple"))
+                  (A, "SIGIPES", B, "Réseau/LAN CENADI"))
         rows = [
-            (A, "Ransomware",       "POSTE-COMPTA-07",  100),
-            (A, "Fraude interne",   "agent_DGI_0421",    86),
-            (A, "Anomalie réseau",  "SRV-WEB-01",        72),
-            (B, "Phishing",         "POSTE-AGENCE-3",    65),
-            (B, "Fraude interne",   "agent_MF_017",      78),
+            (A, "Ransomware",       "POSTE-RH-07",       100),
+            (A, "Fraude interne",   "agent_SIGIPES_0421", 86),
+            (A, "Anomalie réseau",  "SRV-SIGIPES-01",     72),
+            (B, "Phishing",         "POSTE-LAN-03",       65),
+            (B, "Fraude interne",   "agent_LAN_017",      78),
         ]
         c.executemany("INSERT INTO alerts (tenant_id, type, entite, risque) VALUES (%s,%s,%s,%s)", rows)
     conn.close()
@@ -139,7 +139,7 @@ def run_nexus_app_assertions():
 
 
 def run_analyst_assertions():
-    """3 nouvelles assertions : nexus_analyst doit voir à travers les tenants."""
+    """3 nouvelles assertions : nexus_analyst doit voir à travers les périmètres."""
     cases = []
     conn = psycopg2.connect(DSN_ANALYST); conn.autocommit = False
 
@@ -180,7 +180,7 @@ def render_result(cases, output_dir="./out_lot7"):
         print(f"  {flag} #{c['id']} {c['name']:<60}  → {c['got']}")
 
     # Groupe nexus_analyst (assertions 6-8)
-    print("\n  ▸ Rôle nexus_analyst (BYPASSRLS — cross-tenant)")
+    print("\n  ▸ Rôle nexus_analyst (BYPASSRLS — cross-périmètre)")
     for c in cases[5:]:
         flag = "✓" if c["ok"] else "✗"
         print(f"  {flag} #{c['id']} {c['name']:<60}  → {c['got']}")
@@ -197,7 +197,7 @@ def render_result(cases, output_dir="./out_lot7"):
     if passed == total:
         print("  ✅ RLS ÉTENDU VÉRIFIÉ")
         print("     nexus_app  : isolation par tenant opérationnelle (5/5)")
-        print("     nexus_analyst : vue cross-tenant opérationnelle (3/3)")
+        print("     nexus_analyst : vue cross-périmètre opérationnelle (3/3)")
     else:
         print(f"  ❌ {total - passed} assertion(s) en échec — vérifier la configuration RLS.")
     return result
@@ -249,7 +249,7 @@ def make_figure(cases, output_dir="./out_lot7"):
 
         # Annotations groupes
         ax.text(0.5, 2,   "nexus_app (RLS — filtré par tenant)",     ha="center", va="center", color=AMBER, fontsize=8, alpha=0.7)
-        ax.text(0.5, 6.5, "nexus_analyst (BYPASSRLS — cross-tenant)", ha="center", va="center", color=AMBER, fontsize=8, alpha=0.7)
+        ax.text(0.5, 6.5, "nexus_analyst (BYPASSRLS — cross-périmètre)", ha="center", va="center", color=AMBER, fontsize=8, alpha=0.7)
 
         plt.tight_layout()
         out = f"{output_dir}/rls_analyst_result.png"

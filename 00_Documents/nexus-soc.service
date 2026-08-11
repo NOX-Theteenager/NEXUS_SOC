@@ -14,9 +14,14 @@ WorkingDirectory=/home/noxtheteenager/Documents/Projets/NEXUS_SOC
 # au process systemd pour les variables critiques avant l'import Python)
 EnvironmentFile=/home/noxtheteenager/Documents/Projets/NEXUS_SOC/.env
 
-# Lance uvicorn en écoute locale uniquement (le tunnel cloudflared expose en HTTPS)
+# Lance uvicorn :
+#  --host 0.0.0.0 : accepte 127.0.0.1 (pour cloudflared → nexussoc.cm) ET
+#                   10.42.0.1 (pour les VMs du LAB nexus-lab en libvirt).
+#  Le réseau libvirt 'nexus-lab' est ISOLÉ (aucun forward), donc aucune
+#  autre interface (Wi-Fi, Ethernet) ne peut atteindre le port 8000 :
+#  seul le bridge virbr-lab l'expose aux VMs du lab.
 ExecStart=/home/noxtheteenager/Documents/Projets/NEXUS_SOC/.venv/bin/uvicorn run:app \
-    --host 127.0.0.1 \
+    --host 0.0.0.0 \
     --port 8000 \
     --log-level info \
     --no-access-log

@@ -101,7 +101,7 @@ async def _security_headers(request, call_next):
 # ─── Routers supplémentaires ─────────────────────────────────────────────────
 # Les dossiers des Lots sont ajoutés au PYTHONPATH pour que les imports croisés
 # fonctionnent (ex. admin_api.py qui importe auth_middleware pour valider le JWT).
-for _lot in ("Lot1_Agent_Go", "Lot7_Console_Fournisseur", "Lot8_PLG"):
+for _lot in ("Lot1_Agent_Go", "Lot7_Console_Fournisseur"):
     _p = os.path.join(PROJECT_ROOT, _lot)
     if _p not in sys.path:
         sys.path.insert(0, _p)
@@ -147,10 +147,6 @@ _try_include(
     os.path.join(PROJECT_ROOT, "Lot7_Console_Fournisseur",  "provisioning_api.py"),
     "router", "Provisioning /provision/*",
 )
-_try_include(
-    os.path.join(PROJECT_ROOT, "Lot8_PLG",                  "plg_api.py"),
-    "router", "PLG /plg/*",
-)
 
 # ─── Frontend statique ───────────────────────────────────────────────────────
 try:
@@ -164,47 +160,16 @@ try:
 except Exception as e:
     print(f"[run] ✗ Frontend ignoré — {e}")
 
-# ─── Pool asyncpg pour le module PLG ──────────────────────────────────────────
-# plg_api.py attend un pool asyncpg sur app.state.db (dépendance _db).
-# On l'initialise au démarrage à partir du même DB_DSN que le reste de l'app.
-@app.on_event("startup")
-async def _init_plg_pool():
-    dsn = os.getenv("DB_DSN")
-    if not dsn:
-        app.state.db = None
-        print("[run] ✗ pool PLG : DB_DSN non défini")
-        return
-    try:
-        import asyncpg
-        app.state.db = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=5)
-        print("[run] ✓ pool asyncpg PLG initialisé (app.state.db)")
-    except Exception as e:
-        app.state.db = None
-        print(f"[run] ✗ pool asyncpg PLG indisponible — {e}")
-
-
-@app.on_event("shutdown")
-async def _close_plg_pool():
-    pool = getattr(app.state, "db", None)
-    if pool is not None:
-        try:
-            await pool.close()
-        except Exception:
-            pass
-
-
-# ─── Redirection racine → landing page (vitrine) ─────────────────────────────
-# Le point d'entrée web est la landing (présentation du produit) ;
-# le point d'entrée PWA (start_url dans manifest.json) reste login.html
-# pour que l'app installée ouvre directement sur la connexion.
+# ─── Redirection racine → connexion ──────────────────────────────────────────
+# Outil interne du CENADI : pas de vitrine publique. La racine mène directement
+# à la connexion (également start_url de la PWA dans manifest.json).
 from fastapi.responses import RedirectResponse
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse(url="/app/landing.html")
+    return RedirectResponse(url="/app/login.html")
 
 print("[run] NEXUS SOC démarré")
-print("[run]   Landing  : http://localhost:8000/app/landing.html")
 print("[run]   Login    : http://localhost:8000/app/login.html  (PWA start_url)")
 print("[run]   Docs     : http://localhost:8000/app/docs.html")
 print("[run]   Contact  : http://localhost:8000/app/contact.html")

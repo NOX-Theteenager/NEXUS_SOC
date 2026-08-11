@@ -1,0 +1,47 @@
+# =============================================================================
+# NEXUS SOC — Exemple de configuration terraform.tfvars
+#
+# UTILISATION :
+#   cp terraform.tfvars.example terraform.tfvars
+#   nano terraform.tfvars          # adapter à votre environnement
+#   tofu apply
+#
+# SÉCURITÉ :
+#   - terraform.tfvars est dans .gitignore (contient des secrets)
+#   - Pour CI/CD, préférer les variables d'environnement TF_VAR_*
+# =============================================================================
+
+# ── Serveur cible ────────────────────────────────────────────────────────────
+server_host          = "192.168.1.100"        # IP ou FQDN du serveur
+server_user          = "ubuntu"               # Utilisateur SSH avec sudo
+ssh_private_key_path = "~/.ssh/nexus_deploy"  # Clé privée SSH locale
+ssh_port             = 22
+
+# ── Institution souveraine ───────────────────────────────────────────────────
+institution_name = "CENADI"
+nexus_domain     = "nexussoc.cm"
+install_dir      = "/opt/nexus-soc"
+
+# ── Secrets (laisser vides pour génération automatique) ─────────────────────
+# postgres_password    = ""   # Auto-généré si vide
+# jwt_secret           = ""   # Auto-généré si vide
+# pseudo_secret        = ""   # Auto-généré si vide
+# wazuh_admin_password = ""   # Auto-généré si vide
+
+# ── Versions ─────────────────────────────────────────────────────────────────
+wazuh_version     = "4.9.0"
+kafka_version     = "3.7.1"
+timescale_version = "2.15.3-pg16"
+nexus_version     = "1.0.0"
+
+# ── Ressources ───────────────────────────────────────────────────────────────
+wazuh_jvm_heap_mb = 1024   # 512 min (dev) / 1024+ (prod recommandé)
+risk_threshold    = 70
+ingest_rate_limit = 30
+backup_keep_days  = 14
+
+# ── Options ──────────────────────────────────────────────────────────────────
+expose_wazuh_dashboard = true
+
+# ── Modèles IA (optionnel — peut être fait manuellement après déploiement) ───
+# models_local_path = "/chemin/local/vers/les/modeles"

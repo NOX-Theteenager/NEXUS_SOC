@@ -1,16 +1,16 @@
 horodatage,incident,type,entite,risque,action,impact,decision,statut,detail,acteur
-2026-06-23T23:28:58,ALT-C46CFC,Fraude interne,agent_DGI_0421,86,Enrichir l'IOC (VirusTotal),info,auto,SIMULÉE,[SIMULATION] Aucun IOC exploitable extrait de l'alerte (ou VirusTotal désactivé),SOAR (auto)
-2026-06-23T23:28:58,ALT-C46CFC,Fraude interne,agent_DGI_0421,86,Journaliser pour enquête,faible,auto,SIMULÉE,[SIMULATION] Activité de « agent_DGI_0421 » figée et journalisée (preuve conservée pour enquête),SOAR (auto)
-2026-06-23T23:28:58,ALT-C46CFC,Fraude interne,agent_DGI_0421,86,Notifier le DSI (push in-app + rapport),faible,auto,SIMULÉE,"[SIMULATION] Notification poussée au portail DSI (rapport téléchargeable, alerte « agent_DGI_0421 »)",SOAR (auto)
-2026-06-23T23:28:58,ALT-C46CFC,Fraude interne,agent_DGI_0421,86,Geler le compte,fort,validation,SIMULÉE (validation requise),[SIMULATION] Compte « agent_DGI_0421 » gelé (accès suspendus),—
-2026-06-23T23:28:58,ALT-C46CFC,Fraude interne,agent_DGI_0421,86,Archiver les journaux,faible,auto,SIMULÉE,[SIMULATION] Journaux d'audit liés archivés (chaîne de preuve),SOAR (auto)
-2026-06-23T23:28:58,ALT-770ADF,Exfiltration,agent_DGI_1187,91,Enrichir l'IOC (VirusTotal),info,auto,SIMULÉE,[SIMULATION] Aucun IOC exploitable extrait de l'alerte (ou VirusTotal désactivé),SOAR (auto)
-2026-06-23T23:28:58,ALT-770ADF,Exfiltration,agent_DGI_1187,91,Journaliser pour enquête,faible,auto,SIMULÉE,[SIMULATION] Activité de « agent_DGI_1187 » figée et journalisée (preuve conservée pour enquête),SOAR (auto)
-2026-06-23T23:28:58,ALT-770ADF,Exfiltration,agent_DGI_1187,91,Geler le compte,fort,validation,SIMULÉE (validation requise),[SIMULATION] Compte « agent_DGI_1187 » gelé (accès suspendus),—
-2026-06-23T23:28:58,ALT-770ADF,Exfiltration,agent_DGI_1187,91,Bloquer l'IP malveillante,moyen,auto,SIMULÉE,[SIMULATION] IP/destination malveillante bloquée au pare-feu,SOAR (auto)
-2026-06-23T23:28:58,ALT-770ADF,Exfiltration,agent_DGI_1187,91,Notifier le DSI (push in-app + rapport),faible,auto,SIMULÉE,"[SIMULATION] Notification poussée au portail DSI (rapport téléchargeable, alerte « agent_DGI_1187 »)",SOAR (auto)
-2026-06-23T23:28:58,ALT-B5768F,Ransomware,DESKTOP-COMPTA-01,96,Enrichir l'IOC (VirusTotal),info,auto,SIMULÉE,[SIMULATION] Aucun IOC exploitable extrait de l'alerte (ou VirusTotal désactivé),SOAR (auto)
-2026-06-23T23:28:58,ALT-B5768F,Ransomware,DESKTOP-COMPTA-01,96,Capturer la mémoire,moyen,auto,SIMULÉE,[SIMULATION] Capture mémoire/état de « DESKTOP-COMPTA-01 » réalisée,SOAR (auto)
-2026-06-23T23:28:58,ALT-B5768F,Ransomware,DESKTOP-COMPTA-01,96,Isoler le poste,fort,validation,SIMULÉE (validation requise),[SIMULATION] Poste « DESKTOP-COMPTA-01 » isolé du réseau,—
-2026-06-23T23:28:58,ALT-B5768F,Ransomware,DESKTOP-COMPTA-01,96,Bloquer l'IP malveillante,moyen,auto,SIMULÉE,[SIMULATION] IP/destination malveillante bloquée au pare-feu,SOAR (auto)
-2026-06-23T23:28:58,ALT-B5768F,Ransomware,DESKTOP-COMPTA-01,96,Notifier le DSI (push in-app + rapport),faible,auto,SIMULÉE,"[SIMULATION] Notification poussée au portail DSI (rapport téléchargeable, alerte « DESKTOP-COMPTA-01 »)",SOAR (auto)
+2026-07-07T23:21:51,ALT-18BE51,Fraude interne,agent_DGI_0421,86,Enrichir l'IOC (VirusTotal),info,auto,SIMULÉE,[SIMULATION] Aucun IOC exploitable extrait de l'alerte (ou VirusTotal désactivé),SOAR (auto)
+2026-07-07T23:21:51,ALT-18BE51,Fraude interne,agent_DGI_0421,86,Journaliser pour enquête,faible,auto,SIMULÉE,[SIMULATION] Activité de « agent_DGI_0421 » figée et journalisée (preuve conservée pour enquête),SOAR (auto)
+2026-07-07T23:21:51,ALT-18BE51,Fraude interne,agent_DGI_0421,86,Notifier le DSI (push in-app + rapport),faible,auto,SIMULÉE,"[SIMULATION] Notification poussée au portail DSI (rapport téléchargeable, alerte « agent_DGI_0421 »)",SOAR (auto)
+2026-07-07T23:21:51,ALT-18BE51,Fraude interne,agent_DGI_0421,86,Geler le compte,fort,validation,SIMULÉE (validation requise),[SIMULATION] Compte « agent_DGI_0421 » gelé (accès suspendus),—
+2026-07-07T23:21:51,ALT-18BE51,Fraude interne,agent_DGI_0421,86,Archiver les journaux,faible,auto,SIMULÉE,[SIMULATION] Journaux d'audit liés archivés (chaîne de preuve),SOAR (auto)
+2026-07-07T23:21:51,ALT-0C24C0,Exfiltration,agent_DGI_1187,91,Enrichir l'IOC (VirusTotal),info,auto,SIMULÉE,[SIMULATION] Aucun IOC exploitable extrait de l'alerte (ou VirusTotal désactivé),SOAR (auto)
+2026-07-07T23:21:51,ALT-0C24C0,Exfiltration,agent_DGI_1187,91,Journaliser pour enquête,faible,auto,SIMULÉE,[SIMULATION] Activité de « agent_DGI_1187 » figée et journalisée (preuve conservée pour enquête),SOAR (auto)
+2026-07-07T23:21:51,ALT-0C24C0,Exfiltration,agent_DGI_1187,91,Geler le compte,fort,validation,SIMULÉE (validation requise),[SIMULATION] Compte « agent_DGI_1187 » gelé (accès suspendus),—
+2026-07-07T23:21:51,ALT-0C24C0,Exfiltration,agent_DGI_1187,91,Bloquer l'IP malveillante,moyen,auto,SIMULÉE,[SIMULATION] IP/destination malveillante bloquée au pare-feu,SOAR (auto)
+2026-07-07T23:21:51,ALT-0C24C0,Exfiltration,agent_DGI_1187,91,Notifier le DSI (push in-app + rapport),faible,auto,SIMULÉE,"[SIMULATION] Notification poussée au portail DSI (rapport téléchargeable, alerte « agent_DGI_1187 »)",SOAR (auto)
+2026-07-07T23:21:51,ALT-95C1FA,Ransomware,DESKTOP-COMPTA-01,96,Enrichir l'IOC (VirusTotal),info,auto,SIMULÉE,[SIMULATION] Aucun IOC exploitable extrait de l'alerte (ou VirusTotal désactivé),SOAR (auto)
+2026-07-07T23:21:51,ALT-95C1FA,Ransomware,DESKTOP-COMPTA-01,96,Capturer la mémoire,moyen,auto,SIMULÉE,[SIMULATION] Capture mémoire/état de « DESKTOP-COMPTA-01 » réalisée,SOAR (auto)
+2026-07-07T23:21:51,ALT-95C1FA,Ransomware,DESKTOP-COMPTA-01,96,Isoler le poste,fort,validation,SIMULÉE (validation requise),[SIMULATION] Poste « DESKTOP-COMPTA-01 » isolé du réseau,—
+2026-07-07T23:21:51,ALT-95C1FA,Ransomware,DESKTOP-COMPTA-01,96,Bloquer l'IP malveillante,moyen,auto,SIMULÉE,[SIMULATION] IP/destination malveillante bloquée au pare-feu,SOAR (auto)
+2026-07-07T23:21:51,ALT-95C1FA,Ransomware,DESKTOP-COMPTA-01,96,Notifier le DSI (push in-app + rapport),faible,auto,SIMULÉE,"[SIMULATION] Notification poussée au portail DSI (rapport téléchargeable, alerte « DESKTOP-COMPTA-01 »)",SOAR (auto)

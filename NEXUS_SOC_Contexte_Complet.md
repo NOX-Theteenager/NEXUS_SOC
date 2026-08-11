@@ -1,5 +1,17 @@
 CONTEXTE COMPLET DU PROJET NEXUS SOC
 
+>>> AVERTISSEMENT — REFONTE SOUVERAINE CENADI (voir MIGRATION.md) <<<
+Ce document décrit en grande partie l'ANCIEN positionnement commercial
+« SOC-as-a-Service » (PLG, abonnements, microfinances, tarification FCFA). Le
+projet a été recentré sur une plateforme 100 % OPEN SOURCE et SOUVERAINE,
+exploitée EN INTERNE par le CENADI. Les références au module PLG/SaaS, au modèle
+économique, aux plans payants et au déploiement Terraform sont CADUQUES.
+Documents faisant foi désormais : README.md et MIGRATION.md. Le multi-locataire
+est réinterprété en « périmètres supervisés » (SIGIPES, ANTILOPE, réseau/LAN
+CENADI) ; le déploiement passe à OpenTofu (deploy/opentofu). Les sections
+commerciales ci-dessous restent à titre historique et doivent être ignorées.
+>>> FIN DE L'AVERTISSEMENT <<<
+
 Ce document est un prompt de reprise complet. Il contient absolument tout ce dont
 tu as besoin pour continuer le développement ou rédiger le rapport de soutenance.
 Lis-le en entier avant de répondre à quoi que ce soit.
@@ -9,7 +21,7 @@ SECTION 1 — IDENTITÉ DU PROJET
 ═══════════════════════════════════════════════════════════════════════════════════
 
 Nom exact         : NEXUS SOC
-Sous-titre        : Plateforme SOC-as-a-Service souveraine pour le Cameroun
+Sous-titre        : Plateforme SOC open source et souveraine pour le Cameroun
 Acronyme          : NEXUS = Network Endpoint eXtended Unified Security (rétro-acronyme)
 Thème académique  : Cybersécurité — détection d'intrusion, réponse aux incidents, IA appliquée
 
@@ -31,9 +43,9 @@ Positionnement :
   vs SentinelOne : idem CrowdStrike, cloud américain, pas accessible au Cameroun.
   vs Wazuh seul : open-source gratuit, mais nécessite compétences internes, pas de
     mutualisation, pas de modèles IA, pas de restitution bilingue, pas de SOAR.
-  NEXUS SOC unique car : mutualisé (SOCaaS), hébergement local (souveraineté),
-    modèles IA adaptés au contexte SIGIPES/SYDONIA, bilingue FR/EN, prix FCFA,
-    flux PLG automatisé pour les microfinances + déploiement Terraform souverain
+  NEXUS SOC unique car : mutualisé (SOC souverain), hébergement local (souveraineté),
+    modèles IA adaptés au contexte SIGIPES/ANTILOPE, bilingue FR/EN, prix FCFA,
+    flux PLG automatisé pour les microfinances + déploiement OpenTofu souverain
     pour les administrations publiques.
 
 ═══════════════════════════════════════════════════════════════════════════════════
@@ -49,21 +61,21 @@ Niveau              : Bachelor 3 (Bac+3)
 Soutenance visée    : 24 août 2026
 
 Stage :
-  Institution  : MINFI — Ministère des Finances du Cameroun
+  Institution  : CENADI — CENADI du Cameroun
   Période      : Mai–Juillet 2026 (3 mois)
   Lieu         : Yaoundé
 
-Ce que l'étudiant peut observer et réaliser pendant le stage MINFI :
-  1. Adapter le Modèle 1 (anomalie réseau) aux vraies données réseau du MINFI
+Ce que l'étudiant peut observer et réaliser pendant le stage CENADI :
+  1. Adapter le Modèle 1 (anomalie réseau) aux vraies données réseau du CENADI
      (captures NetFlow ou PCAP sur le LAN ministériel)
   2. Adapter le Modèle 2 (fraude UEBA) aux vraies données d'audit SIGIPES
      (journaux d'activité des agents de la Direction Générale du Budget)
-  3. Tester les connecteurs SOAR réels (annuaire LDAP/AD du MINFI, pare-feu périmétrique)
+  3. Tester les connecteurs SOAR réels (annuaire LDAP/AD du CENADI, pare-feu périmétrique)
   4. Valider la procédure d'enrôlement des agents sur des postes Windows réels
   5. Initier la démarche de conformité ANTIC (déclaration du système)
   6. Effectuer des simulations d'attaques Atomic Red Team sur un réseau de test
   7. Documenter les incidents réels observés pendant le stage pour alimenter le rapport
-  8. Tester le déploiement Terraform souverain sur l'infrastructure MINFI (si autorisé)
+  8. Tester le déploiement OpenTofu souverain sur l'infrastructure CENADI (si autorisé)
 
 ═══════════════════════════════════════════════════════════════════════════════════
 SECTION 3 — PÉRIMÈTRE ET CIBLES
@@ -71,14 +83,14 @@ SECTION 3 — PÉRIMÈTRE ET CIBLES
 
 CIBLE PRINCIPALE — Administrations publiques camerounaises :
   Types       : Ministères, Directions Générales, Agences d'État, régies financières
-  Exemples    : MINFI, DGI (Direction Générale des Impôts), DGCOOP, DGD (Douanes)
+  Exemples    : CENADI, DGI (Direction Générale des Impôts), DGCOOP, DGD (Douanes)
   Taille      : 50 à 500 postes surveillés
-  Offre       : Contrat public annuel + hébergement souverain dédié (Hub & Spoke)
-  Déploiement : Module Terraform souverain (Lot 8) — déploie la pile complète via SSH
+  Offre       : Contrat public annuel + hébergement souverain dédié (raccordement souverain)
+  Déploiement : Module OpenTofu souverain (Lot 8) — déploie la pile complète via SSH
   Motivation  : Souveraineté numérique, conformité loi 2010/012, détection fraudes
                 internes (fonctionnaires fantômes, faux mandatements)
   Flux        : Formulaire "Déploiement Souverain" sur la landing page → contact
-                architecte NEXUS SOC → déploiement Terraform sur site
+                architecte NEXUS SOC → déploiement OpenTofu sur site
 
 CIBLE SECONDAIRE — Secteur financier non bancaire :
   Microfinances (régulation COBAC — Afrique Centrale)
@@ -303,10 +315,10 @@ COMPOSANT 11 — Module PLG Product-Led Growth (Lot 8)
   Flux Souverain : formulaire de contact dans la section #souverain de la landing page
                    → déclenche notification architecte NEXUS SOC (stub email)
 
-COMPOSANT 12 — Terraform Déploiement Souverain (Lot 8)
+COMPOSANT 12 — OpenTofu Déploiement Souverain (Lot 8)
   Répertoire : Lot8_PLG/terraform-souverain/ (10 fichiers, 1205 lignes total)
   Providers  : hashicorp/null (~3.2), tls (~4.0), local (~2.4), random (~3.6)
-  Prérequis  : Terraform >= 1.6, serveur SSH avec sudo, Ubuntu 22.04+ recommandé
+  Prérequis  : OpenTofu >= 1.6, serveur SSH avec sudo, Ubuntu 22.04+ recommandé
   Séquence (7 étapes, null_resource SSH provisioners) :
     1. server_prerequisites : Docker, vm.max_map_count=262144, structure /opt/nexus-soc/
     2. upload_configs        : .env, docker-compose.yml, 5 schémas SQL
@@ -320,7 +332,7 @@ COMPOSANT 12 — Terraform Déploiement Souverain (Lot 8)
                           wazuh_admin_password (20) — via random_password resources
   Certificat TLS : tls_self_signed_cert auto-signé, validité 1 an, pour nexus_domain + server_host
   Outputs sensibles : postgres_password, jwt_secret, wazuh_admin_password (sensitive=true)
-  Output next_steps : guide post-déploiement complet inclus dans terraform output
+  Output next_steps : guide post-déploiement complet inclus dans tofu output
   Templates : env.tpl, docker-compose.tpl (avec $${VAR} pour variables Docker Compose),
               Dockerfile.scoring.tpl (Python 3.11-slim, uvicorn, 2 workers)
   Idempotence : triggers = sha256(fichier) sur chaque null_resource → re-déploie seulement si changé
@@ -338,7 +350,7 @@ MODÈLE 1 — Détection d'anomalies réseau
     Lien     : https://www.unb.ca/cic/datasets/ids-2017.html
     Features : features de flux CICFlowMeter (durée, protocole, octets src/dst, flags…)
                ~80 features numériques après nettoyage
-  Mode actuel: données synthétiques imitant CICIDS2017 (validation réelle au MINFI)
+  Mode actuel: données synthétiques imitant CICIDS2017 (validation réelle au CENADI)
   Métriques :
     Isolation Forest : ROC-AUC 0.987 | PR-AUC 0.943
     Autoencodeur     : ROC-AUC 0.991 | PR-AUC 0.981
@@ -353,11 +365,11 @@ MODÈLE 1 — Détection d'anomalies réseau
 MODÈLE 2 — Fraude interne UEBA
   Nom        : model2_isoforest.joblib
   Fichier    : model2_fraud_detection.py
-  Rôle       : Détecter les comportements frauduleux dans SIGIPES (paie) et SYDONIA (douanes)
+  Rôle       : Détecter les comportements frauduleux dans SIGIPES (paie) et ANTILOPE (douanes)
   Type       : Isolation Forest sur profils agrégés agent-jour
   Dataset    : CERT Insider Threat Dataset (CMU/SEI) comme référence théorique
     Lien     : https://kilthub.cmu.edu/articles/dataset/
-    Synthétique pour la démo — adaptation à SIGIPES au stage MINFI.
+    Synthétique pour la démo — adaptation à SIGIPES au stage CENADI.
   Features (10) — profil agent-jour :
     nb_connexions, nb_actions_hors_heures, nb_transactions,
     montant_total_modifie, nb_modifs_montant, nb_creations_compte,
@@ -435,14 +447,14 @@ STOCKAGE CHAUD SIEM :
   Wazuh Dashboard 4.9.0 — port 5601 (HTTPS)
 
 DÉPLOIEMENT SOUVERAIN :
-  Terraform >= 1.6
+  OpenTofu >= 1.6
     Providers : hashicorp/null (SSH provisioners), hashicorp/tls (certs auto-signés),
                 hashicorp/local (rendu templates), hashicorp/random (secrets auto-générés)
   Docker Compose v2 (pile sur serveur cible)
   Garble (obfuscation agent PLG) : go install mvdan.cc/garble@latest
 
 ORCHESTRATION :
-  Docker Compose v2 (développement/démo + déploiement souverain via Terraform)
+  Docker Compose v2 (développement/démo + déploiement souverain via OpenTofu)
   Kubernetes : NON implémenté — Docker Compose est la cible démo.
     Kubernetes listé en perspectives (Helm chart à créer).
 
@@ -530,12 +542,12 @@ FLUX PLG COMPLET (Lot 8) :
     Enforcement synchrone dans _enforce_trial_quota_sync() appelé par /ingest
     Réponses HTTP : 402 (suspendu/expiré) ou 429 (quota dépassé)
 
-DÉPLOIEMENT SOUVERAIN (Lot 8 Terraform) :
+DÉPLOIEMENT SOUVERAIN (Lot 8 OpenTofu) :
   1. Formulaire "Contacter un architecte" → email → qualification
   2. terraform.tfvars configuré (server_host, institution_name, nexus_domain, ssh_key)
-  3. terraform apply → 7 étapes SSH (prérequis, configs, sources, modèles, certs, compose, santé)
+  3. tofu apply → 7 étapes SSH (prérequis, configs, sources, modèles, certs, compose, santé)
   4. Cron sauvegarde 02h00 installé automatiquement
-  5. Secrets récupérés via : terraform output -raw <secret>
+  5. Secrets récupérés via : tofu output -raw <secret>
   6. Modèles IA uploadés via scp + docker compose restart scoring-service
 
 LLM ANALYST MULTILINGUE (Lot 5) :
@@ -575,7 +587,7 @@ WORKFLOWS COMPLETS :
   Workflow Déploiement Souverain :
     [Formulaire "Contacter un architecte" sur landing_page.html]
     → email équipe NEXUS SOC → qualification 48h (cartographie SI, contraintes souveraineté)
-    → Proposition Hub & Spoke → Déploiement Terraform SSH (terraform apply ~15 min)
+    → Proposition raccordement souverain → Déploiement OpenTofu SSH (tofu apply ~15 min)
     → Provisioning masse Ansible → Formation DSI + SIEM
     → Contrat annuel + SLA 1h activé + démarche ANTIC initiée
 
@@ -599,7 +611,7 @@ RISQUES TECHNIQUES AVEC MESURES D'ATTÉNUATION :
 
   R1. Données synthétiques — validation terrain absente [criticité ÉLEVÉE]
     Statut : risque documenté. Chiffres valides comme ordre de grandeur, pas preuve terrain.
-    Atténuation : adaptation aux données SIGIPES/SYDONIA pendant le stage MINFI.
+    Atténuation : adaptation aux données SIGIPES/ANTILOPE pendant le stage CENADI.
 
   R2. Dérive des modèles dans le temps [criticité ÉLEVÉE]
     Statut : model_monitor.py implémenté (PSI + σ-drift). Seuils documentés.
@@ -699,8 +711,8 @@ NIVEAUX D'ABONNEMENT :
 
   Contrat public — tarif annuel négocié
     Cible : administrations publiques camerounaises
-    Agents : illimités | Hébergement : souverain (Terraform souverain Lot 8)
-    Fonctionnalités : toutes + intégration SIGIPES/SYDONIA + conformité ANTIC
+    Agents : illimités | Hébergement : souverain (OpenTofu souverain Lot 8)
+    Fonctionnalités : toutes + intégration SIGIPES/ANTILOPE + conformité ANTIC
     Support : SLA 1h, analyste SOC dédié, formation des équipes DSI
 
 COMPARAISON :
@@ -794,7 +806,7 @@ SECTION 11 — ÉLÉMENTS POUR LE RAPPORT
 ═══════════════════════════════════════════════════════════════════════════════════
 
 TITRE OFFICIEL DU RAPPORT :
-  « NEXUS SOC : Conception et Implémentation d'une Plateforme SOC-as-a-Service
+  « NEXUS SOC : Conception et Implémentation d'une Plateforme SOC open source et souverain
   Souveraine pour les Organisations Camerounaises — Détection Intelligente des
   Menaces par l'Intelligence Artificielle et Réponse Automatisée aux Incidents »
 
@@ -802,7 +814,7 @@ RÉSUMÉ EN FRANÇAIS (200 mots) :
   La cybersécurité des organisations camerounaises souffre d'un déficit structurel : les
   administrations publiques et PME financières manquent de moyens humains et financiers
   pour déployer un Security Operations Center (SOC) interne. Ce travail présente NEXUS SOC,
-  une plateforme SOC-as-a-Service mutualisée, souveraine et abordable, conçue pour le
+  une plateforme SOC open source et souverain mutualisée, souveraine et abordable, conçue pour le
   contexte camerounais.
 
   L'architecture repose sur huit composants intégrés : un agent de collecte léger écrit en
@@ -811,7 +823,7 @@ RÉSUMÉ EN FRANÇAIS (200 mots) :
   réseau et UEBA pour la fraude interne), un moteur SOAR à garde-fous, un module de
   restitution bilingue français/anglais, une console opérateur multi-tenant, un module
   Product-Led Growth automatisé pour les microfinances, et un module de déploiement
-  souverain Terraform pour les administrations publiques.
+  souverain OpenTofu pour les administrations publiques.
 
   La plateforme adopte un modèle économique double : abonnement mensuel (25 000 à
   200 000 FCFA) pour le secteur financier non bancaire, et contrat souverain pour les
@@ -824,14 +836,14 @@ ABSTRACT IN ENGLISH (200 words) :
   Cybersecurity in Cameroonian organizations faces a structural deficit: public administrations
   and financial SMEs lack the human and financial resources to deploy an internal Security
   Operations Center (SOC). This work presents NEXUS SOC, a mutualized, sovereign, and
-  affordable SOC-as-a-Service platform designed for the Cameroonian context.
+  affordable SOC open source et souverain platform designed for the Cameroonian context.
 
   The architecture relies on eight integrated components: a lightweight Go collection agent
   (~5 MB, egress-only), a SIEM normalization and correlation pipeline mapped to MITRE ATT&CK,
   two artificial intelligence models (Isolation Forest for network anomalies and UEBA for
   internal fraud), a SOAR engine with guardrails, a bilingual French/English reporting module,
   a multi-tenant operator console, a Product-Led Growth automated module for microfinances,
-  and a Terraform sovereign deployment module for public administrations.
+  and a OpenTofu sovereign deployment module for public administrations.
 
   The platform adopts a dual business model: monthly subscription (25,000 to 200,000 XAF) for
   the non-banking financial sector, and a sovereign contract for public administrations.
@@ -841,13 +853,13 @@ ABSTRACT IN ENGLISH (200 words) :
   network anomaly and internal fraud models respectively.
 
 MOTS-CLÉS FR :
-  SOC-as-a-Service, cybersécurité souveraine, détection d'intrusion, MITRE ATT&CK,
-  Isolation Forest, UEBA, SOAR, multi-tenant, Product-Led Growth, Terraform,
+  SOC open source et souverain, cybersécurité souveraine, détection d'intrusion, MITRE ATT&CK,
+  Isolation Forest, UEBA, SOAR, multi-tenant, Product-Led Growth, OpenTofu,
   Cameroun, ANTIC, fraude interne, agent léger, corrélation SIEM, intelligence artificielle
 
 KEYWORDS EN :
-  SOC-as-a-Service, sovereign cybersecurity, intrusion detection, MITRE ATT&CK,
-  Isolation Forest, UEBA, SOAR, multi-tenant, Product-Led Growth, Terraform,
+  SOC open source et souverain, sovereign cybersecurity, intrusion detection, MITRE ATT&CK,
+  Isolation Forest, UEBA, SOAR, multi-tenant, Product-Led Growth, OpenTofu,
   Cameroon, ANTIC, insider threat, lightweight agent, SIEM correlation, artificial intelligence
 
 PROBLÉMATIQUE PRÉCISE :
@@ -864,13 +876,13 @@ JUSTIFICATION DU PROJET :
      fraudes sur paie publique (fonctionnaires fantômes), exfiltrations fiscales, phishing
      ciblant les microfinances.
   2. Absence de solutions adaptées : CrowdStrike/Splunk hors budget et hors souveraineté.
-     Wazuh seul sans expertise interne est inutile. Pas de SOCaaS francophone souverain.
+     Wazuh seul sans expertise interne est inutile. Pas de SOC souverain francophone souverain.
   3. Cadre légal : loi 2010/012 impose des mesures de sécurité aux SI traitant des données
      personnelles.
   4. Impact mesurable : MTTD de 90–120 s (vs plusieurs semaines dans les incidents non
      monitorés en Afrique subsaharienne — IBM Cost of a Data Breach 2023).
-  5. Modèle PLG innovant : premier SOCaaS africain avec flux d'acquisition self-service
-     et déploiement souverain automatisé (Terraform).
+  5. Modèle PLG innovant : premier SOC souverain africain avec flux d'acquisition self-service
+     et déploiement souverain automatisé (OpenTofu).
 
 POSITIONNEMENT PAR RAPPORT À L'EXISTANT :
   CrowdStrike Falcon EDR : 400–800 USD/agent/an, cloud américain, pas souverain, pas de
@@ -879,7 +891,7 @@ POSITIONNEMENT PAR RAPPORT À L'EXISTANT :
   SentinelOne : même problème que CrowdStrike. Pas d'offre africaine.
   Wazuh (open source) : gratuit mais nécessite 2–3 ingénieurs, pas de mutualisation,
     pas de modèles IA contextualisés, pas de restitution bilingue, pas de SOAR.
-  Solutions africaines : très peu documentées, pas de SOCaaS certifié en Afrique centrale
+  Solutions africaines : très peu documentées, pas de SOC souverain certifié en Afrique centrale
     francophone. NEXUS SOC est pionnier dans ce segment.
 
 PHRASE DE CONCLUSION POUR LA SOUTENANCE :
@@ -895,7 +907,7 @@ SECTION 12 — CE QUI A ÉTÉ CODÉ
 
 RÉPERTOIRE RACINE : /home/noxtheteenager/Documents/Projets/NEXUS_SOC/
 
-├── README.md (893 lignes) — guide complet : interfaces, Docker, standalone, PLG, Terraform
+├── README.md (893 lignes) — guide complet : interfaces, Docker, standalone, PLG, OpenTofu
 ├── INVENTAIRE.md — catalogue général des livrables
 ├── NEXUS_SOC_Contexte_Complet.md — ce fichier (prompt de reprise)
 
@@ -1065,7 +1077,7 @@ LOT 8 — PLG + Déploiement Souverain (NOUVEAU — session 29 mai 2026)
 │   Tuning : wazuh_jvm_heap_mb (min 512), risk_threshold (70), ingest_rate_limit (30)
 │
 ├── Lot8_PLG/terraform-souverain/main.tf (580 lignes)
-│   10 ressources Terraform :
+│   10 ressources OpenTofu :
 │   random_password.{postgres,jwt,pseudo,wazuh_admin} (secrets auto-générés)
 │   tls_private_key.nexus + tls_self_signed_cert.nexus (RSA4096, 1 an, dns+ip)
 │   local_sensitive_file.env (chmod 600) + local_file.{compose,dockerfile_scoring}
@@ -1086,14 +1098,14 @@ LOT 8 — PLG + Déploiement Souverain (NOUVEAU — session 29 mai 2026)
 │   next_steps : guide post-déploiement complet avec commandes exactes
 │
 ├── Lot8_PLG/terraform-souverain/terraform.tfvars.example
-│   Template commenté pour MINFI : server_host, server_user, ssh_private_key_path,
+│   Template commenté pour CENADI : server_host, server_user, ssh_private_key_path,
 │   institution_name, nexus_domain, install_dir, versions, tuning, options
 │
 ├── Lot8_PLG/terraform-souverain/.gitignore
 │   *.tfstate, .terraform/, terraform.tfvars, .generated/, *.pem, *.key
 │
 └── Lot8_PLG/terraform-souverain/templates/
-    env.tpl (55L) : variables d'environnement avec ${...} Terraform (= substitués)
+    env.tpl (55L) : variables d'environnement avec ${...} OpenTofu (= substitués)
     docker-compose.tpl (183L) : compose complet avec $${VAR} pour les vars Docker Compose
       → $${POSTGRES_USER:-nexus} devient ${POSTGRES_USER:-nexus} dans le fichier généré
       → Directive %{ if expose_dashboard } pour port conditionnel Wazuh Dashboard
@@ -1152,7 +1164,7 @@ FICHIERS AJOUTÉS / MODIFIÉS (session 29 mai 2026) :
     Skip propre si serveur injoignable.
   00_Documents/Architecture_NEXUS_SOC.drawio (NOUVEAU) : diagramme d'architecture logique
     complet (XML validé) — flux Agent→/ingest→Kafka→SIEM→IA→SOAR→notif, stockage RLS,
-    4 frontends, déploiement Terraform. Exploitable au chapitre Conception.
+    4 frontends, déploiement OpenTofu. Exploitable au chapitre Conception.
   README.md : guide des interfaces Lot 9 + section tests API + changelog.
   NEXUS_SOC_Contexte_Complet.md : ce fichier (mise à jour).
 
@@ -1214,8 +1226,8 @@ DÉCISIONS TECHNIQUES VERROUILLÉES (ne pas rediscuter sans raison nouvelle) :
   D10. WhatsApp Business API : templates Meta requis hors fenêtre 24h.
   D11. Connecteurs SOAR simulés dans le démonstrateur.
   D12. Pré-auth bancaire PLG = stub → CinetPay/PayDunya à intégrer en prod.
-  D13. Terraform provisioners SSH pour le déploiement souverain (null_resource + file/remote-exec).
-  D14. Secrets Terraform auto-générés (random_password) si non fournis → idempotents.
+  D13. OpenTofu provisioners SSH pour le déploiement souverain (null_resource + file/remote-exec).
+  D14. Secrets OpenTofu auto-générés (random_password) si non fournis → idempotents.
   D15. Cache config agent PLG : HMAC [32B tag] + gzip, chmod 600, supprimé si altéré.
   D16. Auth API unifiée sur JWT HS256 (auth_middleware) — abandon du « mot de passe = token ».
        Frontend stocke access+refresh en localStorage ; api.js auto-refresh sur 401.
@@ -1239,7 +1251,7 @@ CE QUI RESTE À FAIRE (par priorité décroissante) :
     Chapitre 2 (État de l'art) — citer MITRE ATT&CK, CICIDS2017, CERT Insider Threat,
       Wazuh, Isolation Forest (Liu 2008), autoencodeur (Hinton 2006), LSTM (Hochreiter 1997).
     Chapitre 4 (Réalisation) — un sous-chapitre par lot avec code + figures.
-      Inclure Lot 8 (PLG + Terraform) et Lot 9 (frontend connecté + PWA).
+      Inclure Lot 8 (PLG + OpenTofu) et Lot 9 (frontend connecté + PWA).
     Chapitre 5 (Tests) — chiffres mesurés + 16 tests API (test_api.py) + figures.
     Chapitre 6 (Conclusion + perspectives) — les 19 améliorations prévues.
     Chapitre 1 (Contexte) — loi 2010/012, ANTIC, panorama des menaces.
@@ -1280,32 +1292,32 @@ CE QUI RESTE À FAIRE (par priorité décroissante) :
       ✓ CORS durci
       ✓ Diagramme d'architecture draw.io
 
-  P6. Tester terraform apply sur un serveur de test avant le stage MINFI :
+  P6. Tester tofu apply sur un serveur de test avant le stage CENADI :
       cd Lot8_PLG/terraform-souverain
       cp terraform.tfvars.example terraform.tfvars
-      terraform init && terraform plan && terraform apply
+      tofu init && tofu plan && tofu apply
 
-  PRIORITÉ 3 — Stage MINFI (mai–juillet 2026)
+  PRIORITÉ 3 — Stage CENADI (mai–juillet 2026)
 
-  P7. Adapter M1 aux données réseau réelles (captures NetFlow MINFI).
+  P7. Adapter M1 aux données réseau réelles (captures NetFlow CENADI).
   P8. Adapter M2 aux données d'audit SIGIPES (journaux agents DGI/DGB).
   P9. Brancher les connecteurs SOAR réels (LDAP + pare-feu périmétrique).
-  P10. Tester Atomic Red Team sur réseau MINFI de test (avec autorisation).
+  P10. Tester Atomic Red Team sur réseau CENADI de test (avec autorisation).
   P11. Initier la démarche conformité ANTIC.
-  P12. Tester déploiement Terraform souverain sur serveur MINFI (si autorisé).
+  P12. Tester déploiement OpenTofu souverain sur serveur CENADI (si autorisé).
 
 DÉPENDANCES ENTRE LES TÂCHES :
   P3 dépend de : navigateur avec accès internet (CDN fonts Google)
   P4 dépend de : nexus-pipeline.zip extrait
   P5 dépend de : PostgreSQL accessible localement
-  P6 dépend de : Terraform installé, serveur SSH cible disponible, clé SSH prête
-  P7–P12 dépendent de : autorisation MINFI pour accès aux données et systèmes
+  P6 dépend de : OpenTofu installé, serveur SSH cible disponible, clé SSH prête
+  P7–P12 dépendent de : autorisation CENADI pour accès aux données et systèmes
   P1 (rapport) ne dépend de rien — peut commencer immédiatement
 
 RISQUES SUR LES PROCHAINES ÉTAPES :
   Rapport : risque de sous-documentation des limites honnêtes → les assumer franchement.
   Stage : accès données réelles soumis à autorisation administrative (délais).
-  Terraform : dépend de la disponibilité d'un serveur SSH avec sudo au MINFI.
+  OpenTofu : dépend de la disponibilité d'un serveur SSH avec sudo au CENADI.
   Soutenance : questions jury attendues sur 54% faux mandatements, données synthétiques,
                stub pré-auth bancaire, connecteurs SOAR simulés → réponses dans Section 11.
 
@@ -1444,14 +1456,14 @@ DÉPLOIEMENT TERRAFORM SOUVERAIN :
   ssh-keygen -t ed25519 -f ~/.ssh/nexus_deploy -C "nexus-soc-deploy"
   ssh-copy-id -i ~/.ssh/nexus_deploy.pub ubuntu@<IP_SERVEUR>
 
-  terraform init                    # télécharge providers
-  terraform plan                    # prévisualise
-  terraform apply                   # déploie (~5–15 min, taper "yes")
+  tofu init                    # télécharge providers
+  tofu plan                    # prévisualise
+  tofu apply                   # déploie (~5–15 min, taper "yes")
 
   # Post-déploiement
-  terraform output nexus_api_url
-  terraform output -raw postgres_password
-  terraform output -raw wazuh_admin_password
+  tofu output nexus_api_url
+  tofu output -raw postgres_password
+  tofu output -raw wazuh_admin_password
 
   # Upload modèles IA
   scp model1_isoforest.joblib ubuntu@<IP>:/opt/nexus-soc/models/
@@ -1459,8 +1471,8 @@ DÉPLOIEMENT TERRAFORM SOUVERAIN :
   ssh ubuntu@<IP> 'cd /opt/nexus-soc && docker compose restart scoring-service'
   curl http://<IP>:8000/health  # → {"status":"ok","modele1":true,"modele2":true}
 
-  # Mise à jour code → Terraform détecte le changement de hash
-  terraform apply  # re-déploie uniquement ce qui a changé
+  # Mise à jour code → OpenTofu détecte le changement de hash
+  tofu apply  # re-déploie uniquement ce qui a changé
 
 TESTS :
 

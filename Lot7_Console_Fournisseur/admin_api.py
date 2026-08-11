@@ -95,14 +95,14 @@ def require_analyst(authorization: str = Header(...)):
 # ---------------------------------------------------------------------------
 class TenantCreate(BaseModel):
     nom: str
-    type: str          # administration | microfinance | assurance | cabinet_comptable
-    offre: str         # starter | business | enterprise | contrat_public
+    type: str          # application_metier | reseau | infrastructure | poste_utilisateur
+    criticite: str     # standard | sensible | critique
     email_admin: Optional[EmailStr] = None
 
 
 class TenantUpdate(BaseModel):
     nom: Optional[str] = None
-    offre: Optional[str] = None
+    criticite: Optional[str] = None
     statut: Optional[str] = None   # actif | suspendu
 
 
@@ -116,13 +116,13 @@ class UserCreate(BaseModel):
 # ---------------------------------------------------------------------------
 # A. TENANTS
 # ---------------------------------------------------------------------------
-@router.get("/tenants", summary="Lister tous les tenants")
+@router.get("/tenants", summary="Lister tous les périmètres supervisés")
 def list_tenants(db=Depends(get_db), _=Depends(require_admin)):
-    """Retourne la liste des tenants avec métriques d'agents et d'alertes."""
+    """Retourne la liste des périmètres supervisés avec métriques d'agents et d'alertes."""
     with db.cursor() as cur:
         cur.execute("""
             SELECT
-                t.id, t.nom, t.type, t.offre, t.cree_le,
+                t.id, t.nom, t.type, t.criticite, t.cree_le,
                 COUNT(DISTINCT a.id) FILTER (WHERE a.statut = 'actif')     AS agents_actifs,
                 COUNT(DISTINCT a.id)                                        AS agents_total,
                 COUNT(DISTINCT al.id) FILTER (WHERE al.statut = 'ouverte') AS incidents_ouverts
@@ -136,18 +136,18 @@ def list_tenants(db=Depends(get_db), _=Depends(require_admin)):
     return [dict(r) for r in rows]
 
 
-@router.post("/tenants", status_code=201, summary="Créer un tenant")
+@router.post("/tenants", status_code=201, summary="Créer un périmètre supervisé")
 def create_tenant(body: TenantCreate, db=Depends(get_db), _=Depends(require_admin)):
-    TYPES_OK  = {"administration", "microfinance", "assurance", "cabinet_comptable"}
-    OFFRES_OK = {"starter", "business", "enterprise", "contrat_public"}
+    TYPES_OK      = {"application_metier", "reseau", "infrastructure", "poste_utilisateur"}
+    CRITICITES_OK = {"standard", "sensible", "critique"}
     if body.type not in TYPES_OK:
         raise HTTPException(400, detail=f"type invalide : {body.type}")
-    if body.offre not in OFFRES_OK:
-        raise HTTPException(400, detail=f"offre invalide : {body.offre}")
+    if body.criticite not in CRITICITES_OK:
+        raise HTTPException(400, detail=f"criticité invalide : {body.criticite}")
     with db.cursor() as cur:
         cur.execute(
-            "INSERT INTO tenants (nom, type, offre) VALUES (%s, %s, %s) RETURNING id",
-            (body.nom, body.type, body.offre)
+            "INSERT INTO tenants (nom, type, criticite) VALUES (%s, %s, %s) RETURNING id",
+            (body.nom, body.type, body.criticite)
         )
         tenant_id = cur.fetchone()["id"]
         if body.email_admin:
@@ -158,16 +158,16 @@ def create_tenant(body: TenantCreate, db=Depends(get_db), _=Depends(require_admi
                 (str(tenant_id), body.email_admin, tmp_pw)
             )
         db.commit()
-    return {"id": str(tenant_id), "message": "Tenant créé"}
+    return {"id": str(tenant_id), "message": "Périmètre créé"}
 
 
-@router.patch("/tenants/{tenant_id}", summary="Modifier / suspendre un tenant")
+@router.patch("/tenants/{tenant_id}", summary="Modifier / suspendre un périmètre")
 def update_tenant(tenant_id: str, body: TenantUpdate, db=Depends(get_db), _=Depends(require_admin)):
     sets, vals = [], []
     if body.nom:
         sets.append("nom = %s"); vals.append(body.nom)
-    if body.offre:
-        sets.append("offre = %s"); vals.append(body.offre)
+    if body.criticite:
+        sets.append("criticite = %s"); vals.append(body.criticite)
     if body.statut:
         # On stocke le statut dans une colonne optionnelle ; si elle n'existe pas encore,
         # cet endpoint sert de point d'entrée pour le Lot 7 — voir 01_schema_analyst.sql
@@ -178,48 +178,46 @@ def update_tenant(tenant_id: str, body: TenantUpdate, db=Depends(get_db), _=Depe
     with db.cursor() as cur:
         cur.execute(f"UPDATE tenants SET {', '.join(sets)} WHERE id = %s", vals)
         db.commit()
-    return {"message": "Tenant mis à jour"}
+    return {"message": "Périmètre mis à jour"}
 
 
-@router.post("/tenants/{tenant_id}/suspend", summary="Suspendre un tenant (coupe l'ingestion)")
+@router.post("/tenants/{tenant_id}/suspend", summary="Suspendre un périmètre (coupe la supervision)")
 def suspend_tenant(tenant_id: str, db=Depends(get_db), _=Depends(require_admin)):
-    """Marque le tenant comme suspendu (colonne PLG suspended_at + plan)."""
+    """Met le périmètre en pause de supervision (colonne statut = 'suspendu')."""
     with db.cursor() as cur:
         cur.execute(
-            "UPDATE tenants SET suspended_at = now(), plan = 'suspended' "
-            "WHERE id = %s AND suspended_at IS NULL RETURNING id",
+            "UPDATE tenants SET statut = 'suspendu' "
+            "WHERE id = %s AND statut <> 'suspendu' RETURNING id",
             (tenant_id,)
         )
         row = cur.fetchone()
         db.commit()
     if not row:
-        raise HTTPException(404, detail="Tenant introuvable ou déjà suspendu")
-    return {"message": "Tenant suspendu", "tenant_id": tenant_id}
+        raise HTTPException(404, detail="Périmètre introuvable ou déjà suspendu")
+    return {"message": "Périmètre suspendu", "tenant_id": tenant_id}
 
 
-@router.post("/tenants/{tenant_id}/activate", summary="Réactiver un tenant suspendu")
+@router.post("/tenants/{tenant_id}/activate", summary="Réactiver un périmètre suspendu")
 def activate_tenant(tenant_id: str, db=Depends(get_db), _=Depends(require_admin)):
-    """Lève la suspension. Remet le plan à 'trial' si aucun abonnement payant."""
+    """Lève la suspension et remet le périmètre sous supervision active."""
     with db.cursor() as cur:
         cur.execute(
-            "UPDATE tenants SET suspended_at = NULL, "
-            "plan = CASE WHEN plan = 'suspended' THEN 'trial' ELSE plan END "
-            "WHERE id = %s RETURNING id",
+            "UPDATE tenants SET statut = 'actif' WHERE id = %s RETURNING id",
             (tenant_id,)
         )
         row = cur.fetchone()
         db.commit()
     if not row:
-        raise HTTPException(404, detail="Tenant introuvable")
-    return {"message": "Tenant réactivé", "tenant_id": tenant_id}
+        raise HTTPException(404, detail="Périmètre introuvable")
+    return {"message": "Périmètre réactivé", "tenant_id": tenant_id}
 
 
-@router.delete("/tenants/{tenant_id}", summary="Supprimer un tenant (irréversible)")
+@router.delete("/tenants/{tenant_id}", summary="Supprimer un périmètre (irréversible)")
 def delete_tenant(tenant_id: str, db=Depends(get_db), _=Depends(require_admin)):
     with db.cursor() as cur:
         cur.execute("DELETE FROM tenants WHERE id = %s", (tenant_id,))
         db.commit()
-    return {"message": "Tenant supprimé"}
+    return {"message": "Périmètre supprimé"}
 
 
 # ---------------------------------------------------------------------------
@@ -343,31 +341,99 @@ def system_health(db=Depends(get_db), _=Depends(require_admin)):
 
 
 # ---------------------------------------------------------------------------
-# E. FACTURATION (vue simple)
+# E. INVENTAIRE DES PÉRIMÈTRES (vue synthétique, sans notion commerciale)
 # ---------------------------------------------------------------------------
-OFFRE_MONTANT = {"starter": 25000, "business": 75000, "enterprise": 200000, "contrat_public": None}
-
-@router.get("/billing", summary="Vue facturation par tenant")
-def list_billing(db=Depends(get_db), _=Depends(require_admin)):
+@router.get("/perimetres", summary="Vue synthétique des périmètres supervisés")
+def list_perimetres(db=Depends(get_db), _=Depends(require_admin)):
+    """Inventaire des périmètres avec leur criticité et leur statut de supervision."""
     with db.cursor() as cur:
-        cur.execute("SELECT id, nom, offre, cree_le FROM tenants ORDER BY cree_le")
-        tenants = cur.fetchall()
-    result = []
-    for t in tenants:
-        montant = OFFRE_MONTANT.get(t["offre"])
-        result.append({
+        cur.execute(
+            "SELECT id, nom, type, criticite, statut, cree_le FROM tenants ORDER BY cree_le"
+        )
+        rows = cur.fetchall()
+    return [
+        {
             "tenant_id": str(t["id"]),
-            "nom": t["nom"],
-            "offre": t["offre"],
-            "montant_fcfa": montant,
-            "devise": "XAF",
-            "statut": "actif",
-        })
-    return result
+            "nom":       t["nom"],
+            "type":      t["type"],
+            "criticite": t["criticite"],
+            "statut":    t.get("statut", "actif"),
+        }
+        for t in rows
+    ]
 
 
 # ---------------------------------------------------------------------------
-# F. ANALYSTE SOC — lecture cross-tenant (pas de filtre RLS)
+# E-bis. SUPERVISION — séries temporelles réelles (hypertable metrics)
+# ---------------------------------------------------------------------------
+@router.get("/metrics", summary="Séries temporelles de supervision (metrics)")
+def get_metrics(hours: int = 24, tenant_id: Optional[str] = None,
+                db=Depends(get_db), _=Depends(require_admin)):
+    """
+    Retourne les séries temporelles mesurées (table `metrics`) agrégées par
+    minute, pour alimenter les graphiques de supervision de la console.
+    Réponse : { metriques: [...], series: { <metrique>: [{t, v}, ...] }, resume: {...} }
+    """
+    hours = max(1, min(int(hours), 168))
+    params = [f"{hours} hours"]
+    filtre_tenant = ""
+    if tenant_id:
+        filtre_tenant = "AND tenant_id = %s::uuid"
+        params.append(tenant_id)
+
+    with db.cursor() as cur:
+        # Points agrégés par minute et par métrique
+        cur.execute(
+            f"""
+            SELECT date_trunc('minute', ts) AS t, metrique, avg(valeur) AS v
+              FROM metrics
+             WHERE ts > now() - %s::interval {filtre_tenant}
+             GROUP BY 1, 2
+             ORDER BY 1
+            """,
+            params,
+        )
+        rows = cur.fetchall()
+
+        # Résumé par métrique (dernier point, moyenne, max)
+        cur.execute(
+            f"""
+            SELECT metrique, count(*) AS points,
+                   round(avg(valeur)::numeric, 1) AS moyenne,
+                   max(valeur) AS maxi,
+                   (array_agg(valeur ORDER BY ts DESC))[1] AS dernier
+              FROM metrics
+             WHERE ts > now() - %s::interval {filtre_tenant}
+             GROUP BY metrique
+             ORDER BY metrique
+            """,
+            params,
+        )
+        resume_rows = cur.fetchall()
+
+    series: dict = {}
+    metriques: list = []
+    for r in rows:
+        m = r["metrique"]
+        if m not in series:
+            series[m] = []
+            metriques.append(m)
+        series[m].append({"t": r["t"].isoformat(), "v": round(float(r["v"]), 2)})
+
+    resume = {
+        r["metrique"]: {
+            "points":  int(r["points"]),
+            "moyenne": float(r["moyenne"]) if r["moyenne"] is not None else 0.0,
+            "maxi":    float(r["maxi"]) if r["maxi"] is not None else 0.0,
+            "dernier": float(r["dernier"]) if r["dernier"] is not None else 0.0,
+        }
+        for r in resume_rows
+    }
+    return {"hours": hours, "metriques": metriques, "series": series, "resume": resume}
+
+
+# ---------------------------------------------------------------------------
+# F. ANALYSTE SOC — lecture cross-périmètre (pas de filtre RLS)
 #    Note : ces endpoints utilisent le rôle nexus_analyst (BYPASSRLS)
 #    défini dans 01_schema_analyst.sql. La connexion doit utiliser ce rôle,
 #    pas nexus_app.
