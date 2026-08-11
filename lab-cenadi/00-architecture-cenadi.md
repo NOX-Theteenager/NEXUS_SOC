@@ -96,3 +96,4 @@ Ligne = source, colonne = destination. `✓` autorisé, `✗` bloqué (ACL Mikro
 4. `cp .env.cenadi .env && sudo systemctl restart nexus-soc` — active la config souveraine
 5. Créer les VMs (`02-vm-specs.md`) + scripts de setup
 6. Démo : `RUNBOOK.md`
+nox&é"
