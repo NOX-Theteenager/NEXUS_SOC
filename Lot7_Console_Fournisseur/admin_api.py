@@ -35,6 +35,63 @@ DB_DSN = os.getenv("DB_DSN", "postgresql://nexus_app:nexus_pass@localhost:5432/n
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
 # ---------------------------------------------------------------------------
+# Présence des agents — statut dérivé du dernier battement
+# ---------------------------------------------------------------------------
+# La colonne `agents.statut` n'est écrite que par /ingest, qui la passe à
+# 'actif'. Rien ne la repasse jamais à 'hors_ligne' : un poste éteint restait
+# affiché actif indéfiniment. Le statut réel est donc CALCULÉ À LA LECTURE à
+# partir de `vu_le`, ce qui donne une présence vraie sans tâche de fond, sans
+# dérive d'horloge, et correcte même après un arrêt du serveur.
+#
+# `isole` est une décision humaine ou SOAR : elle prime sur le battement. Un
+# poste isolé qui continue d'émettre reste isolé à l'écran.
+#
+# Seuil : l'agent émet toutes les `interval_sec` (30 s par défaut). On tolère
+# trois battements manqués avant de déclarer le poste hors ligne.
+AGENT_STALE_SECONDS = max(30, int(os.getenv("AGENT_STALE_SECONDS", "120")))
+
+# Dérivation des clés HMAC — source unique de vérité dans le service de scoring,
+# qui est aussi celui qui vérifie les signatures (voir provisioning_api.py).
+try:
+    from nexus_scoring import derive_hmac_key  # type: ignore
+except Exception:  # pragma: no cover
+    import hmac as _hmac_mod
+
+    _HMAC_MASTER = os.getenv("NEXUS_HMAC_MASTER") or os.getenv("JWT_SECRET", "")
+
+    def derive_hmac_key(agent_id: str, epoch: int = 0) -> str:
+        if not _HMAC_MASTER:
+            raise RuntimeError("NEXUS_HMAC_MASTER (ou JWT_SECRET) non défini.")
+        return _hmac_mod.new(_HMAC_MASTER.encode(),
+                             f"{agent_id}:{epoch}".encode(),
+                             hashlib.sha256).hexdigest()
+
+
+def agent_statut_sql(alias: str = "a") -> str:
+    """Expression SQL du statut effectif d'un agent (valeur d'un entier maîtrisé,
+    jamais d'une entrée utilisateur : aucune injection possible)."""
+    return (
+        f"CASE WHEN {alias}.statut = 'isole' THEN 'isole' "
+        f"     WHEN {alias}.vu_le IS NOT NULL "
+        f"      AND {alias}.vu_le > now() - interval '{AGENT_STALE_SECONDS} seconds' THEN 'actif' "
+        f"     ELSE 'hors_ligne' END"
+    )
+
+
+def agent_presence_cols(alias: str = "a") -> str:
+    """Colonnes de présence à ajouter à un SELECT sur `agents`.
+
+    `statut`         : statut effectif, celui qu'affiche l'interface
+    `statut_declare` : valeur brute en base, conservée pour l'audit
+    `vu_il_y_a_s`    : ancienneté du dernier battement, en secondes
+    """
+    return (
+        f"{agent_statut_sql(alias)} AS statut, "
+        f"{alias}.statut AS statut_declare, "
+        f"EXTRACT(EPOCH FROM (now() - {alias}.vu_le))::int AS vu_il_y_a_s"
+    )
+
+# ---------------------------------------------------------------------------
 # Connexion PostgreSQL helper
 # ---------------------------------------------------------------------------
 def get_db():
@@ -258,14 +315,18 @@ def create_user(body: UserCreate, db=Depends(get_db), _=Depends(require_admin)):
 # ---------------------------------------------------------------------------
 @router.get("/agents", summary="Lister les agents (tous tenants)")
 def list_agents(tenant_id: Optional[str] = None, db=Depends(get_db), _=Depends(require_admin)):
+    """Le statut renvoyé est le statut EFFECTIF, dérivé du dernier battement
+    (voir agent_statut_sql). Allumer une VM la fait passer à `actif` au premier
+    lot ingéré ; l'éteindre la fait passer à `hors_ligne` après le délai de
+    tolérance, sans intervention."""
+    cols = (f"a.id, a.tenant_id, a.hostname, a.os, a.vu_le, a.hmac_scheme, "
+            f"{agent_presence_cols('a')}")
     with db.cursor() as cur:
         if tenant_id:
-            cur.execute(
-                "SELECT id, tenant_id, hostname, os, statut, vu_le FROM agents WHERE tenant_id = %s",
-                (tenant_id,)
-            )
+            cur.execute(f"SELECT {cols} FROM agents a WHERE a.tenant_id = %s ORDER BY a.hostname",
+                        (tenant_id,))
         else:
-            cur.execute("SELECT id, tenant_id, hostname, os, statut, vu_le FROM agents ORDER BY tenant_id, hostname")
+            cur.execute(f"SELECT {cols} FROM agents a ORDER BY a.tenant_id, a.hostname")
         rows = cur.fetchall()
     return [dict(r) for r in rows]
 
@@ -283,28 +344,30 @@ def generate_agent_token(
     L'agent Go les reçoit lors de son premier déploiement (variable d'env ou fichier de config).
     """
     bearer_token = f"nexus_{secrets.token_urlsafe(32)}"
-    hmac_key     = secrets.token_hex(32)           # 256 bits
     token_hash   = hashlib.sha256(bearer_token.encode()).hexdigest()
 
     with db.cursor() as cur:
         cur.execute(
-            "INSERT INTO agents (tenant_id, hostname, statut) "
-            "VALUES (%s, %s, 'hors_ligne') RETURNING id",
+            "INSERT INTO agents (tenant_id, hostname, statut, hmac_scheme, hmac_epoch) "
+            "VALUES (%s, %s, 'hors_ligne', 'derived', 0) RETURNING id",
             (tenant_id, hostname)
         )
-        agent_id = cur.fetchone()["id"]
-        # Stocker uniquement le hash du token (jamais le token en clair)
-        # Nécessite une colonne token_hash TEXT dans agents (voir 01_schema_analyst.sql)
+        agent_id = str(cur.fetchone()["id"])
+        # La clé HMAC dérive de l'identité de l'agent : le serveur la recalcule à
+        # chaque lot, rien de réversible n'est conservé. On ne stocke que son
+        # empreinte, à titre d'audit.
+        hmac_key = derive_hmac_key(agent_id, 0)
         cur.execute(
             "UPDATE agents SET token_hash = %s, hmac_key_hash = %s WHERE id = %s",
-            (token_hash, hashlib.sha256(hmac_key.encode()).hexdigest(), str(agent_id))
+            (token_hash, hashlib.sha256(hmac_key.encode()).hexdigest(), agent_id)
         )
         db.commit()
 
     return {
-        "agent_id": str(agent_id),
+        "agent_id": agent_id,
         "bearer_token": bearer_token,
         "hmac_key": hmac_key,
+        "hmac_scheme": "derived",
         "warning": "Ces valeurs ne sont affichées qu'une seule fois. Configurez l'agent maintenant.",
     }
 
@@ -469,7 +532,8 @@ def list_all_alerts(
     with db.cursor() as cur:
         cur.execute(f"""
             SELECT a.id, a.tenant_id, t.nom AS tenant_nom, a.source_modele, a.type,
-                   a.entite, a.risque, a.raisons, a.mitre, a.statut, a.cree_le
+                   a.entite, a.risque, a.raisons, a.mitre, a.statut, a.cree_le,
+                   a.chaine, a.score_parts
             FROM alerts a
             JOIN tenants t ON t.id = a.tenant_id
             WHERE {' AND '.join(conditions)}
@@ -485,7 +549,8 @@ def get_alert(alert_id: str, db=Depends(get_analyst_db), _=Depends(require_analy
     with db.cursor() as cur:
         cur.execute("""
             SELECT a.id, a.tenant_id, t.nom AS tenant_nom, a.source_modele, a.type,
-                   a.entite, a.risque, a.raisons, a.mitre, a.statut, a.cree_le
+                   a.entite, a.risque, a.raisons, a.mitre, a.statut, a.cree_le,
+                   a.chaine, a.score_parts
             FROM alerts a JOIN tenants t ON t.id = a.tenant_id
             WHERE a.id = %s
         """, (alert_id,))
@@ -502,6 +567,7 @@ def list_pending_soar(db=Depends(get_analyst_db), _=Depends(require_analyst)):
         cur.execute("""
             SELECT s.id, s.alert_id, s.tenant_id, t.nom AS tenant_nom,
                    s.action, s.impact, s.detail, s.horodatage,
+                   s.cible, s.cible_type,
                    a.entite, a.type, a.risque
             FROM soar_audit s
             JOIN tenants t ON t.id = s.tenant_id
@@ -510,25 +576,132 @@ def list_pending_soar(db=Depends(get_analyst_db), _=Depends(require_analyst)):
             ORDER BY s.horodatage DESC
         """)
         rows = cur.fetchall()
-    return [dict(r) for r in rows]
+
+    # La console doit pouvoir dire, AVANT l'approbation, ce que l'opérateur
+    # devra faire — et signaler les propositions dont la cible ne correspond
+    # pas au connecteur compétent.
+    out = []
+    for r in rows:
+        d = dict(r)
+        d.update(_commande_manuelle(d["action"], d["cible"], d["cible_type"], d["id"]))
+        out.append(d)
+    return out
+
+
+# Aucun connecteur n'est raccordé : ni pare-feu, ni annuaire, ni canal d'ordres
+# vers les agents. Approuver une action est donc une DÉCISION tracée, pas une
+# exécution. Tant que les connecteurs n'existent pas, la plateforme fournit la
+# commande exacte à passer et enregistre qui déclare l'avoir passée.
+#
+# Les commandes visent l'architecture cible documentée dans
+# lab-cenadi/00-architecture-cenadi.md : MikroTik porte le routage inter-zone et
+# les ACL, pfSense filtre le périmètre interne.
+LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "dc=cenadi,dc=local")
+LDAP_SOAR_DN = os.getenv("LDAP_SOAR_DN", f"cn=nexus-soar,ou=services,{LDAP_BASE_DN}")
+
+SOAR_COMMANDES = {
+    "block_ip": (
+        "/ip firewall address-list add list=NEXUS_BLOCK address={cible} "
+        "comment=\"NEXUS {audit_id}\""),
+    "isolate_host": (
+        "/ip firewall address-list add list=NEXUS_QUARANTAINE address={cible} "
+        "comment=\"NEXUS {audit_id}\""),
+    # OpenLDAP + surcouche ppolicy (lab-cenadi/scripts/vm-app-gov-annuaire.sh).
+    # 000001010000Z est la valeur conventionnelle d'un verrouillage sans date de
+    # levée. Le compte reste présent et lisible : on suspend un accès, on ne
+    # détruit pas une trace d'enquête.
+    "freeze_account": (
+        "ldapmodify -x -D \"" + LDAP_SOAR_DN + "\" -W <<'EOF'\n"
+        "dn: uid={cible},ou=agents," + LDAP_BASE_DN + "\n"
+        "changetype: modify\n"
+        "replace: pwdAccountLockedTime\n"
+        "pwdAccountLockedTime: 000001010000Z\n"
+        "EOF"),
+}
+SOAR_CIBLE_ATTENDUE = {"block_ip": "ip", "freeze_account": "compte",
+                       "isolate_host": "hote"}
+
+
+def _commande_manuelle(action: str, cible: str, cible_type: str, audit_id) -> dict:
+    """Construit la commande d'exécution manuelle, ou dit pourquoi c'est impossible."""
+    modele = SOAR_COMMANDES.get(action)
+    attendu = SOAR_CIBLE_ATTENDUE.get(action)
+    if not cible:
+        return {"commande": None,
+                "blocage": "Aucune cible n'a été résolue pour cette action."}
+    if attendu and cible_type != attendu:
+        return {"commande": None,
+                "blocage": f"Cible de type « {cible_type} » alors que « {action} » "
+                           f"attend « {attendu} ». Requalifier ou refuser l'action."}
+    if not modele:
+        return {"commande": None,
+                "blocage": f"Aucune commande n'est documentée pour « {action} »."}
+    return {"commande": modele.format(cible=cible, audit_id=audit_id), "blocage": None}
 
 
 @analyst_router.post("/approve/{action_id}", summary="Approuver une action SOAR par son id")
 def approve_action_by_id(action_id: int, body: dict = None,
                          db=Depends(get_analyst_db), _=Depends(require_analyst)):
-    """Approuve une action SOAR (clé = soar_audit.id) — appelé par la console."""
+    """Approuve une action SOAR (clé = soar_audit.id) — appelé par la console.
+
+    N'exécute rien : aucun connecteur n'est raccordé. Enregistre la décision et
+    renvoie la commande à passer pour la réaliser.
+    """
     actor = (body or {}).get("approved_by", "analyste_soc")
     with db.cursor() as cur:
         cur.execute(
-            "UPDATE soar_audit SET statut = 'EXÉCUTÉE', decision = 'APPROUVÉE', acteur = %s "
-            "WHERE id = %s AND statut = 'EN ATTENTE DE VALIDATION' RETURNING id",
+            "UPDATE soar_audit SET statut = 'APPROUVÉE — EXÉCUTION REQUISE', "
+            "       decision = 'APPROUVÉE', acteur = %s "
+            "WHERE id = %s AND statut = 'EN ATTENTE DE VALIDATION' "
+            "RETURNING id, action, cible, cible_type",
             (actor, action_id)
         )
         updated = cur.fetchone()
         db.commit()
     if not updated:
         raise HTTPException(404, detail="Action en attente introuvable")
-    return {"message": "Action approuvée et exécutée", "audit_id": str(updated["id"])}
+
+    cmd = _commande_manuelle(updated["action"], updated["cible"],
+                             updated["cible_type"], updated["id"])
+    return {
+        "message": "Décision enregistrée. L'action n'est pas exécutée : "
+                   "aucun connecteur n'est raccordé.",
+        "audit_id": str(updated["id"]),
+        "action": updated["action"],
+        "cible": updated["cible"],
+        "cible_type": updated["cible_type"],
+        **cmd,
+    }
+
+
+@analyst_router.post("/executed/{action_id}", summary="Déclarer une action réellement exécutée")
+def mark_action_executed(action_id: int, body: dict = None,
+                         db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    """Un opérateur déclare avoir passé la commande à la main.
+
+    C'est le seul moyen honnête de marquer une exécution tant qu'aucun
+    connecteur n'est raccordé : la plateforme n'a rien fait, un humain l'a fait,
+    et c'est lui qui l'atteste — horodaté et nominatif.
+    """
+    payload = body or {}
+    actor = payload.get("executed_by", "operateur")
+    note = payload.get("note")
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE soar_audit SET execution = 'manuelle', execute_le = now(), "
+            "       execute_par = %s, execution_note = %s, statut = 'EXÉCUTÉE (manuelle)' "
+            "WHERE id = %s AND decision = 'APPROUVÉE' AND execution = 'non_executee' "
+            "RETURNING id, action, cible",
+            (actor, note, action_id)
+        )
+        updated = cur.fetchone()
+        db.commit()
+    if not updated:
+        raise HTTPException(
+            404, detail="Action approuvée non exécutée introuvable (déjà déclarée ?)")
+    return {"message": "Exécution manuelle enregistrée",
+            "audit_id": str(updated["id"]), "action": updated["action"],
+            "cible": updated["cible"], "execute_par": actor}
 
 
 @analyst_router.post("/reject/{action_id}", summary="Refuser une action SOAR")
@@ -565,19 +738,27 @@ def mark_false_positive(alert_id: str, db=Depends(get_analyst_db), _=Depends(req
 
 @analyst_router.post("/alerts/{alert_id}/approve", summary="Approuver une action SOAR (par alerte + action)")
 def approve_soar_action(alert_id: str, action: str, db=Depends(get_analyst_db), _=Depends(require_analyst)):
-    """Variante historique : valide par (alert_id, action). Conservée pour compat."""
+    """Variante historique : valide par (alert_id, action). Conservée pour compat.
+
+    Même règle que /approve/{id} : la décision est enregistrée, rien n'est exécuté.
+    """
     with db.cursor() as cur:
         cur.execute(
-            "UPDATE soar_audit SET statut = 'EXÉCUTÉE', decision = 'APPROUVÉE', acteur = 'analyste_soc' "
+            "UPDATE soar_audit SET statut = 'APPROUVÉE — EXÉCUTION REQUISE', "
+            "       decision = 'APPROUVÉE', acteur = 'analyste_soc' "
             "WHERE alert_id = %s AND action = %s AND statut = 'EN ATTENTE DE VALIDATION' "
-            "RETURNING id",
+            "RETURNING id, action, cible, cible_type",
             (alert_id, action)
         )
         updated = cur.fetchone()
         db.commit()
     if not updated:
         raise HTTPException(404, detail="Action en attente introuvable")
-    return {"message": "Action approuvée et exécutée", "audit_id": str(updated["id"])}
+    cmd = _commande_manuelle(updated["action"], updated["cible"],
+                             updated["cible_type"], updated["id"])
+    return {"message": "Décision enregistrée. L'action n'est pas exécutée : "
+                       "aucun connecteur n'est raccordé.",
+            "audit_id": str(updated["id"]), **cmd}
 
 
 @analyst_router.get("/dashboard", summary="Tableau de bord SOC global")
@@ -588,8 +769,11 @@ def soc_dashboard(db=Depends(get_analyst_db), _=Depends(require_analyst)):
         open_alerts = cur.fetchone()["n"]
         cur.execute("SELECT COUNT(*) AS n FROM alerts WHERE statut = 'ouverte' AND risque >= 80")
         critical = cur.fetchone()["n"]
-        cur.execute("SELECT COUNT(*) AS n FROM agents WHERE statut = 'actif'")
+        # Présence réelle, pas la valeur figée de la colonne
+        cur.execute(f"SELECT COUNT(*) AS n FROM agents a WHERE {agent_statut_sql('a')} = 'actif'")
         agents_online = cur.fetchone()["n"]
+        cur.execute("SELECT COUNT(*) AS n FROM agents")
+        agents_total = cur.fetchone()["n"]
         cur.execute("SELECT COUNT(*) AS n FROM tenants")
         tenants_total = cur.fetchone()["n"]
         cur.execute("""
@@ -602,9 +786,218 @@ def soc_dashboard(db=Depends(get_analyst_db), _=Depends(require_analyst)):
         "open_alerts": open_alerts,
         "critical_alerts": critical,
         "agents_online": agents_online,
+        "agents_total": agents_total,
         "tenants_total": tenants_total,
         "top_tenants_by_incidents": top_tenants,
+        "stale_after_s": AGENT_STALE_SECONDS,
         "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@analyst_router.get("/soar-audit", summary="Journal d'audit SOAR (qui a fait quoi, quand)")
+def soar_audit_journal(
+    tenant_id: Optional[str] = None,
+    impact: Optional[str] = None,
+    statut: Optional[str] = None,
+    limit: int = 100,
+    db=Depends(get_analyst_db),
+    _=Depends(require_analyst),
+):
+    """Vue chronologique de la table `soar_audit`, filtrable par périmètre,
+    impact et statut.
+
+    Répond à la question « qui a gelé ce compte, quand, sur quelle décision ».
+    La table était peuplée par le moteur SOAR mais n'était exposée nulle part
+    (dette de design n°5).
+    """
+    conditions, vals = ["TRUE"], []
+    if tenant_id:
+        conditions.append("s.tenant_id = %s::uuid"); vals.append(tenant_id)
+    if impact:
+        conditions.append("s.impact = %s"); vals.append(impact)
+    if statut:
+        conditions.append("s.statut = %s"); vals.append(statut)
+    vals.append(max(1, min(int(limit), 500)))
+
+    with db.cursor() as cur:
+        cur.execute(f"""
+            SELECT s.id, s.alert_id, s.tenant_id, t.nom AS tenant_nom,
+                   s.action, s.impact, s.decision, s.statut, s.acteur,
+                   s.detail, s.horodatage,
+                   s.cible, s.cible_type,
+                   s.execution, s.execute_le, s.execute_par,
+                   a.entite, a.type AS alerte_type, a.risque
+              FROM soar_audit s
+              JOIN tenants t ON t.id = s.tenant_id
+              LEFT JOIN alerts a ON a.id = s.alert_id
+             WHERE {' AND '.join(conditions)}
+             ORDER BY s.horodatage DESC
+             LIMIT %s
+        """, vals)
+        rows = [dict(r) for r in cur.fetchall()]
+
+        # Facettes de filtrage : ne jamais proposer une valeur absente du journal
+        cur.execute("SELECT DISTINCT impact FROM soar_audit WHERE impact IS NOT NULL ORDER BY 1")
+        impacts = [r["impact"] for r in cur.fetchall()]
+        cur.execute("SELECT DISTINCT acteur FROM soar_audit WHERE acteur IS NOT NULL ORDER BY 1")
+        acteurs = [r["acteur"] for r in cur.fetchall()]
+
+    return {"items": rows, "facets": {"impacts": impacts, "acteurs": acteurs}}
+
+
+# ---------------------------------------------------------------------------
+# F-bis. MONITORING DES MODÈLES IA — dérive (PSI + glissement σ)
+#     Consommé par la section Supervision de la console.
+# ---------------------------------------------------------------------------
+monitor_router = APIRouter(prefix="/monitor", tags=["Monitoring modèles"])
+
+
+@monitor_router.get("/drift", summary="Dérive des modèles IA sur N jours (PSI, σ, taux FP)")
+def model_drift(days: int = 7, db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    """Calcule la dérive des modèles M1 (réseau) et M2 (UEBA).
+
+    La logique de calcul vit dans Lot3_IA/model_monitor.py (source unique de
+    vérité, testable hors API). Si le module n'est pas importable — déploiement
+    partiel, dépendances manquantes — on renvoie un rapport explicite plutôt
+    qu'une erreur opaque : la console affiche alors « indisponible » sans
+    laisser croire que les modèles sont sains.
+    """
+    days = max(1, min(int(days), 90))
+    try:
+        import sys as _sys
+        _lot3 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Lot3_IA")
+        if _lot3 not in _sys.path:
+            _sys.path.insert(0, _lot3)
+        from model_monitor import build_drift_report  # type: ignore
+    except Exception as e:
+        return {
+            "days": days, "available": False,
+            "detail": f"Module de monitoring indisponible : {e}",
+            "models": [],
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    models = [
+        ("Modèle 1 (réseau)", "Modèle 1"),
+        ("Modèle 2 (UEBA)",   "Modèle 2"),
+    ]
+    out = []
+    for label, needle in models:
+        try:
+            with db.cursor() as cur:
+                # Période de référence : la fenêtre précédente, de même durée.
+                cur.execute(
+                    "SELECT risque FROM alerts WHERE source_modele LIKE %s "
+                    "AND cree_le <  now() - %s::interval AND cree_le >= now() - %s::interval",
+                    (f"%{needle}%", f"{days} days", f"{days * 2} days"),
+                )
+                reference = [float(r["risque"]) for r in cur.fetchall()]
+
+                cur.execute(
+                    "SELECT risque FROM alerts WHERE source_modele LIKE %s "
+                    "AND cree_le >= now() - %s::interval",
+                    (f"%{needle}%", f"{days} days"),
+                )
+                current = [float(r["risque"]) for r in cur.fetchall()]
+
+                cur.execute(
+                    "SELECT COUNT(*) AS n FROM alerts WHERE source_modele LIKE %s "
+                    "AND statut = 'faux_positif' AND cree_le >= now() - %s::interval",
+                    (f"%{needle}%", f"{days} days"),
+                )
+                fp = int(cur.fetchone()["n"])
+
+                cur.execute(
+                    "SELECT COUNT(*) AS n FROM metrics WHERE ts >= now() - %s::interval",
+                    (f"{days} days",),
+                )
+                events = int(cur.fetchone()["n"])
+
+            report = build_drift_report(
+                reference_scores=reference, current_scores=current,
+                fp_count=fp, total_alerts=len(current),
+                events_total=max(events, len(current)),
+                model_name=label, period_days=days,
+            )
+            # Tailles d'échantillon : sans elles, un PSI absent est illisible.
+            # L'écran doit pouvoir distinguer « pas de dérive » de « pas assez
+            # de données pour se prononcer ».
+            report["samples"] = {
+                "reference_n": len(reference),
+                "current_n":   len(current),
+                "comparable":  bool(reference and current),
+            }
+            out.append(report)
+        except Exception as e:
+            out.append({
+                "model": label, "period_days": days, "severity": "unknown",
+                "summary": {}, "alerts": [],
+                "recommendation": f"Calcul impossible : {e}",
+            })
+
+    return {
+        "days": days, "available": True, "models": out,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# F-ter. DEMANDE DE MISE SOUS SUPERVISION (formulaire interne contact.html)
+# ---------------------------------------------------------------------------
+contact_router = APIRouter(prefix="/contact", tags=["Demandes internes"])
+
+
+class PerimetreRequest(BaseModel):
+    systeme:     str
+    type:        str
+    criticite:   str
+    parc:        Optional[str] = None
+    contexte:    Optional[str] = None
+    responsable: EmailStr
+
+
+TYPES_VALIDES     = {"application_metier", "reseau", "infrastructure", "poste_utilisateur"}
+CRITICITES_VALIDES = {"standard", "sensible", "critique"}
+
+
+@contact_router.post("/perimetre-request", status_code=201,
+                     summary="Demander la mise sous supervision d'un périmètre")
+def perimetre_request(body: PerimetreRequest, db=Depends(get_db)):
+    """Demande interne entre services du CENADI.
+
+    Ce n'est pas un formulaire de contact commercial : la demande est
+    enregistrée, référencée et traitée par l'équipe SOC. Nécessite la table
+    `perimetre_requests` (Lot7_Console_Fournisseur/02_schema_contact.sql).
+    """
+    if body.type not in TYPES_VALIDES:
+        raise HTTPException(422, detail=f"type invalide — attendu : {', '.join(sorted(TYPES_VALIDES))}")
+    if body.criticite not in CRITICITES_VALIDES:
+        raise HTTPException(422, detail=f"criticite invalide — attendu : {', '.join(sorted(CRITICITES_VALIDES))}")
+
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                """INSERT INTO perimetre_requests
+                       (systeme, type, criticite, parc, contexte, responsable)
+                   VALUES (%s, %s, %s, %s, %s, %s)
+                   RETURNING reference, cree_le""",
+                (body.systeme, body.type, body.criticite,
+                 body.parc, body.contexte, str(body.responsable)),
+            )
+            row = cur.fetchone()
+            db.commit()
+    except psycopg2.errors.UndefinedTable:
+        db.rollback()
+        raise HTTPException(
+            503,
+            detail="Table perimetre_requests absente — appliquer "
+                   "Lot7_Console_Fournisseur/02_schema_contact.sql sur la base.",
+        )
+
+    return {
+        "reference": row["reference"],
+        "cree_le":   row["cree_le"].isoformat(),
+        "message":   "Demande enregistrée. L'équipe SOC la traite sous 2 jours ouvrés.",
     }
 
 
@@ -642,21 +1035,97 @@ def portal_alerts(limit: int = 50, db=Depends(get_db), user: dict = Depends(requ
     with db.cursor() as cur:
         cur.execute("""
             SELECT id, tenant_id, source_modele, type, entite, risque, raisons,
-                   mitre, statut, cree_le
+                   mitre, statut, cree_le, chaine, score_parts
             FROM alerts WHERE tenant_id = %s::uuid
             ORDER BY cree_le DESC LIMIT %s
         """, (tid, limit))
         return [dict(r) for r in cur.fetchall()]
 
 
+@portail_router.get("/score-history", summary="Score de sécurité jour par jour, avec les jours non mesurés")
+def portal_score_history(days: int = 14, db=Depends(get_db),
+                         user: dict = Depends(require_client)):
+    """Historique du score de sécurité, calculé côté serveur.
+
+    Le portail reconstruisait cette série dans le navigateur avec la règle
+    « score du jour = 100 − pire risque du jour ». Un jour SANS alerte y valait
+    donc 100 — y compris les jours où la plateforme ne collectait rien. Sur un
+    parc réellement mesuré 4 jours sur 14, l'écran affichait dix jours de santé
+    parfaite qui n'avaient jamais été observés.
+
+    Un jour sans télémétrie n'est pas un jour sans incident : c'est un jour sans
+    information. Le score y vaut NULL, et la courbe s'interrompt.
+    """
+    days = max(1, min(int(days), 90))
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute(
+            """
+            WITH bornes AS (
+                SELECT (now()::date - (%(d)s - 1) * interval '1 day')::date AS debut
+            ),
+            jours AS (
+                SELECT generate_series((SELECT debut FROM bornes), now()::date,
+                                       interval '1 day')::date AS jour
+            ),
+            mes AS (
+                SELECT ts::date AS jour, count(*) AS n
+                  FROM metrics
+                 WHERE tenant_id = %(t)s::uuid
+                   AND ts >= (SELECT debut FROM bornes)
+                 GROUP BY 1
+            ),
+            alt AS (
+                SELECT cree_le::date AS jour, max(risque) AS pire, count(*) AS n
+                  FROM alerts
+                 WHERE tenant_id = %(t)s::uuid
+                   AND cree_le >= (SELECT debut FROM bornes)
+                 GROUP BY 1
+            )
+            SELECT j.jour,
+                   COALESCE(m.n, 0)  AS mesures,
+                   COALESCE(a.n, 0)  AS alertes,
+                   a.pire            AS pire_risque
+              FROM jours j
+              LEFT JOIN mes m ON m.jour = j.jour
+              LEFT JOIN alt a ON a.jour = j.jour
+             ORDER BY j.jour
+            """,
+            {"d": days, "t": tid})
+        lignes = cur.fetchall()
+
+    serie = []
+    for r in lignes:
+        mesure = int(r["mesures"] or 0)
+        # Une alerte est elle aussi une observation : un jour qui en porte une a
+        # forcément été observé, même si la métrique correspondante manque.
+        observe = mesure > 0 or int(r["alertes"] or 0) > 0
+        serie.append({
+            "jour":    r["jour"].isoformat(),
+            "mesures": mesure,
+            "alertes": int(r["alertes"] or 0),
+            "score":   (100 - int(r["pire_risque"] or 0)) if observe else None,
+        })
+
+    mesures_jours = sum(1 for d in serie if d["score"] is not None)
+    return {
+        "days": days,
+        "serie": serie,
+        "jours_mesures": mesures_jours,
+        "jours_aveugles": len(serie) - mesures_jours,
+        "source": "alerts + metrics, agrégés par jour côté serveur",
+    }
+
+
 @portail_router.get("/agents", summary="Agents du tenant courant")
 def portal_agents(db=Depends(get_db), user: dict = Depends(require_client)):
     tid = _tenant_id_or_403(user)
     with db.cursor() as cur:
-        cur.execute("""
-            SELECT id, tenant_id, hostname, os, statut, vu_le
-            FROM agents WHERE tenant_id = %s::uuid
-            ORDER BY hostname
+        cur.execute(f"""
+            SELECT a.id, a.tenant_id, a.hostname, a.os, a.vu_le,
+                   {agent_presence_cols('a')}
+              FROM agents a WHERE a.tenant_id = %s::uuid
+             ORDER BY a.hostname
         """, (tid,))
         return [dict(r) for r in cur.fetchall()]
 
@@ -730,7 +1199,7 @@ def portal_notif_mark_all_read(db=Depends(get_db), user: dict = Depends(require_
 
 @portail_router.get("/notifications/{notif_id}/report",
                     summary="Rapport HTML enrichi (affichage in-app)")
-def portal_notif_report(notif_id: str, db=Depends(get_db),
+def portal_notif_report(notif_id: str, lang: str = "fr", db=Depends(get_db),
                         user: dict = Depends(require_client)):
     """Renvoie le rapport HTML en JSON pour affichage dans le modal du portail."""
     tid = _tenant_id_or_403(user)
@@ -743,12 +1212,55 @@ def portal_notif_report(notif_id: str, db=Depends(get_db),
         row = cur.fetchone()
     if not row or not row.get("report_html"):
         raise HTTPException(404, detail="Rapport introuvable")
-    return dict(row)
+    out = dict(row)
+    if lang != "fr":
+        rendu = _rapport_traduit(db, notif_id, tid, lang)
+        if rendu:
+            out["report_html"] = rendu
+            out["lang"] = lang
+        else:
+            # Le rapport français reste servi : mieux vaut un document lisible
+            # dans la mauvaise langue qu'une erreur devant un lecteur pressé.
+            out["lang"] = "fr"
+            out["lang_note"] = "Traduction indisponible : alerte source introuvable."
+    return out
+
+
+def _rapport_traduit(db, notif_id: str, tenant_id: str, lang: str):
+    """Re-produit le rapport dans une autre langue à partir de l'alerte source.
+
+    Le rapport français est figé en base au moment de l'incident : c'est lui qui
+    fait foi. La version anglaise est rendue à la demande depuis les mêmes
+    données — jamais traduite depuis le HTML, ce qui produirait deux documents
+    dont les empreintes ne diraient rien l'une de l'autre.
+    """
+    try:
+        from nexus_scoring import _rapport_html  # type: ignore
+    except Exception:
+        return None
+    with db.cursor() as cur:
+        cur.execute(
+            """SELECT a.entite, a.type, a.risque, a.source_modele, a.mitre,
+                      a.raisons, a.chaine, a.score_parts, a.id::text AS aid,
+                      t.nom AS perimetre
+                 FROM notifications n
+                 JOIN alerts a  ON a.id = n.alert_id
+                 JOIN tenants t ON t.id = n.tenant_id
+                WHERE n.id = %s::uuid AND n.tenant_id = %s::uuid""",
+            (notif_id, tenant_id))
+        row = cur.fetchone()
+    if not row:
+        return None
+    return _rapport_html(
+        {"entite": row["entite"], "type": row["type"], "src": row["source_modele"],
+         "mitre": row["mitre"], "raisons": row["raisons"],
+         "chaine": row["chaine"], "score_parts": row["score_parts"]},
+        int(row["risque"] or 0), row["aid"][:8], row["perimetre"], lang=lang)
 
 
 @portail_router.get("/notifications/{notif_id}/download",
                     summary="Téléchargement du rapport HTML (attachment)")
-def portal_notif_download(notif_id: str, db=Depends(get_db),
+def portal_notif_download(notif_id: str, lang: str = "fr", db=Depends(get_db),
                           user: dict = Depends(require_client)):
     """Renvoie le rapport HTML brut avec Content-Disposition: attachment."""
     from fastapi.responses import Response
@@ -762,25 +1274,121 @@ def portal_notif_download(notif_id: str, db=Depends(get_db),
         row = cur.fetchone()
     if not row or not row.get("report_html"):
         raise HTTPException(404, detail="Rapport introuvable")
-    filename = f"rapport-nexussoc-{notif_id[:8]}.html"
+
+    contenu, suffixe = row["report_html"], ""
+    if lang != "fr":
+        rendu = _rapport_traduit(db, notif_id, tid, lang)
+        if rendu:
+            contenu, suffixe = rendu, f"-{lang}"
+
+    filename = f"rapport-nexussoc-{notif_id[:8]}{suffixe}.html"
     return Response(
-        content=row["report_html"],
+        content=contenu,
         media_type="text/html; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ---------------------------------------------------------------------------
+# G-bis. ANALYSE EN LANGAGE CLAIR — module Analyst (Lot 5)
+# ---------------------------------------------------------------------------
+# `LLMAnalyst` était écrit, testé, bilingue… et joignable par aucun endpoint :
+# le portail devait recomposer l'explication côté navigateur. Elle est désormais
+# produite par le serveur, ce qui la rend identique dans le portail, le rapport
+# HTML et les notifications, et débloque au passage le mode LLM optionnel.
+try:
+    import sys as _sys
+    _lot5 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "Lot5_Restitution", "portail")
+    if _lot5 not in _sys.path:
+        _sys.path.insert(0, _lot5)
+    from notifier import LLMAnalyst  # type: ignore
+    _ANALYST = LLMAnalyst(mode=os.getenv("ANALYST_MODE", "template"))
+except Exception as _e:  # pragma: no cover
+    _ANALYST = None
+    print(f"[analyst] module de restitution indisponible : {_e}")
+
+
+def _alerte_vers_incident(row: dict) -> dict:
+    """Traduit une ligne `alerts` vers la structure attendue par LLMAnalyst."""
+    chaine = row.get("chaine") or []
+    return {
+        "type":     row.get("type") or "Compromission probable",
+        "entity":   row.get("entite") or "?",
+        "risque":   int(row.get("risque") or 0),
+        "mitre":    [t.strip() for t in str(row.get("mitre") or "").split(",") if t.strip()],
+        "chaine":   chaine,
+        "tactiques": list(dict.fromkeys(
+            e.get("tactique") for e in chaine if isinstance(e, dict) and e.get("tactique"))),
+        # Le moteur de corrélation marque l'activité nocturne ; à défaut de
+        # chaîne, on la déduit de l'heure de levée de l'alerte.
+        "activite_hors_heures": bool(
+            row.get("cree_le") and (row["cree_le"].hour >= 19 or row["cree_le"].hour < 6)),
+    }
+
+
+@portail_router.get("/alerts/{alert_id}/explain",
+                    summary="Explication d'un incident en langage clair (FR/EN)")
+def portal_explain(alert_id: str, lang: str = "fr", db=Depends(get_db),
+                   user: dict = Depends(require_client)):
+    """Paragraphe de 3 à 5 phrases destiné à un responsable non technicien.
+
+    Mode `template` par défaut : explication déterministe, sans risque
+    d'hallucination. Mode `llm` si ANALYST_MODE=llm et LLM_API_URL sont fournis,
+    avec repli automatique sur le template en cas d'échec.
+    """
+    tid = _tenant_id_or_403(user)
+    lang = "en" if str(lang).lower().startswith("en") else "fr"
+
+    with db.cursor() as cur:
+        cur.execute("""
+            SELECT id, type, entite, risque, mitre, raisons, chaine, cree_le, source_modele
+              FROM alerts WHERE id = %s::uuid AND tenant_id = %s::uuid
+        """, (alert_id, tid))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, detail="Alerte introuvable sur ce périmètre")
+
+    if _ANALYST is None:
+        raise HTTPException(
+            503, detail="Module de restitution indisponible sur ce déploiement.")
+
+    incident = _alerte_vers_incident(dict(row))
+    try:
+        texte = _ANALYST.explain(incident, lang=lang)
+    except Exception as e:
+        raise HTTPException(500, detail=f"Explication non produite : {e}")
+
+    return {
+        "alert_id":    str(row["id"]),
+        "lang":        lang,
+        "mode":        getattr(_ANALYST, "mode", "template"),
+        "texte":       texte,
+        "genere_le":   datetime.now(timezone.utc).isoformat(),
+        "source":      row.get("source_modele"),
+    }
 
 
 @portail_router.get("/summary", summary="Synthèse temps-réel du tenant (KPIs portail)")
 def portal_summary(db=Depends(get_db), user: dict = Depends(require_client)):
     tid = _tenant_id_or_403(user)
     with db.cursor() as cur:
-        cur.execute("""
+        cur.execute(f"""
             SELECT
-              (SELECT COUNT(*) FROM alerts WHERE tenant_id=%s::uuid AND statut!='resolue') AS open_alerts,
-              (SELECT COALESCE(MAX(risque),0) FROM alerts WHERE tenant_id=%s::uuid AND statut!='resolue') AS max_risk,
-              (SELECT COUNT(*) FROM agents WHERE tenant_id=%s::uuid AND statut='actif') AS agents_active,
+              -- « non résolue » n'est pas « ouverte » : un faux positif écarté
+              -- par un analyste et une alerte agrégée à une plus récente ne
+              -- pèsent ni sur le compteur ni sur le score. Le filtre les
+              -- comptait, gonflant SIGIPES à 17 incidents ouverts pour 3 réels.
+              (SELECT COUNT(*) FROM alerts WHERE tenant_id=%s::uuid
+                AND statut NOT IN ('resolue','faux_positif','agregee')) AS open_alerts,
+              (SELECT COALESCE(MAX(risque),0) FROM alerts WHERE tenant_id=%s::uuid
+                AND statut NOT IN ('resolue','faux_positif','agregee')) AS max_risk,
+              (SELECT COUNT(*) FROM agents a
+                WHERE a.tenant_id=%s::uuid AND {agent_statut_sql('a')}='actif') AS agents_active,
               (SELECT COUNT(*) FROM agents WHERE tenant_id=%s::uuid) AS agents_total,
               (SELECT COUNT(*) FROM notifications WHERE tenant_id=%s::uuid AND read_at IS NULL) AS unread_notifications
         """, (tid, tid, tid, tid, tid))
         row = cur.fetchone()
-    return dict(row) if row else {}
+    out = dict(row) if row else {}
+    out["stale_after_s"] = AGENT_STALE_SECONDS
+    return out

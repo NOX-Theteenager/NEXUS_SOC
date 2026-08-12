@@ -37,7 +37,7 @@
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Portail DSI"
+      "label": "Portail de périmètre"
     }
   ],
   "shortcuts": [
@@ -49,9 +49,9 @@
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Portail DSI",
+      "name": "Portail de périmètre",
       "short_name": "Portail",
-      "description": "Portail client DSI",
+      "description": "Vue du responsable de périmètre supervisé",
       "url": "/app/portail.html",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     },

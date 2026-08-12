@@ -1,681 +1,408 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="theme-color" content="#0A0F1C"/>
-<meta name="description" content="NEXUS SOC — Contacter l'équipe SOC du CENADI pour le raccordement d'un périmètre supervisé ou un incident."/>
-<title>NEXUS SOC — Contacter un architecte</title>
-<link rel="manifest" href="manifest.json"/>
-<link rel="icon" type="image/svg+xml" href="icons/icon.svg"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Demande à l'équipe SOC — NEXUS SOC</title>
+<meta name="theme-color" content="#0A0F1C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXUS SOC — Demande de mise sous supervision
+   Formulaire interne entre services du CENADI. Ni carte, ni horaires
+   d'ouverture, ni bouton d'appel : ce n'est pas une page de contact
+   commercial (designexus.md §5.5).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg:        #07101e;
-  --bg-2:      #0A0F1C;
-  --surface:   #0F1729;
-  --surface-2: #131D33;
-  --border:    #1E293B;
-  --border-2:  #334155;
-  --text:      #E2E8F0;
-  --text-2:    #94A3B8;
-  --text-3:    #64748B;
-  --accent:    #5EAAFF;
-  --teal:      #3DDC97;
-  --amber:     #F5A524;
-  --red:       #EF4444;
-  --purple:    #B97AFF;
-  --display:   "Fraunces", Georgia, serif;
-  --body:      "Manrope", sans-serif;
-  --mono:      "JetBrains Mono", monospace;
+  --bg:#0A0F1C; --bg-2:#0D1424; --surface:#0F1729; --surface-2:#131D33;
+  --border:#1E293B; --border-2:#334155;
+  --text:#E2E8F0; --text-2:#94A3B8; --text-3:#64748B; --text-4:#475569;
+  --accent:#5EAAFF; --teal:#3DDC97; --amber:#F5A524; --red:#EF4444;
+  --display:"Fraunces",Georgia,serif;
+  --body:"Manrope",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"Courier New",monospace;
+  --r-card:12px; --r-field:9px; --r-pill:999px;
+  --focus:0 0 0 3px rgba(94,170,255,.15);
+  --header-h:58px;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 body {
-  font-family: var(--body);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  background:var(--bg); color:var(--text);
+  font-family:var(--body); font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; min-height:100vh;
 }
-body::before {
-  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    radial-gradient(circle at 30% 10%, rgba(185,122,255,.10), transparent 50%),
-    radial-gradient(circle at 70% 80%, rgba(94,170,255,.07), transparent 55%);
-}
-body::after {
-  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+button, input, select, textarea { font-family:inherit; color:inherit; }
+:focus-visible { outline:none; box-shadow:var(--focus); border-radius:6px; }
+[hidden] { display:none !important; }
+@keyframes cardIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+@keyframes spin   { to { transform:rotate(360deg) } }
+
+.bg-grid {
+  position:fixed; inset:0; pointer-events:none; z-index:0;
   background-image:
-    linear-gradient(rgba(94,170,255,.014) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94,170,255,.014) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(94,170,255,.015) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(94,170,255,.015) 1px,transparent 1px);
+  background-size:36px 36px;
 }
 
-/* ── NAV ── */
-nav {
-  position: fixed; top: 0; left: 0; right: 0; height: 62px; z-index: 100;
-  background: rgba(7,16,30,.92); backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; padding: 0 28px; gap: 22px;
+.hdr {
+  position:sticky; top:0; z-index:20;
+  height:var(--header-h); padding:0 20px;
+  display:flex; align-items:center; gap:20px;
+  border-bottom:1px solid var(--border);
+  background:rgba(10,15,28,.93); backdrop-filter:blur(14px);
 }
-nav::after {
-  content: ""; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--amber) 0%, var(--accent) 45%, var(--teal) 100%);
-  opacity: .65;
-}
-.nav-brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; }
-.nav-brand .mark { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 22px; letter-spacing: -.02em; color: var(--text); }
-.nav-brand .mark em { color: var(--amber); }
-.nav-brand .sub { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; }
-.nav-spacer { flex: 1; }
-.nav-links { display: flex; gap: 22px; align-items: center; }
-.nav-links a { font-size: 13.5px; color: var(--text-2); text-decoration: none; transition: color .2s; }
-.nav-links a:hover { color: var(--text); }
-.btn-nav-ghost {
-  padding: 7px 16px; background: transparent; color: var(--text);
-  border: 1px solid var(--border-2); border-radius: 8px;
-  font-weight: 600; font-size: 13px; text-decoration: none;
-  transition: border-color .2s;
-}
-.btn-nav-ghost:hover { border-color: var(--accent); }
+.logo { font-family:var(--display); font-style:italic; font-weight:600; font-size:18px; letter-spacing:-.02em; }
+.logo em { font-style:inherit; color:var(--amber); }
+.hdr nav { display:flex; gap:18px; }
+.hdr nav a { font-size:12.5px; color:var(--text-2); text-decoration:none; }
+.hdr nav a:hover, .hdr nav a[aria-current="page"] { color:var(--accent); }
+.hdr .sp { flex:1; }
+.hdr .back { font-family:var(--mono); font-size:11px; color:var(--text-3); text-decoration:none; }
+.hdr .back:hover { color:var(--accent); }
 
-/* ── Layout ── */
-.container {
-  position: relative; z-index: 1;
-  max-width: 1180px; margin: 0 auto;
-  padding: 110px 32px 80px;
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 64px;
-  align-items: start;
+main {
+  position:relative; z-index:1;
+  max-width:1000px; margin:0 auto; padding:34px 20px 70px;
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:18px; align-items:start;
 }
+@media (max-width:760px) { main { padding:22px 16px 50px; } }
 
-/* ── Left column : info ── */
-.intro {
-  padding-top: 18px;
+.kicker { font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-3); margin-bottom:9px; }
+.panel {
+  background:var(--surface); border:1px solid var(--border-2); border-radius:16px;
+  padding:26px 24px; animation:cardIn .5s cubic-bezier(.22,1,.36,1) both;
 }
-.eyebrow {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-size: 11px; color: var(--purple);
-  letter-spacing: .15em; text-transform: uppercase;
-  background: rgba(185,122,255,.07);
-  padding: 6px 14px; border-radius: 999px;
-  border: 1px solid rgba(185,122,255,.2);
-  margin-bottom: 24px;
-}
-.eyebrow::before {
-  content: ""; width: 6px; height: 6px; background: var(--purple);
-  border-radius: 50%; box-shadow: 0 0 6px var(--purple);
-}
-h1 {
-  font-family: var(--display);
-  font-size: clamp(34px, 5vw, 54px);
-  font-weight: 600;
-  letter-spacing: -.025em; line-height: 1.1;
-  margin-bottom: 18px;
-}
-h1 em { font-style: italic; color: var(--purple);
-  background: linear-gradient(135deg, var(--purple), var(--accent));
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-}
-.lead {
-  font-size: 17px; color: var(--text-2);
-  line-height: 1.7; margin-bottom: 36px;
-}
+.panel h1 { font-family:var(--display); font-size:22px; font-weight:600; letter-spacing:-.03em; line-height:1.25; }
+.panel .lede { font-size:13px; color:var(--text-2); line-height:1.65; margin-top:8px; margin-bottom:22px; }
 
-.advantages {
-  display: flex; flex-direction: column; gap: 18px;
-  margin-top: 32px;
+.field { margin-bottom:16px; }
+.label { display:block; font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-2); margin-bottom:7px; }
+.control {
+  width:100%;
+  background:var(--bg-2); border:1px solid var(--border-2); border-radius:var(--r-field);
+  padding:11px 14px; font-size:13.5px; color:var(--text);
+  outline:none; transition:border-color .2s, box-shadow .2s;
 }
-.adv {
-  display: flex; gap: 16px;
-  padding: 18px 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  transition: border-color .2s, transform .2s;
-}
-.adv:hover { border-color: var(--border-2); transform: translateX(4px); }
-.adv-icon {
-  flex-shrink: 0;
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(185,122,255,.1);
-  border: 1px solid rgba(185,122,255,.2);
-  border-radius: 10px;
-  font-size: 18px;
-}
-.adv h3 { font-size: 14.5px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
-.adv p { font-size: 13px; color: var(--text-2); line-height: 1.55; margin: 0; }
+.control:focus { border-color:var(--accent); box-shadow:var(--focus); }
+.control[aria-invalid="true"] { border-color:var(--red); box-shadow:0 0 0 3px rgba(239,68,68,.12); }
+textarea.control { resize:vertical; min-height:82px; line-height:1.6; }
+select.control { font-family:var(--mono); font-size:13px; }
+.hint { font-family:var(--mono); font-size:10px; color:var(--text-3); margin-top:5px; line-height:1.5; }
+.err-msg { font-size:11.5px; color:var(--red); margin-top:5px; }
+.row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
 
-.timeline {
-  margin-top: 32px;
-  padding: 22px;
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 14px;
+.submit {
+  width:100%; margin-top:8px;
+  display:flex; align-items:center; justify-content:center; gap:9px;
+  padding:13px; border:none; border-radius:10px;
+  background:var(--accent); color:#07111F;
+  font-weight:700; font-size:14.5px; cursor:pointer; transition:filter .2s, opacity .2s;
 }
-.timeline-head {
-  font-family: var(--mono); font-size: 10.5px;
-  color: var(--accent); letter-spacing: .14em;
-  text-transform: uppercase; margin-bottom: 16px;
-}
-.tl-step {
-  display: flex; align-items: flex-start; gap: 14px;
-  position: relative; padding-bottom: 16px;
-}
-.tl-step:not(:last-child)::after {
-  content: ""; position: absolute;
-  left: 13px; top: 30px; bottom: 4px; width: 2px;
-  background: var(--border-2);
-}
-.tl-num {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: var(--accent); color: #07111F;
-  font-family: var(--mono); font-size: 12px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; z-index: 1;
-}
-.tl-text { font-size: 13.5px; color: var(--text-2); line-height: 1.55; padding-top: 4px; }
-.tl-text strong { color: var(--text); }
+.submit:hover:not(:disabled) { filter:brightness(1.08); }
+.submit:disabled { opacity:.55; cursor:not-allowed; background:var(--border); color:var(--text-3); }
+.spinner { width:15px; height:15px; border-radius:50%; border:2px solid rgba(7,17,31,.3); border-top-color:#07111F; animation:spin .7s linear infinite; }
 
-/* ── Right column : form ── */
-.form-card {
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 20px;
-  padding: 40px 36px;
-  box-shadow: 0 24px 60px rgba(0,0,0,.4);
-  position: relative;
-  overflow: hidden;
-}
-.form-card::before {
-  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--purple), var(--accent));
-}
-.form-card h2 {
-  font-family: var(--display); font-size: 24px;
-  font-weight: 600; letter-spacing: -.015em;
-  margin-bottom: 8px;
-}
-.form-card .sub {
-  font-size: 13.5px; color: var(--text-2);
-  margin-bottom: 28px; line-height: 1.55;
-}
-.field { margin-bottom: 18px; }
-.field label {
-  display: block;
-  font-family: var(--mono); font-size: 11px;
-  color: var(--text-2); margin-bottom: 7px;
-  letter-spacing: .04em;
-}
-.field label .req { color: var(--red); margin-left: 3px; }
-.field input, .field select, .field textarea {
-  width: 100%; padding: 11px 14px;
-  background: var(--bg-2);
-  border: 1px solid var(--border-2);
-  border-radius: 9px; color: var(--text);
-  font-family: var(--body); font-size: 14px;
-  outline: none; transition: border-color .2s, box-shadow .2s;
-  resize: none;
-}
-.field input:focus, .field select:focus, .field textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(94,170,255,.12);
-}
-.field textarea { min-height: 100px; font-family: var(--body); resize: vertical; }
-.field.error input, .field.error select, .field.error textarea { border-color: var(--red); }
-.field .err {
-  font-size: 12px; color: var(--red);
-  margin-top: 5px; display: none;
-}
-.field.error .err { display: block; }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.checkbox-row {
-  display: flex; gap: 10px; align-items: flex-start;
-  padding: 14px; background: var(--bg-2);
-  border-radius: 9px; margin-bottom: 18px;
-}
-.checkbox-row input { width: 16px; height: 16px; margin-top: 3px; accent-color: var(--accent); }
-.checkbox-row label {
-  font-size: 12.5px; color: var(--text-2); line-height: 1.5;
-  font-family: var(--body); letter-spacing: 0;
-}
-.checkbox-row a { color: var(--accent); text-decoration: none; }
-.checkbox-row a:hover { text-decoration: underline; }
-.btn-submit {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, var(--purple), var(--accent));
-  color: #07111F;
-  border: none; border-radius: 11px;
-  font-weight: 700; font-size: 15px;
-  cursor: pointer; transition: opacity .2s, transform .15s;
-  font-family: var(--body);
-  position: relative; overflow: hidden;
-}
-.btn-submit:hover:not(:disabled) { transform: translateY(-2px); }
-.btn-submit:disabled { opacity: .5; cursor: not-allowed; }
-.btn-submit .spinner {
-  display: none;
-  width: 16px; height: 16px;
-  border: 2px solid rgba(0,0,0,.3);
-  border-top-color: #07111F;
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-  margin: 0 auto;
-}
-.btn-submit.loading .spinner { display: block; }
-.btn-submit.loading .label { display: none; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.foot-note { font-family:var(--mono); font-size:10.5px; color:var(--text-3); text-align:center; margin-top:14px; line-height:1.6; }
 
-.alert-box {
-  display: none;
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1.5;
-  margin-bottom: 18px;
-}
-.alert-box.show { display: block; }
-.alert-box.success {
-  background: rgba(61,220,151,.08);
-  border: 1px solid rgba(61,220,151,.25);
-  color: var(--teal);
-}
-.alert-box.error {
-  background: rgba(239,68,68,.08);
-  border: 1px solid rgba(239,68,68,.25);
-  color: #FCA5A5;
-}
+.alert { padding:11px 14px; border-radius:var(--r-field); font-size:12.5px; line-height:1.55; margin-bottom:18px; }
+.alert.err  { background:rgba(239,68,68,.1);  border:1px solid rgba(239,68,68,.3);  color:#FCA5A5; }
+.alert.warn { background:rgba(245,165,36,.1); border:1px solid rgba(245,165,36,.3); color:var(--amber); }
+.alert b { display:block; margin-bottom:2px; }
+.alert span { color:var(--text-2); }
 
-/* ── Success state ── */
-.success-state {
-  display: none;
-  text-align: center;
-  padding: 30px 20px;
+/* Confirmation */
+.done { text-align:center; padding:38px 26px; border-color:rgba(61,220,151,.25); }
+.done .mark {
+  width:46px; height:46px; border-radius:50%; border:2px solid var(--teal); color:var(--teal);
+  display:flex; align-items:center; justify-content:center; font-size:22px; margin:0 auto 16px;
 }
-.success-state.show { display: block; }
-.success-icon {
-  width: 72px; height: 72px;
-  border-radius: 50%;
-  background: rgba(61,220,151,.12);
-  border: 2px solid rgba(61,220,151,.4);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px; color: var(--teal);
-  margin: 0 auto 22px;
+.done h2 { font-family:var(--display); font-size:22px; font-weight:600; letter-spacing:-.03em; }
+.done p { font-size:13px; color:var(--text-2); line-height:1.7; max-width:340px; margin:10px auto 0; }
+.ref {
+  display:inline-flex; flex-direction:column; gap:4px; margin-top:20px;
+  background:var(--bg-2); border:1px solid var(--border-2); border-radius:10px; padding:12px 20px;
 }
-.success-state h3 {
-  font-family: var(--display); font-size: 22px;
-  font-weight: 600; margin-bottom: 10px;
-}
-.success-state p { font-size: 14px; color: var(--text-2); margin-bottom: 8px; }
-.ref-box {
-  display: inline-block;
-  margin-top: 18px; padding: 10px 16px;
-  background: var(--bg-2); border: 1px solid var(--border-2);
-  border-radius: 9px;
-  font-family: var(--mono); font-size: 12px;
-  color: var(--teal);
-}
-.back-link {
-  display: inline-block; margin-top: 26px;
-  font-size: 13px; color: var(--accent);
-  text-decoration: none; font-weight: 600;
-}
+.ref .k { font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-3); }
+.ref .v { font-family:var(--mono); font-size:16px; color:var(--teal); letter-spacing:.04em; }
 
-/* ── Direct contacts ── */
-.direct-contacts {
-  margin-top: 36px;
-  padding: 22px;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-}
-.direct-contacts h4 {
-  font-family: var(--mono); font-size: 10.5px;
-  color: var(--text-3); letter-spacing: .14em;
-  text-transform: uppercase; margin-bottom: 14px;
-}
-.contact-line {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 13px; color: var(--text-2);
-  margin-bottom: 8px;
-}
-.contact-line:last-child { margin-bottom: 0; }
-.contact-line .icon { color: var(--accent); font-size: 14px; width: 18px; }
-.contact-line a { color: var(--text); text-decoration: none; }
-.contact-line a:hover { color: var(--accent); }
+.aside-note { background:#0B1220; border:1px solid var(--border); border-radius:10px; padding:13px 15px; }
+.aside-note .k { font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:5px; }
+.aside-note .v { font-size:12.5px; color:var(--text-2); line-height:1.55; }
+.aside-col { display:flex; flex-direction:column; gap:12px; }
 
-/* ── Responsive ── */
-@media (max-width: 880px) {
-  .container { grid-template-columns: 1fr; gap: 40px; padding: 96px 22px 64px; }
-  .nav-links a:not(.btn-nav-ghost) { display: none; }
-  .row { grid-template-columns: 1fr; }
-  .form-card { padding: 32px 24px; }
+.btn {
+  background:none; border:1px solid var(--border-2); color:var(--text-2);
+  border-radius:var(--r-field); padding:9px 18px; font-size:13px; cursor:pointer; transition:all .2s;
+  text-decoration:none; display:inline-block;
+}
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
 }
 </style>
 </head>
 <body>
+<div class="bg-grid" aria-hidden="true"></div>
 
-<!-- ── NAV ── -->
-<nav>
-  <a class="nav-brand" href="login.html">
-    <span class="mark">NEXUS <em>SOC</em></span>
-    <span class="sub">Contact architecte</span>
-  </a>
-  <span class="nav-spacer"></span>
-  <div class="nav-links">
-    <a href="login.html">Connexion</a>
+<header class="hdr">
+  <div class="logo">NEXUS <em>SOC</em></div>
+  <nav>
     <a href="docs.html">Documentation</a>
-    <a href="login.html" class="btn-nav-ghost">Connexion</a>
-  </div>
-</nav>
+    <a href="contact.html" aria-current="page">Contact</a>
+  </nav>
+  <div class="sp"></div>
+  <a class="back" href="login.html" id="back-link">← retour à la plateforme</a>
+</header>
 
-<div class="container">
+<main>
+  <section id="form-side">
+    <div class="kicker">Saisie</div>
+    <div class="panel">
+      <h1>Mettre un périmètre sous supervision</h1>
+      <p class="lede">
+        Décrivez le système à superviser. L'équipe SOC du CENADI évalue la demande,
+        arbitre la criticité et planifie l'enrôlement des agents.
+      </p>
 
-  <!-- ── INTRO ── -->
-  <div class="intro">
-    <div class="eyebrow">★ Support interne · Équipe SOC CENADI</div>
-    <h1>Contacter l'<em>équipe SOC du CENADI</em></h1>
-    <p class="lead">Pour toute demande liée au raccordement d'un périmètre supervisé, à l'intégration d'un système métier (SIGIPES, ANTILOPE) ou à un incident : l'équipe SOC du CENADI exploite et fait évoluer la plateforme en interne. Aucune donnée ne quitte le site.</p>
-
-    <div class="advantages">
-      <div class="adv">
-        <div class="adv-icon">🏛</div>
-        <div><h3>Hébergement sur site</h3><p>La pile complète (Kafka, TimescaleDB, Wazuh, scoring) tourne sur votre serveur. Aucune donnée ne quitte le territoire.</p></div>
-      </div>
-      <div class="adv">
-        <div class="adv-icon">🔗</div>
-        <div><h3>Intégration SIGIPES &amp; ANTILOPE</h3><p>Connexion aux journaux d'audit des systèmes métiers, calibration du modèle UEBA sur les patterns réels du périmètre.</p></div>
-      </div>
-      <div class="adv">
-        <div class="adv-icon">📋</div>
-        <div><h3>Conformité ANTIC</h3><p>Démarche de déclaration du système, d'homologation, et alignement sur la loi n° 2010/012.</p></div>
-      </div>
-      <div class="adv">
-        <div class="adv-icon">🤝</div>
-        <div><h3>Analyste SOC interne</h3><p>L'équipe SOC du CENADI supervise l'ensemble des périmètres, joignable pour les incidents critiques.</p></div>
-      </div>
-    </div>
-
-    <div class="timeline">
-      <div class="timeline-head">Le raccordement d'un périmètre en 4 étapes</div>
-      <div class="tl-step">
-        <div class="tl-num">1</div>
-        <div class="tl-text"><strong>Qualification</strong> — l'équipe SOC étudie la demande et planifie un premier échange.</div>
-      </div>
-      <div class="tl-step">
-        <div class="tl-num">2</div>
-        <div class="tl-text"><strong>Cartographie du périmètre</strong> — analyse du parc, du réseau et des systèmes métiers à intégrer.</div>
-      </div>
-      <div class="tl-step">
-        <div class="tl-num">3</div>
-        <div class="tl-text"><strong>Architecture de raccordement</strong> — dimensionnement, plan d'enrôlement des agents, calendrier de mise en supervision.</div>
-      </div>
-      <div class="tl-step">
-        <div class="tl-num">4</div>
-        <div class="tl-text"><strong>Déploiement OpenTofu</strong> + formation des responsables de périmètre + démarche de conformité ANTIC.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── FORM ── -->
-  <div>
-    <div class="form-card" id="form-card">
-
-      <div class="success-state" id="success-state">
-        <div class="success-icon">✓</div>
-        <h3>Demande transmise</h3>
-        <p>L'équipe SOC du CENADI vous recontactera à l'adresse indiquée.</p>
-        <p>En cas d'urgence, vous pouvez aussi la joindre directement par téléphone.</p>
-        <div class="ref-box">Réf. <span id="ref-id">—</span></div><br>
-        <a class="back-link" href="login.html">← Retour à la connexion</a>
+      <div class="alert err" id="alert" hidden role="alert">
+        <b id="alert-title"></b><span id="alert-body"></span>
       </div>
 
-      <div id="form-state">
-        <h2>Contacter l'équipe SOC</h2>
-        <p class="sub">Renseignez le formulaire ci-dessous. Votre demande est transmise immédiatement à l'équipe SOC du CENADI.</p>
+      <form id="form" novalidate>
+        <div class="field">
+          <label class="label" for="systeme">Système à superviser</label>
+          <input class="control" id="systeme" name="systeme" required
+                 placeholder="Application de gestion des pensions">
+          <div class="hint">Nom fonctionnel, tel que connu de ses utilisateurs.</div>
+          <div class="err-msg" id="err-systeme" hidden></div>
+        </div>
 
-        <div class="alert-box error" id="alert-err">—</div>
-
-        <form id="contact-form" novalidate>
-          <div class="row">
-            <div class="field" id="f-name">
-              <label>Nom complet <span class="req">*</span></label>
-              <input type="text" id="in-name" placeholder="Jean-Pierre Mballa" autocomplete="name">
-              <div class="err">Champ requis</div>
-            </div>
-            <div class="field" id="f-title">
-              <label>Fonction <span class="req">*</span></label>
-              <input type="text" id="in-title" placeholder="DSI, RSSI…" autocomplete="organization-title">
-              <div class="err">Champ requis</div>
-            </div>
-          </div>
-
-          <div class="field" id="f-org">
-            <label>Organisation <span class="req">*</span></label>
-            <input type="text" id="in-org" placeholder="Direction / service — périmètre concerné" autocomplete="organization">
-            <div class="err">Champ requis</div>
-          </div>
-
-          <div class="field" id="f-type">
-            <label>Type d'entité <span class="req">*</span></label>
-            <select id="in-type">
-              <option value="">Sélectionner…</option>
-              <option>Ministère</option>
-              <option>Direction Générale</option>
-              <option>Agence d'État</option>
-              <option>Régie financière</option>
-              <option>Université / Grande École</option>
-              <option>Établissement public</option>
-              <option>Autre administration</option>
-            </select>
-            <div class="err">Sélectionnez un type d'entité</div>
-          </div>
-
-          <div class="row">
-            <div class="field" id="f-email">
-              <label>E-mail professionnel <span class="req">*</span></label>
-              <input type="email" id="in-email" placeholder="dsi@institution.cm" autocomplete="email">
-              <div class="err">E-mail invalide</div>
-            </div>
-            <div class="field" id="f-phone">
-              <label>Téléphone</label>
-              <input type="tel" id="in-phone" placeholder="+237 6XX XXX XXX" autocomplete="tel">
-              <div class="err">—</div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="field" id="f-postes">
-              <label>Postes à protéger</label>
-              <select id="in-postes">
-                <option value="">À discuter</option>
-                <option>Moins de 50</option>
-                <option>50–200</option>
-                <option>200–500</option>
-                <option>Plus de 500</option>
-              </select>
-              <div class="err">—</div>
-            </div>
-            <div class="field" id="f-timeline">
-              <label>Échéance souhaitée</label>
-              <select id="in-timeline">
-                <option value="">À discuter</option>
-                <option>Urgente (&lt; 1 mois)</option>
-                <option>Courte (1–3 mois)</option>
-                <option>Moyenne (3–6 mois)</option>
-                <option>Stratégique (&gt; 6 mois)</option>
-              </select>
-              <div class="err">—</div>
-            </div>
-          </div>
-
+        <div class="row">
           <div class="field">
-            <label>Message (contexte, systèmes métiers à intégrer, contraintes particulières)</label>
-            <textarea id="in-message" placeholder="Décrivez brièvement votre besoin et le contexte de votre organisation…"></textarea>
+            <label class="label" for="type">Type</label>
+            <select class="control" id="type" name="type" required>
+              <option value="application_metier">application_metier</option>
+              <option value="reseau">reseau</option>
+              <option value="infrastructure">infrastructure</option>
+              <option value="poste_utilisateur">poste_utilisateur</option>
+            </select>
+            <div class="hint">Valeurs contraintes en base.</div>
           </div>
-
-          <div class="checkbox-row">
-            <input type="checkbox" id="in-consent">
-            <label for="in-consent">J'accepte que NEXUS SOC traite ces informations pour me recontacter au sujet de ma demande. Aucune communication commerciale ne sera envoyée sans mon accord explicite.</label>
+          <div class="field">
+            <label class="label" for="criticite">Criticité pressentie</label>
+            <select class="control" id="criticite" name="criticite" required>
+              <option value="standard">standard</option>
+              <option value="sensible" selected>sensible</option>
+              <option value="critique">critique</option>
+            </select>
+            <div class="hint">La criticité définitive est arbitrée par l'équipe SOC.</div>
           </div>
+        </div>
 
-          <button type="submit" class="btn-submit" id="btn-submit">
-            <span class="label">Transmettre la demande →</span>
-            <span class="spinner"></span>
-          </button>
-        </form>
+        <div class="field">
+          <label class="label" for="parc">Parc concerné</label>
+          <input class="control" id="parc" name="parc"
+                 placeholder="2 serveurs Linux, 18 postes Windows">
+          <div class="hint">Une estimation suffit à ce stade.</div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="contexte">Contexte</label>
+          <textarea class="control" id="contexte" name="contexte" rows="3"
+                    placeholder="Migration prévue en octobre. Les agents peuvent être déployés dès septembre sur le segment d'administration."></textarea>
+          <div class="hint">Trois lignes suffisent : contraintes de fenêtre, réseau, dépendances.</div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="responsable">Responsable à contacter</label>
+          <input class="control" id="responsable" name="responsable" type="email" required
+                 placeholder="a.mballa@cenadi.cm" autocomplete="email">
+          <div class="hint">Recevra la notification de création du périmètre.</div>
+          <div class="err-msg" id="err-responsable" hidden></div>
+        </div>
+
+        <button class="submit" id="submit" type="submit">
+          <span id="submit-label">Envoyer la demande</span>
+        </button>
+      </form>
+
+      <p class="foot-note">Demande interne — aucune donnée ne quitte l'infrastructure du CENADI.</p>
+    </div>
+  </section>
+
+  <section id="done-side" hidden>
+    <div class="kicker" style="color:var(--teal)">Confirmation</div>
+    <div class="panel done">
+      <div class="mark" aria-hidden="true">✓</div>
+      <h2>Demande enregistrée</h2>
+      <p>L'équipe SOC traite les demandes sous 2 jours ouvrés. Vous recevrez une notification
+         dans le portail dès qu'un périmètre est créé.</p>
+      <div class="ref">
+        <span class="k">Référence</span>
+        <span class="v" id="ref-value">—</span>
+      </div>
+      <div class="foot-note" id="ref-date">—</div>
+      <div style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn" id="again">Nouvelle demande</button>
+        <a class="btn" href="login.html">Retour à la plateforme</a>
       </div>
     </div>
+  </section>
 
-    <div class="direct-contacts">
-      <h4>Contacts directs</h4>
-      <div class="contact-line">
-        <span class="icon">✉</span>
-        <a href="mailto:architecte@nexussoc.cm">architecte@nexussoc.cm</a>
-      </div>
-      <div class="contact-line">
-        <span class="icon">☎</span>
-        <a href="tel:+237620000000">+237 620 000 000</a>
-        <span style="color:var(--text-3);font-size:12px;margin-left:4px">(jours ouvrés 08h–18h)</span>
-      </div>
-      <div class="contact-line">
-        <span class="icon">📍</span>
-        Yaoundé, Cameroun
-      </div>
+  <aside class="aside-col" id="aside">
+    <div class="aside-note">
+      <div class="k">Ce qui se passe ensuite</div>
+      <div class="v">Qualification du système et de ses dépendances, arbitrage de la criticité,
+        création du périmètre, puis enrôlement des agents depuis la console opérateur.</div>
     </div>
-  </div>
+    <div class="aside-note">
+      <div class="k">Ce qui est demandé, et pourquoi</div>
+      <div class="v">Le type et la criticité conditionnent les règles de corrélation appliquées
+        et le seuil à partir duquel le responsable est notifié. Le parc dimensionne la campagne
+        d'enrôlement.</div>
+    </div>
+    <div class="aside-note">
+      <div class="k">Ce qui a été retiré</div>
+      <div class="v">Ni carte, ni horaires d'ouverture, ni bouton d'appel, ni argumentaire :
+        c'est une demande interne entre services du CENADI, pas une page de contact.</div>
+    </div>
+  </aside>
+</main>
 
-</div>
-
+<script src="js/api.js"></script>
 <script>
 'use strict';
 
-const form = document.getElementById('contact-form');
-const btn  = document.getElementById('btn-submit');
-const errBox = document.getElementById('alert-err');
-const formState = document.getElementById('form-state');
-const successState = document.getElementById('success-state');
+const $ = id => document.getElementById(id);
+const form = $('form');
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  hideError();
+/* Le lien de retour mène à la bonne interface si une session est ouverte. */
+if (window.NexusAPI && NexusAPI.isAuthenticated) {
+  const home = { admin_plateforme:'console.html', analyste_soc:'console.html',
+                 dsi_client:'portail.html', lecteur:'portail.html' }[NexusAPI.role];
+  if (home) {
+    $('back-link').href = home;
+    $('back-link').textContent = '← retour à la plateforme';
+  }
+  const mail = (NexusAPI.user || {}).email;
+  if (mail) $('responsable').value = mail;
+}
 
-  // Validation
-  const fields = {
-    name:  document.getElementById('in-name'),
-    title: document.getElementById('in-title'),
-    org:   document.getElementById('in-org'),
-    type:  document.getElementById('in-type'),
-    email: document.getElementById('in-email'),
-  };
-  let ok = true;
-  for (const [key, el] of Object.entries(fields)) {
-    const wrap = document.getElementById('f-' + key);
-    wrap.classList.remove('error');
-    if (!el.value.trim()) { wrap.classList.add('error'); ok = false; }
-  }
-  // Email format
-  if (fields.email.value && !/\S+@\S+\.\S+/.test(fields.email.value)) {
-    document.getElementById('f-email').classList.add('error');
-    ok = false;
-  }
-  // Consent
-  if (!document.getElementById('in-consent').checked) {
-    showError('Vous devez accepter le traitement de vos informations pour envoyer le formulaire.');
-    return;
-  }
-  if (!ok) {
-    showError('Veuillez remplir tous les champs obligatoires.');
-    return;
-  }
+function showAlert(kind, title, body) {
+  const a = $('alert');
+  a.className = 'alert ' + kind;
+  $('alert-title').textContent = title;
+  $('alert-body').textContent = body;
+  a.hidden = false;
+  a.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
 
-  setLoading(true);
+function fieldError(id, msg) {
+  const input = $(id), box = $('err-' + id);
+  if (msg) { input.setAttribute('aria-invalid', 'true'); box.textContent = msg; box.hidden = false; }
+  else { input.removeAttribute('aria-invalid'); box.hidden = true; }
+}
 
-  const payload = {
-    name:    fields.name.value.trim(),
-    title:   fields.title.value.trim(),
-    organization: fields.org.value.trim(),
-    org_type: fields.type.value,
-    email:   fields.email.value.trim(),
-    phone:   document.getElementById('in-phone').value.trim(),
-    nb_postes: document.getElementById('in-postes').value,
-    timeline:  document.getElementById('in-timeline').value,
-    message:   document.getElementById('in-message').value.trim(),
-    submitted_at: new Date().toISOString(),
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+let busy = false;
+
+form.addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if (busy) return;
+
+  const data = {
+    systeme:     $('systeme').value.trim(),
+    type:        $('type').value,
+    criticite:   $('criticite').value,
+    parc:        $('parc').value.trim() || null,
+    contexte:    $('contexte').value.trim() || null,
+    responsable: $('responsable').value.trim(),
   };
 
-  // Tentative d'envoi vers une API interne future ; à défaut on stocke en local
-  // (l'endpoint /contact/perimetre-request pourra être ajouté côté backend)
+  let bad = false;
+  if (!data.systeme) { fieldError('systeme', 'Indiquez le système à superviser.'); bad = true; }
+  else fieldError('systeme', null);
+  if (!EMAIL_RE.test(data.responsable)) { fieldError('responsable', 'Adresse e-mail invalide.'); bad = true; }
+  else fieldError('responsable', null);
+  if (bad) { document.querySelector('[aria-invalid="true"]').focus(); return; }
+
+  busy = true;
+  $('alert').hidden = true;
+  const btn = $('submit');
+  btn.disabled = true;
+  $('submit-label').textContent = 'Envoi…';
+  btn.insertAdjacentHTML('afterbegin', '<span class="spinner" aria-hidden="true"></span>');
+
   try {
-    const r = await fetch('/contact/perimetre-request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (r.ok) {
-      const d = await r.json().catch(() => ({}));
-      showSuccess(d.reference || generateRef());
-      return;
-    }
-    // Si l'endpoint n'existe pas encore (404) : log + succès local
-    if (r.status === 404) {
-      console.info('[contact] endpoint backend non implémenté — payload sauvegardé localement.');
-      saveLocally(payload);
-      showSuccess(generateRef());
-      return;
-    }
-    const data = await r.json().catch(() => ({}));
-    showError(data.detail?.message || data.detail || 'Erreur côté serveur. Vous pouvez aussi nous joindre par e-mail.');
+    const r = await NexusAPI.requestPerimetre(data);
+    $('ref-value').textContent = r.reference || '—';
+    $('ref-date').textContent  = r.cree_le
+      ? new Date(r.cree_le).toLocaleString('fr-CM',
+          { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) + ' (UTC+1)'
+      : '';
+    $('form-side').hidden = true;
+    $('done-side').hidden = false;
+    $('aside').hidden = true;
+    window.scrollTo({ top:0, behavior:'smooth' });
   } catch (err) {
-    // Pas de réseau → on stocke localement et on affiche succès optimiste
-    saveLocally(payload);
-    showSuccess(generateRef());
+    if (err && err._network) {
+      // Hors ligne : on conserve la saisie localement plutôt que de la perdre,
+      // et on le dit clairement — la demande n'est PAS enregistrée côté SOC.
+      queueLocally(data);
+      showAlert('warn', 'Serveur injoignable',
+        "Votre saisie est conservée sur ce poste et sera proposée au prochain chargement de la page. Elle n'a pas encore atteint l'équipe SOC.");
+    } else if (err && err.status === 503) {
+      showAlert('err', 'Enregistrement indisponible',
+        (err.detail || 'Le service de demandes est momentanément indisponible.') + ' Signalez-le à l’administrateur de la plateforme.');
+    } else {
+      showAlert('err', 'Demande refusée', (err && err.detail) ? String(err.detail) : 'Erreur inattendue du serveur.');
+    }
   } finally {
-    setLoading(false);
+    busy = false;
+    btn.disabled = false;
+    $('submit-label').textContent = 'Envoyer la demande';
+    const sp = btn.querySelector('.spinner'); if (sp) sp.remove();
   }
 });
 
-function setLoading(loading) {
-  btn.disabled = loading;
-  btn.classList.toggle('loading', loading);
-}
-
-function showError(msg) {
-  errBox.textContent = msg;
-  errBox.classList.add('show');
-  errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-function hideError() { errBox.classList.remove('show'); }
-
-function showSuccess(ref) {
-  formState.style.display = 'none';
-  successState.classList.add('show');
-  document.getElementById('ref-id').textContent = ref;
-}
-
-function generateRef() {
-  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const rnd  = Math.random().toString(36).slice(2,7).toUpperCase();
-  return `NSC-${date}-${rnd}`;
-}
-
-function saveLocally(payload) {
+/* File locale hors ligne : une demande non transmise ne doit pas disparaître
+   silencieusement avec l'onglet. */
+function queueLocally(data) {
   try {
-    const list = JSON.parse(localStorage.getItem('nexus_pending_contacts') || '[]');
-    list.push(payload);
-    localStorage.setItem('nexus_pending_contacts', JSON.stringify(list));
+    const list = JSON.parse(localStorage.getItem('nexus_pending_requests') || '[]');
+    list.push({ ...data, _queued_at: new Date().toISOString() });
+    localStorage.setItem('nexus_pending_requests', JSON.stringify(list));
   } catch {}
 }
 
-// PWA
+(function restoreQueued() {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem('nexus_pending_requests') || '[]'); } catch {}
+  if (!list.length) return;
+  const d = list[list.length - 1];
+  ['systeme', 'type', 'criticite', 'parc', 'contexte', 'responsable'].forEach(k => {
+    if (d[k] && $(k)) $(k).value = d[k];
+  });
+  showAlert('warn', 'Demande non transmise restaurée',
+    `Saisie du ${new Date(d._queued_at).toLocaleString('fr-CM')} — le serveur était injoignable. Vérifiez-la et renvoyez-la.`);
+  localStorage.removeItem('nexus_pending_requests');
+})();
+
+$('again').addEventListener('click', () => {
+  form.reset();
+  $('form-side').hidden = false;
+  $('done-side').hidden = true;
+  $('aside').hidden = false;
+  $('alert').hidden = true;
+  $('systeme').focus();
+});
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>

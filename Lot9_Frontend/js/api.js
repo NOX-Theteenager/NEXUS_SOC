@@ -178,7 +178,8 @@
     getTenants()           { return this.get('/admin/tenants'); }
     getTenant(id)          { return this.get(`/admin/tenants/${id}`); }
     createTenant(data)     { return this.post('/admin/tenants', data); }
-    updateTenant(id, data) { return this.put(`/admin/tenants/${id}`, data); }
+    // Le backend expose PATCH (mise à jour partielle), pas PUT.
+    updateTenant(id, data) { return this.patch(`/admin/tenants/${id}`, data); }
     suspendTenant(id)      { return this.post(`/admin/tenants/${id}/suspend`); }
     activateTenant(id)     { return this.post(`/admin/tenants/${id}/activate`); }
     deleteTenant(id)       { return this.del(`/admin/tenants/${id}`); }
@@ -212,14 +213,71 @@
 
     generateToken(data)           { return this.post('/provision/token', data); }
     getTokenStatus(id)            { return this.get(`/provision/status/${id}`); }
+    getEnrollmentLog(id)          { return this.get(`/provision/status/${id}/log`); }
     revokeToken(id)               { return this.post(`/provision/revoke/${id}`); }
     revokeAllAgents(tenantId)     { return this.post(`/provision/revoke-tenant/${tenantId}`); }
     rotateHmac(agentId)           { return this.post(`/provision/rotate-hmac/${agentId}`); }
     getInstaller(id, os)          { return this.get(`/provision/installer/${id}?os=${os}`); }
-    getOneliner(token, hostname, os = 'linux') {
-      return `${BASE}/provision/oneliner?token=${token}&hostname=${hostname}&os=${os}`;
+    getQrCode(agentId, bearer = '') {
+      const qs = new URLSearchParams({ bearer }).toString();
+      return this.get(`/provision/qr/${agentId}?${qs}`);
     }
-    bulkProvision(csv)            { return this.post('/provision/bulk', { csv }); }
+
+    /** Commande shell à copier telle quelle sur le poste cible.
+     *  Chaîne construite côté client : aucun appel réseau, donc affichable
+     *  immédiatement après la génération du jeton. */
+    getOneliner(token, hostname, os = 'linux') {
+      const origin = BASE || window.location.origin;
+      const url = `${origin}/provision/oneliner?token=${encodeURIComponent(token)}`
+                + `&hostname=${encodeURIComponent(hostname)}&os=${os}`;
+      return os === 'windows'
+        ? `irm "${url}" | iex`
+        : `curl -fsSL "${url}" | sudo sh`;
+    }
+
+    /** Téléchargements authentifiés (Bearer) : le navigateur ne peut pas
+     *  poser l'en-tête sur un <a download>, on passe donc par un blob. */
+    downloadInstaller(agentId, os, bearer = '', hmac = '') {
+      const qs = new URLSearchParams({ os, bearer, hmac }).toString();
+      return this._download(`/provision/installer/${agentId}?${qs}`,
+        os === 'windows' ? `Install-NexusAgent.ps1` : `install_nexus_agent.sh`);
+    }
+    downloadOfflinePack(agentId, os = 'linux', bearer = '', hmac = '') {
+      const qs = new URLSearchParams({ os, bearer, hmac }).toString();
+      return this._download(`/provision/offline-pack/${agentId}?${qs}`,
+        `nexus-agent-${String(agentId).slice(0, 4)}.zip`);
+    }
+
+    async _download(path, filename) {
+      const r = await fetch(BASE + path, {
+        headers: { 'Authorization': `Bearer ${this.accessToken}` },
+      });
+      if (!r.ok) throw { status: r.status, detail: 'Téléchargement refusé' };
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /** Enrôlement en masse : l'endpoint attend un multipart avec un vrai
+     *  fichier CSV (hostname,os,description), pas un corps JSON. */
+    async bulkProvision(tenantId, file, expiresInHours = 24) {
+      const qs = new URLSearchParams({
+        tenant_id: tenantId, expires_in_hours: expiresInHours,
+      }).toString();
+      const fd = new FormData();
+      fd.append('file', file, file.name || 'parc.csv');
+      const r = await fetch(`${BASE}/provision/bulk?${qs}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${this.accessToken}` },
+        body: fd,
+      });
+      const data = await r.json().catch(() => ({ detail: r.statusText }));
+      if (!r.ok) throw { status: r.status, detail: data.detail || r.statusText };
+      return data;
+    }
 
     // ── Analyst — Alertes ─────────────────────────────────────────────────────
 
@@ -234,11 +292,29 @@
     rejectAction(actionId, reason) {
       return this.post(`/analyst/reject/${actionId}`, { reason });
     }
+    /** Déclare qu'un opérateur a réellement passé la commande à la main.
+     *  Approuver n'exécute rien tant qu'aucun connecteur n'est raccordé :
+     *  c'est cet appel, nominatif et horodaté, qui atteste l'exécution. */
+    markActionExecuted(actionId, executedBy, note) {
+      return this.post(`/analyst/executed/${actionId}`, { executed_by: executedBy, note });
+    }
     markFalsePositive(alertId) {
       return this.post(`/analyst/false-positive/${alertId}`);
     }
     getSOCDashboard()      { return this.get('/analyst/dashboard'); }
     getPendingSOAR()       { return this.get('/analyst/pending'); }
+
+    /** Journal d'audit SOAR — qui a fait quoi, quand, sur quelle décision. */
+    getSoarAudit(params = {}) {
+      const clean = Object.fromEntries(
+        Object.entries(params).filter(([, v]) => v !== '' && v != null));
+      const qs = new URLSearchParams(clean).toString();
+      return this.get(`/analyst/soar-audit${qs ? '?' + qs : ''}`);
+    }
+
+    // ── Demandes internes (contact.html) ──────────────────────────────────────
+
+    requestPerimetre(data) { return this.post('/contact/perimetre-request', data); }
 
     // ── Scoring ───────────────────────────────────────────────────────────────
 
@@ -250,18 +326,34 @@
     getPortalAlerts(limit = 50) { return this.get(`/portal/alerts?limit=${limit}`); }
     getPortalAgents()           { return this.get('/portal/agents'); }
     getPortalSummary()          { return this.get('/portal/summary'); }
+
+    /** Explication d'un incident en langage clair, produite par le serveur
+     *  (module Analyst du Lot 5). Mode template par défaut, LLM si configuré. */
+    explainAlert(alertId, lang = 'fr') {
+      return this.get(`/portal/alerts/${alertId}/explain?lang=${lang}`);
+    }
     getPortalNotifications(unreadOnly = false, limit = 50) {
       const qs = new URLSearchParams({ unread_only: unreadOnly, limit }).toString();
       return this.get(`/portal/notifications?${qs}`);
     }
     markNotifRead(id)           { return this.post(`/portal/notifications/${id}/mark-read`); }
     markAllNotifsRead()         { return this.post('/portal/notifications/mark-all-read'); }
-    getNotifReport(id)          { return this.get(`/portal/notifications/${id}/report`); }
+    /** Le rapport suit la langue de la page. La version française est celle
+     *  figée en base au moment de l'incident ; les autres sont rendues à la
+     *  demande depuis les mêmes données. */
+    /** Historique du score, agrégé côté serveur. Les jours sans télémétrie
+     *  reviennent avec `score: null` — ce sont des jours sans information, pas
+     *  des jours sans incident. */
+    getScoreHistory(days = 14) { return this.get(`/portal/score-history?days=${days}`); }
+
+    getNotifReport(id, lang = 'fr') {
+      return this.get(`/portal/notifications/${id}/report?lang=${encodeURIComponent(lang)}`);
+    }
 
     /** Télécharge le rapport HTML authentifié (Bearer) sous forme de blob.
      *  Déclenche un download navigateur avec un nom de fichier propre. */
-    async downloadNotifReport(id, filename = null) {
-      const r = await fetch(BASE + `/portal/notifications/${id}/download`, {
+    async downloadNotifReport(id, filename = null, lang = 'fr') {
+      const r = await fetch(BASE + `/portal/notifications/${id}/download?lang=${encodeURIComponent(lang)}`, {
         headers: { 'Authorization': `Bearer ${this.accessToken}` },
       });
       if (!r.ok) throw { status: r.status, detail: 'Téléchargement refusé' };
@@ -269,7 +361,8 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename || `rapport-nexussoc-${id.slice(0, 8)}.html`;
+      a.download = filename
+        || `rapport-nexussoc-${id.slice(0, 8)}${lang !== 'fr' ? '-' + lang : ''}.html`;
       document.body.appendChild(a);
       a.click();
       a.remove();

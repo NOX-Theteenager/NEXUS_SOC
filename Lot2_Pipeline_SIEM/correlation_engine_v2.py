@@ -56,7 +56,13 @@ ACCOUNT_CREATE_THRESHOLD = int(os.getenv("ACCOUNT_CREATE_THRESHOLD", "5"))
 # Règles de détection individuelles
 # ────────────────────────────────────────────────────────────────────────────
 def detect(ev: dict):
-    """Retourne (tactique, technique_id, technique_nom, détail) ou None."""
+    """Retourne (tactique, technique_id, technique_nom, détail[, ioc]) ou None.
+
+    Le 5e élément est facultatif : c'est l'indicateur de compromission
+    exploitable par une action de réponse (aujourd'hui l'IP distante d'un canal
+    C2). Sans lui, un blocage au pare-feu n'a aucune cible et l'action de
+    réponse ne peut pas être proposée honnêtement.
+    """
     d = ev.get("data", {})
     k = ev["kind"]
 
@@ -91,8 +97,10 @@ def detect(ev: dict):
         ip     = remote.rsplit(":", 1)[0].strip("[]")
         port   = remote.rsplit(":", 1)[-1]
         if port in C2_PORTS or ip in TI_IPS:
+            # L'IP est remontée telle quelle, pas seulement noyée dans le texte :
+            # c'est elle que le pare-feu devra bloquer.
             return ("Command and Control", "T1071", "Application Layer Protocol",
-                    f"connexion vers {remote}")
+                    f"connexion vers {remote}", ip)
 
     elif k == "file_change":
         path = (d.get("path") or "").lower()
@@ -184,22 +192,30 @@ def correlate(events: list) -> list:
     corr_window = timedelta(minutes=CORR_WINDOW_MIN)
 
     for host, evs in by_host.items():
+        # Chaque détection est normalisée à 6 champs :
+        # (horodatage, tactique, technique_id, technique_nom, détail, ioc|None)
         dets = []
+
+        def _ajouter(ts, hit):
+            tactic, tid, tname, detail = hit[:4]
+            ioc = hit[4] if len(hit) > 4 else None
+            dets.append((ts, tactic, tid, tname, detail, ioc))
+
         for ev in sorted(evs, key=lambda e: e["time"]):
             hit = detect(ev)
             if hit:
-                dets.append((ev["time"], *hit))
+                _ajouter(ev["time"], hit)
 
         # Règles volumétriques (ne dépendent pas d'un seul événement)
         mass_file = detect_mass_file_change(evs)
         if mass_file:
             tactic, tid, tname, detail, ts = mass_file
-            dets.append((ts, tactic, tid, tname, detail))
+            _ajouter(ts, (tactic, tid, tname, detail))
 
         mass_account = detect_mass_account_creation(evs)
         if mass_account:
             tactic, tid, tname, detail, ts = mass_account
-            dets.append((ts, tactic, tid, tname, detail))
+            _ajouter(ts, (tactic, tid, tname, detail))
 
         if not dets:
             continue
@@ -243,13 +259,17 @@ def correlate(events: list) -> list:
 
         chaine = [
             {"heure": d[0][11:19], "tactique": d[1],
-             "technique": f"{d[2]} {d[3]}", "detail": d[4]}
+             "technique": f"{d[2]} {d[3]}", "detail": d[4], "ioc": d[5]}
             for d in dets
         ]
+        # Indicateurs exploitables par une action de réponse, dédupliqués en
+        # conservant l'ordre d'apparition dans la chaîne.
+        iocs = list(dict.fromkeys(d[5] for d in dets if d[5]))
         incidents.append({
             "type": itype, "entity": host, "entity_kind": "poste", "risque": risk,
             "source": "Corrélation SIEM v2", "activite_hors_heures": after_hours,
             "mitre": sorted({d[2] for d in dets}), "tactiques": tactics, "chaine": chaine,
+            "iocs": iocs,
         })
     return incidents
 

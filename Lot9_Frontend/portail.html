@@ -1,835 +1,1356 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="theme-color" content="#0A0F1C"/>
-<meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>NEXUS SOC — Portail DSI</title>
-<link rel="manifest" href="manifest.json"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portail de périmètre — NEXUS SOC</title>
+<meta name="theme-color" content="#0A0F1C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXUS SOC — Portail responsable de périmètre
+   Public : dsi_client, lecteur. Non technicien. Mobile d'abord.
+   Règle directrice : la phrase en clair d'abord, le jargon en second plan.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg:        #0A0F1C;
-  --bg-2:      #0D1424;
-  --surface:   #0F1729;
-  --surface-2: #131D33;
-  --border:    #1E293B;
-  --border-2:  #334155;
-  --text:      #E2E8F0;
-  --text-2:    #94A3B8;
-  --text-3:    #64748B;
-  --accent:    #5EAAFF;
-  --teal:      #3DDC97;
-  --amber:     #F5A524;
-  --red:       #EF4444;
-  --display:   "Fraunces", Georgia, serif;
-  --body:      "Manrope", sans-serif;
-  --mono:      "JetBrains Mono", monospace;
+  --bg:#0A0F1C; --bg-2:#0D1424; --surface:#0F1729; --surface-2:#131D33;
+  --border:#1E293B; --border-2:#334155;
+  --text:#E2E8F0; --text-2:#94A3B8; --text-3:#64748B; --text-4:#475569;
+  --accent:#5EAAFF; --teal:#3DDC97; --amber:#F5A524; --red:#EF4444;
+  --display:"Fraunces",Georgia,serif;
+  --body:"Manrope",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"Courier New",monospace;
+  --r-card:12px; --r-lg:18px; --r-field:9px; --r-pill:999px;
+  --sh-float:0 24px 80px rgba(0,0,0,.55);
+  --focus:0 0 0 3px rgba(94,170,255,.15);
+  --header-h:58px;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 body {
-  font-family: var(--body);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  background:var(--bg); color:var(--text);
+  font-family:var(--body); font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
 }
-body::before {
-  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+button, input, select, textarea { font-family:inherit; }
+:focus-visible { outline:none; box-shadow:var(--focus); border-radius:6px; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-thumb { background:var(--border-2); border-radius:3px; }
+
+@keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes shimmer { to { background-position:-200% 0 } }
+@keyframes cardIn  { from{opacity:0;transform:translateY(20px) scale(.98)} to{opacity:1;transform:none} }
+@keyframes toastIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+.sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0; }
+[hidden] { display:none !important; }
+
+/* Texture d'ambiance — pas de ligne de balayage ici : écran de consultation. */
+.bg-grid {
+  position:fixed; inset:0; pointer-events:none; z-index:0;
   background-image:
-    linear-gradient(rgba(94,170,255,.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94,170,255,.015) 1px, transparent 1px);
-  background-size: 36px 36px;
-}
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
-
-/* ── Header ─────────────────────────────────────────────────────────── */
-header {
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(10,15,28,.93);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border);
-  padding: 0 24px;
-  height: 58px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-header::after {
-  content: "";
-  position: absolute;
-  bottom: -2px; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--amber) 0%, var(--accent) 45%, var(--teal) 100%);
-  opacity: .7;
-}
-.brand {
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 600;
-  font-size: 20px;
-  letter-spacing: -.02em;
-  text-decoration: none;
-  color: var(--text);
-}
-.brand em { color: var(--amber); }
-.header-spacer { flex: 1; }
-.header-right { display: flex; align-items: center; gap: 14px; }
-.org-name {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-2);
-  letter-spacing: .04em;
-  border: 1px solid var(--border-2);
-  padding: 4px 10px;
-  border-radius: 6px;
-}
-.lang-switch { display: flex; gap: 4px; }
-.lang-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text-3);
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 3px 8px;
-  cursor: pointer;
-  transition: all .2s;
-  letter-spacing: .06em;
-}
-.lang-btn.active { border-color: var(--accent); color: var(--accent); }
-.logout-btn {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-3);
-  padding: 5px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-family: var(--mono);
-  cursor: pointer;
-  transition: all .2s;
-}
-.logout-btn:hover { border-color: var(--red); color: var(--red); }
-
-/* ── Cloche notifications ─────────────────────────────────────────── */
-.notif-bell {
-  position: relative;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  padding: 6px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: color .2s, border-color .2s;
-  display: flex; align-items: center; justify-content: center;
-}
-.notif-bell:hover { color: var(--accent); border-color: var(--accent); }
-.notif-bell.has-unread { color: var(--accent); }
-.notif-badge {
-  position: absolute;
-  top: -6px; right: -6px;
-  background: var(--red); color: #fff;
-  font-family: var(--mono); font-size: 9px; font-weight: 700;
-  min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  line-height: 1;
-  box-shadow: 0 0 0 2px var(--bg-2);
+    linear-gradient(rgba(94,170,255,.015) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(94,170,255,.015) 1px,transparent 1px);
+  background-size:36px 36px;
 }
 
-/* ── Panel notifications ──────────────────────────────────────────── */
+/* ── En-tête ───────────────────────────────────────────────────────────── */
+.hdr {
+  position:sticky; top:0; z-index:40;
+  height:var(--header-h); padding:0 14px;
+  display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid var(--border);
+  background:rgba(10,15,28,.93); backdrop-filter:blur(14px);
+}
+.logo { font-family:var(--display); font-style:italic; font-weight:600; font-size:19px; letter-spacing:-.02em; white-space:nowrap; }
+.logo em { font-style:inherit; color:var(--amber); }
+.hdr-spacer { flex:1; }
+.perim-badge {
+  font-family:var(--mono); font-size:10px; color:var(--text-2);
+  border:1px solid var(--border-2); border-radius:6px; padding:3px 8px;
+  max-width:34vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.hdr-rule { height:24px; width:1px; background:var(--border); }
+
+.icon-btn {
+  position:relative; flex-shrink:0;
+  width:34px; height:34px;
+  display:flex; align-items:center; justify-content:center;
+  background:none; border:1px solid var(--border); border-radius:8px;
+  color:var(--text-2); cursor:pointer; transition:all .2s;
+}
+.icon-btn:hover { border-color:var(--accent); color:var(--accent); }
+.icon-btn .ic { width:17px; height:17px; }
+.bell-count {
+  position:absolute; top:-6px; right:-6px;
+  min-width:16px; height:16px; padding:0 4px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--red); color:#fff; border-radius:8px;
+  font-family:var(--mono); font-size:9px; font-weight:700;
+  box-shadow:0 0 0 2px var(--bg);
+}
+
+.lang {
+  display:flex; gap:3px; border:1px solid var(--border); border-radius:7px; padding:2px;
+}
+.lang button {
+  background:none; border:none; border-radius:5px; padding:3px 8px;
+  font-family:var(--mono); font-size:10.5px; color:var(--text-3); cursor:pointer; transition:all .2s;
+}
+.lang button[aria-pressed="true"] { background:rgba(94,170,255,.12); color:var(--accent); }
+
+/* Filet chromatique : ambre → bleu → vert, les trois accents du système. */
+.hdr-rule-color { height:2px; background:linear-gradient(90deg,#F5A524 0%,#5EAAFF 45%,#3DDC97 100%); opacity:.7; }
+
+/* ── Bandeaux d'état ───────────────────────────────────────────────────── */
+.banner { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:12.5px; line-height:1.45; }
+.banner .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.banner-offline { background:rgba(245,165,36,.08); border-bottom:1px solid rgba(245,165,36,.25); color:var(--amber); }
+.banner-offline .dot { background:var(--amber); }
+.banner-offline .sub { color:var(--text-2); }
+.banner-readonly {
+  background:rgba(100,116,139,.1); border-bottom:1px solid var(--border);
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; color:var(--text-2);
+  padding:8px 16px;
+}
+
+/* ── Panneau de notifications ──────────────────────────────────────────── */
 .notif-panel {
-  position: fixed;
-  top: 64px; right: 16px;
-  width: min(380px, calc(100vw - 24px));
-  max-height: 70vh;
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 14px;
-  box-shadow: 0 24px 60px rgba(0,0,0,.5);
-  z-index: 150;
-  opacity: 0;
-  transform: translateY(-8px) scale(.97);
-  pointer-events: none;
-  transition: opacity .18s, transform .18s;
-  display: flex; flex-direction: column;
+  margin:12px 14px 0;
+  background:var(--surface); border:1px solid var(--border-2); border-radius:14px;
+  overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.5);
+  animation:cardIn .35s cubic-bezier(.22,1,.36,1) both;
+  position:relative; z-index:20;
 }
-.notif-panel.open {
-  opacity: 1; transform: none; pointer-events: auto;
+.notif-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 16px; border-bottom:1px solid var(--border); }
+.notif-head h2 { font-family:var(--body); font-weight:700; font-size:14px; }
+.link-btn { background:none; border:none; font-family:var(--mono); font-size:11px; color:var(--text-3); cursor:pointer; transition:color .2s; }
+.link-btn:hover { color:var(--accent); }
+.notif-list { max-height:min(52vh,420px); overflow-y:auto; }
+.notif {
+  position:relative; padding:12px 16px 12px 30px;
+  border-bottom:1px solid rgba(30,41,59,.5); cursor:pointer; transition:background .2s;
 }
-.notif-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
+.notif:last-child { border-bottom:none; }
+.notif:hover { background:rgba(19,29,51,.5); }
+.notif .sev { position:absolute; left:13px; top:17px; width:7px; height:7px; border-radius:50%; }
+.notif.unread .title { font-weight:700; }
+.notif-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.notif .title { font-size:13px; font-weight:600; color:var(--text); }
+.notif .kind {
+  font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+  border:1px solid currentColor; border-radius:var(--r-pill); padding:1px 7px; opacity:.8;
 }
-.notif-title { font-weight: 700; font-size: 14px; }
-.notif-action {
-  background: none; border: none;
-  font-family: var(--mono); font-size: 11px;
-  color: var(--text-3); cursor: pointer;
-  transition: color .2s;
-}
-.notif-action:hover { color: var(--accent); }
-.notif-list { overflow-y: auto; flex: 1; min-height: 80px; }
-.notif-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(30,41,59,.5);
-  cursor: pointer;
-  transition: background .15s;
-  position: relative;
-  padding-left: 28px;
-}
-.notif-item::before {
-  content: ""; position: absolute;
-  left: 12px; top: 18px;
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent);
-}
-.notif-item.read::before { background: transparent; border: 1px solid var(--border-2); }
-.notif-item.severity-critical::before { background: var(--red); box-shadow: 0 0 6px var(--red); }
-.notif-item.severity-warning::before  { background: var(--amber); }
-.notif-item.severity-info::before     { background: var(--accent); }
-.notif-item:hover { background: rgba(19,29,51,.5); }
-.notif-item-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-.notif-item.read .notif-item-title { color: var(--text-2); font-weight: 500; }
-.notif-item-body { font-size: 12px; color: var(--text-3); line-height: 1.5; }
-.notif-item-time { font-family: var(--mono); font-size: 10px; color: var(--text-3); margin-top: 5px; }
-.notif-empty { padding: 32px 18px; text-align: center; color: var(--text-3); font-size: 13px; }
+.notif .body { font-size:12px; color:var(--text-3); line-height:1.5; margin-top:3px; }
+.notif-actions { display:flex; align-items:center; gap:10px; margin-top:7px; flex-wrap:wrap; }
+.notif .time { font-family:var(--mono); font-size:10px; color:var(--text-3); }
 
-/* (Le bloc .overlay/.modal partagé est défini plus bas et réutilisé par le modal rapport) */
-
-/* ── Layout ──────────────────────────────────────────────────────────── */
-.container { max-width: 1100px; margin: 0 auto; padding: 28px 24px; position: relative; z-index: 1; }
-
-/* ── Score & KPIs ────────────────────────────────────────────────────── */
-.top-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 20px;
-  align-items: center;
-  margin-bottom: 28px;
+.mini-btn {
+  background:none; border:1px solid var(--border-2); color:var(--text-2);
+  border-radius:6px; padding:3px 9px;
+  font-family:var(--mono); font-size:10px; cursor:pointer; transition:all .2s;
 }
+.mini-btn:hover { border-color:var(--accent); color:var(--accent); }
+.mini-btn.accent { background:rgba(94,170,255,.1); border-color:rgba(94,170,255,.3); color:var(--accent); }
+
+/* ── Corps ─────────────────────────────────────────────────────────────── */
+main { position:relative; z-index:1; padding:18px 14px 40px; display:flex; flex-direction:column; gap:22px; }
+@media (min-width:760px) { main { max-width:1080px; margin:0 auto; padding:24px 24px 60px; } }
+
+.section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+.section-title { font-family:var(--display); font-size:18px; font-weight:600; letter-spacing:-.02em; }
+.section-meta { font-family:var(--mono); font-size:10.5px; color:var(--text-3); text-align:right; }
+
+/* Score de sécurité — l'élément le plus regardé de la plateforme.
+   Valeur + tendance + phrase d'explication + provenance. */
 .score-card {
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 18px;
-  padding: 24px 28px;
-  text-align: center;
-  min-width: 160px;
+  background:var(--surface); border:1px solid var(--border-2); border-radius:var(--r-lg);
+  padding:20px; display:flex; flex-direction:column; gap:16px;
 }
-.score-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text-3);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
+.score-row { display:flex; align-items:flex-start; gap:18px; flex-wrap:wrap; }
+.score-main { flex:1; min-width:150px; }
+.kicker {
+  font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--text-3); margin-bottom:6px;
 }
-.score-value {
-  font-family: var(--display);
-  font-size: 56px;
-  font-weight: 600;
-  letter-spacing: -.04em;
-  line-height: 1;
-}
-.score-sub { font-size: 12px; color: var(--text-3); margin-top: 6px; }
-.score-ring {
-  position: relative;
-  display: inline-block;
-  margin: 8px 0;
+.score-value-row { display:flex; align-items:baseline; gap:10px; }
+.score-value { font-family:var(--display); font-size:60px; font-weight:600; letter-spacing:-.04em; line-height:.9; }
+.score-trend { font-family:var(--mono); font-size:13px; }
+.score-verdict { font-size:13.5px; font-weight:600; color:var(--text); margin-top:10px; }
+.score-explain { font-size:12.5px; color:var(--text-2); line-height:1.5; margin-top:2px; text-wrap:pretty; }
+.score-spark { min-width:180px; flex:1; }
+.spark-axis { display:flex; justify-content:space-between; font-family:var(--mono); font-size:9.5px; color:var(--text-3); margin-top:2px; }
+.score-foot {
+  border-top:1px solid var(--border); padding-top:11px;
+  display:flex; gap:14px; flex-wrap:wrap;
+  font-family:var(--mono); font-size:10px; color:var(--text-3);
 }
 
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
+/* KPI */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:10px; }
+.kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-card); padding:14px; }
+.kpi-label { font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-3); margin-bottom:5px; }
+.kpi-value { font-family:var(--display); font-size:26px; font-weight:600; letter-spacing:-.02em; line-height:1.1; }
+.kpi-sub { font-size:11px; color:var(--text-3); margin-top:2px; }
+
+/* Analyse NEXUS — traitée comme une analyse éditoriale, pas comme un log.
+   C'est la signature du portail (designexus.md §5.3). */
+.analyst {
+  background:rgba(94,170,255,.04);
+  border:1px solid rgba(94,170,255,.18); border-left:3px solid var(--accent);
+  border-radius:0 14px 14px 0; padding:18px 20px;
 }
-.kpi-mini {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+.analyst-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.analyst-head .kicker { margin:0; color:var(--accent); letter-spacing:.14em; font-size:9.5px; }
+.analyst-head .live { width:5px; height:5px; border-radius:50%; background:var(--accent); animation:pulse 2.2s infinite; }
+.analyst p { font-family:var(--display); font-style:italic; font-size:16px; line-height:1.75; color:var(--text); text-wrap:pretty; }
+.analyst-meta { font-family:var(--mono); font-size:10px; color:var(--text-3); margin-top:12px; }
+
+/* Incidents */
+.alert-list { display:flex; flex-direction:column; gap:10px; }
+.alert-card {
+  width:100%; text-align:left;
+  background:var(--surface); border:1px solid var(--border);
+  border-left:3px solid var(--border-2); border-radius:var(--r-card);
+  padding:15px 16px; cursor:pointer;
+  transition:border-color .2s, transform .15s;
+  display:flex; gap:12px; align-items:flex-start;
+  color:inherit; font-family:inherit;
 }
-.kpi-mini-label {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  color: var(--text-3);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
+.alert-card:hover { transform:translateX(3px); }
+.alert-risk { text-align:center; min-width:44px; }
+.alert-risk b { display:block; font-family:var(--mono); font-size:19px; font-weight:700; line-height:1; }
+.alert-risk span { font-family:var(--mono); font-size:8.5px; color:var(--text-3); letter-spacing:.08em; }
+.alert-body { flex:1; min-width:0; }
+.alert-plain { font-size:14px; font-weight:600; line-height:1.45; color:var(--text); text-wrap:pretty; }
+.alert-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:9px; font-family:var(--mono); font-size:10px; color:var(--text-3); }
+.pill {
+  font-family:var(--mono); font-size:10px; border-radius:var(--r-pill); padding:2px 8px;
+  border:1px solid currentColor;
 }
-.kpi-mini-value {
-  font-family: var(--display);
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -.02em;
+.tags { display:flex; gap:5px; flex-wrap:wrap; margin-top:9px; }
+.tag {
+  font-family:var(--mono); font-size:9px; color:var(--text-3);
+  border:1px solid var(--border); background:rgba(94,170,255,.04);
+  border-radius:4px; padding:2px 7px;
 }
 
-/* ── Alertes ─────────────────────────────────────────────────────────── */
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
+/* États vides / erreur — un état vide doit informer, pas se taire. */
+.state {
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  padding:30px 22px; text-align:center;
 }
-.section-title {
-  font-family: var(--display);
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -.02em;
+.state.ok  { border-color:rgba(61,220,151,.25); }
+.state.err { border-color:rgba(239,68,68,.3); }
+.state-mark {
+  width:42px; height:42px; border-radius:50%; border:2px solid currentColor;
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+  margin:0 auto 12px;
 }
-.refresh-btn {
-  background: none;
-  border: 1px solid var(--border-2);
-  color: var(--text-3);
-  padding: 5px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all .2s;
+.state.ok  .state-mark { color:var(--teal); }
+.state.err .state-mark { color:var(--red); }
+.state h3 { font-family:var(--display); font-size:18px; font-weight:600; letter-spacing:-.02em; margin-bottom:6px; color:var(--text); }
+.state p { font-size:13px; color:var(--text-2); max-width:400px; margin:0 auto; line-height:1.65; }
+.state-facts {
+  display:flex; gap:20px; justify-content:center; flex-wrap:wrap;
+  margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
 }
-.refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+.state-facts dt { font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); }
+.state-facts dd { font-family:var(--mono); font-size:12px; color:var(--text-2); margin-top:3px; }
+.state-code { font-family:var(--mono); font-size:10.5px; color:var(--text-3); margin-top:12px; }
 
-.alert-list { display: flex; flex-direction: column; gap: 10px; }
-.alert-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border-2);
-  border-radius: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: border-color .2s, transform .15s;
+.btn {
+  background:none; border:1px solid var(--border-2); color:var(--text-2);
+  border-radius:var(--r-field); padding:9px 18px; font-size:13px; cursor:pointer; transition:all .2s;
 }
-.alert-item:hover { border-left-color: var(--accent); transform: translateX(3px); }
-.alert-item.crit { border-left-color: var(--red); }
-.alert-item.high { border-left-color: var(--amber); }
-.alert-item.med  { border-left-color: var(--accent); }
-.alert-row { display: flex; align-items: center; gap: 10px; }
-.alert-score {
-  font-family: var(--mono);
-  font-size: 16px;
-  font-weight: 700;
-  min-width: 38px;
-}
-.alert-info { flex: 1; min-width: 0; }
-.alert-title-text { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.alert-meta-text { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
-.alert-status {
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid;
-  white-space: nowrap;
-}
-.alert-kc { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
-.kc-pill {
-  font-family: var(--mono);
-  font-size: 9px;
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 1px solid rgba(94,170,255,.2);
-  color: var(--text-3);
-  background: rgba(94,170,255,.05);
-}
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn-primary { background:var(--accent); border-color:var(--accent); color:#07111F; font-weight:700; }
+.btn-primary:hover { filter:brightness(1.08); color:#07111F; }
 
-.empty { text-align: center; padding: 48px 20px; color: var(--text-3); }
-.empty .icon { font-size: 36px; margin-bottom: 10px; opacity: .5; }
-.empty p { font-size: 13px; }
-
-/* ── Agents ──────────────────────────────────────────────────────────── */
-.agents-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
+/* Agents */
+.agent-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; }
+.agent {
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:11px 13px; display:flex; align-items:center; gap:10px;
 }
-.agent-chip {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.agent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.agent-dot.online  { background: var(--teal);  box-shadow: 0 0 6px var(--teal); }
-.agent-dot.offline { background: var(--text-3); }
-.agent-dot.isolated { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
-.agent-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.agent-os   { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+.agent .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.agent-id { min-width:0; flex:1; }
+.agent-host { font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.agent-meta { font-family:var(--mono); font-size:10px; color:var(--text-3); }
+.agent-state { font-family:var(--mono); font-size:9px; letter-spacing:.06em; }
 
-/* ── Modal détail alerte ─────────────────────────────────────────────── */
+/* Squelettes — conçus en même temps que les états chargés, pas après. */
+.sk { border-radius:var(--r-card); background:linear-gradient(90deg,#131D33 25%,rgba(30,41,59,.8) 50%,#131D33 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; }
+.sk-hint { font-family:var(--mono); font-size:10.5px; color:var(--text-3); text-align:center; }
+
+/* ── Modales — piège de focus + fermeture Échap (dette n°9) ─────────────── */
 .overlay {
-  display: none; position: fixed; inset: 0; z-index: 200;
-  background: rgba(5,8,18,.82); backdrop-filter: blur(6px);
-  align-items: center; justify-content: center; padding: 16px;
+  position:fixed; inset:0; z-index:60;
+  background:rgba(3,7,15,.72); backdrop-filter:blur(3px);
+  display:flex; align-items:flex-end; justify-content:center; padding:0;
 }
-.overlay.open { display: flex; }
+@media (min-width:700px) { .overlay { align-items:center; padding:28px; } }
 .modal {
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-  border-radius: 18px;
-  padding: 30px 28px;
-  width: 100%; max-width: 580px;
-  max-height: 90vh; overflow-y: auto;
-  position: relative;
-  box-shadow: 0 24px 72px rgba(0,0,0,.55);
-  animation: modalIn .3s cubic-bezier(.22,1,.36,1);
+  width:min(720px,100%); max-height:92vh; display:flex; flex-direction:column;
+  background:var(--surface); border:1px solid var(--border-2);
+  border-radius:18px 18px 0 0; box-shadow:var(--sh-float);
+  animation:cardIn .3s cubic-bezier(.22,1,.36,1) both;
 }
-@keyframes modalIn { from { opacity:0; transform:translateY(20px) scale(.97); } to { opacity:1; transform:none; } }
-.modal-close {
-  position: absolute; top: 14px; right: 14px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 8px; color: var(--text-2); font-size: 16px;
-  width: 30px; height: 30px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
-.modal-close:hover { color: var(--text); }
+@media (min-width:700px) { .modal { border-radius:16px; } }
+.modal-head { display:flex; align-items:flex-start; gap:12px; padding:18px 20px; border-bottom:1px solid var(--border); }
+.modal-head h2 { font-family:var(--display); font-size:19px; font-weight:600; letter-spacing:-.02em; line-height:1.25; flex:1; }
+.modal-body { padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:18px; }
+.modal-foot { padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
 
-/* ── Skeleton ────────────────────────────────────────────────────────── */
-.skeleton {
-  background: linear-gradient(90deg, var(--surface-2) 25%, rgba(30,41,59,.8) 50%, var(--surface-2) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 8px;
-}
-@keyframes shimmer { to { background-position: -200% 0; } }
+.block { background:var(--bg-2); border:1px solid var(--border); border-radius:var(--r-card); padding:16px; }
+.block .kicker { margin-bottom:10px; }
+.reason-list { display:flex; flex-direction:column; gap:9px; }
+.reason { display:flex; gap:9px; align-items:flex-start; font-size:13px; color:var(--text-2); line-height:1.55; }
+.reason::before { content:""; width:5px; height:5px; border-radius:50%; background:var(--accent); margin-top:8px; flex-shrink:0; }
 
-/* ── Toast ────────────────────────────────────────────────────────────── */
-.toasts { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.chain { display:flex; flex-direction:column; }
+.chain-step { display:grid; grid-template-columns:20px 1fr; gap:12px; align-items:flex-start; }
+.chain-rail { display:flex; flex-direction:column; align-items:center; align-self:stretch; }
+.chain-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+.chain-line { width:1px; flex:1; min-height:34px; }
+.chain-content { padding-bottom:16px; }
+.chain-tac {
+  font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  border:1px solid currentColor; border-radius:4px; padding:2px 7px;
+}
+.chain-tid { font-family:var(--mono); font-size:11px; color:var(--text-2); }
+.chain-desc { font-size:13px; color:var(--text); margin-top:5px; line-height:1.55; }
+
+.report-frame { width:100%; height:min(62vh,620px); border:1px solid var(--border-2); border-radius:var(--r-card); background:#fff; }
+
+/* Toasts */
+.toasts { position:fixed; left:14px; right:14px; bottom:14px; z-index:80; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; }
 .toast {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 16px; background: var(--surface-2);
-  border: 1px solid var(--border-2); border-radius: 10px;
-  font-size: 13px; max-width: 320px;
-  box-shadow: 0 6px 20px rgba(0,0,0,.4);
-  animation: toastIn .3s ease; pointer-events: all;
+  pointer-events:auto; max-width:420px; width:100%;
+  background:var(--surface-2); border:1px solid var(--border-2); border-left:3px solid var(--accent);
+  border-radius:10px; padding:11px 14px; font-size:13px; color:var(--text);
+  box-shadow:0 12px 40px rgba(0,0,0,.5); animation:toastIn .25s ease both;
 }
-.toast.success { border-left: 3px solid var(--teal); }
-.toast.error   { border-left: 3px solid var(--red); }
-@keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; } }
+.toast.ok  { border-left-color:var(--teal); }
+.toast.err { border-left-color:var(--red); }
 
-/* ── Responsive ───────────────────────────────────────────────────────── */
-@media (max-width: 700px) {
-  .top-row { grid-template-columns: 1fr; }
-  .score-card { width: 100%; text-align: left; display: flex; align-items: center; gap: 20px; padding: 18px; }
-  .score-value { font-size: 40px; }
-  header { padding: 0 16px; }
-  .container { padding: 18px 14px; }
-  .org-name { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
 </style>
 </head>
 <body>
+<div class="bg-grid" aria-hidden="true"></div>
 
-<!-- ── Header ─────────────────────────────────────────────────────────── -->
-<header>
-  <span class="brand">NEXUS <em>SOC</em></span>
-  <span class="org-name" id="org-name">—</span>
-  <span class="header-spacer"></span>
-  <div class="header-right">
-    <div class="lang-switch">
-      <button class="lang-btn active" id="btn-fr" onclick="setLang('fr')">FR</button>
-      <button class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
-    </div>
-    <!-- ── Cloche notifications ────────────────────────────────────────── -->
-    <button class="notif-bell" id="notif-bell" onclick="toggleNotifPanel(event)" aria-label="Notifications" title="Notifications">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
-      </svg>
-      <span class="notif-badge" id="notif-badge" style="display:none">0</span>
-    </button>
-    <button class="logout-btn" onclick="NexusAPI.logout()">Déconnexion</button>
+<header class="hdr">
+  <div class="logo">NEXUS <em>SOC</em></div>
+  <div class="hdr-spacer"></div>
+  <span class="perim-badge" id="perim-name">—</span>
+
+  <button class="icon-btn" id="bell" aria-expanded="false" aria-controls="notif-panel"
+          data-i18n-aria="ariaNotif" aria-label="Notifications">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+    </svg>
+    <span class="bell-count" id="bell-count" hidden>0</span>
+  </button>
+
+  <div class="hdr-rule" aria-hidden="true"></div>
+
+  <div class="lang" role="group" aria-label="Langue">
+    <button id="lang-fr" aria-pressed="true">FR</button>
+    <button id="lang-en" aria-pressed="false">EN</button>
   </div>
+
+  <button class="icon-btn" id="logout" data-i18n-aria="ariaLogout" aria-label="Se déconnecter">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
+    </svg>
+  </button>
 </header>
+<div class="hdr-rule-color" aria-hidden="true"></div>
 
-<!-- ── Panel notifications ──────────────────────────────────────────────── -->
-<div class="notif-panel" id="notif-panel">
+<div class="banner banner-offline" id="banner-offline" hidden>
+  <span class="dot" aria-hidden="true"></span>
+  <div><b data-i18n="offlineTitle">Hors ligne</b><span class="sub" data-i18n="offlineBody"> — données du cache local. La cloche et les rapports déjà consultés restent disponibles.</span></div>
+</div>
+<div class="banner banner-readonly" id="banner-readonly" hidden>◈ <span data-i18n="readOnly">Lecture seule — rôle lecteur</span></div>
+
+<section class="notif-panel" id="notif-panel" hidden aria-label="Notifications">
   <div class="notif-head">
-    <div class="notif-title" data-fr="Notifications" data-en="Notifications">Notifications</div>
-    <button class="notif-action" id="btn-mark-all" onclick="markAllRead()"
-            data-fr="Tout marquer lu" data-en="Mark all read">Tout marquer lu</button>
+    <h2 data-i18n="notifications">Notifications</h2>
+    <button class="link-btn" id="mark-all" data-i18n="markAll">Tout marquer lu</button>
   </div>
-  <div class="notif-list" id="notif-list">
-    <div class="notif-empty" data-fr="Chargement…" data-en="Loading…">Chargement…</div>
-  </div>
-</div>
+  <div class="notif-list" id="notif-list"></div>
+</section>
 
-<!-- ── Modal rapport ─────────────────────────────────────────────────────── -->
-<div class="overlay" id="modal-report">
-  <div class="modal" style="max-width: 820px; padding: 0; overflow: hidden;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border);">
-      <div>
-        <div style="font-family:var(--display);font-size:18px;font-weight:600" id="report-title">Rapport</div>
-        <div id="report-meta" style="font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:2px"></div>
+<main>
+  <!-- Squelettes : premier rendu utile avant la réponse de l'API -->
+  <div id="skeleton">
+    <div class="sk" style="height:150px;border-radius:18px;margin-bottom:12px"></div>
+    <div class="kpi-grid" style="margin-bottom:12px">
+      <div class="sk" style="height:78px"></div><div class="sk" style="height:78px"></div>
+      <div class="sk" style="height:78px"></div><div class="sk" style="height:78px"></div>
+    </div>
+    <div class="sk" style="height:96px;margin-bottom:10px"></div>
+    <div class="sk" style="height:96px;margin-bottom:14px"></div>
+    <p class="sk-hint" data-i18n="loadingHint">Chargement des données du périmètre…</p>
+  </div>
+
+  <div class="state err" id="error-state" hidden>
+    <div class="state-mark">!</div>
+    <h3 data-i18n="errTitle">Données momentanément indisponibles</h3>
+    <p data-i18n="errBody">La plateforme fonctionne, mais l'API n'a pas répondu. Vos agents continuent d'envoyer leur télémétrie : rien n'est perdu.</p>
+    <div class="state-code" id="error-code"></div>
+    <button class="btn btn-primary" id="retry" style="margin-top:16px" data-i18n="retry">Réessayer</button>
+  </div>
+
+  <div id="content" hidden style="display:flex;flex-direction:column;gap:22px">
+
+    <section class="score-card" aria-labelledby="score-kicker">
+      <div class="score-row">
+        <div class="score-main">
+          <div class="kicker" id="score-kicker" data-i18n="securityScore">Score de sécurité</div>
+          <div class="score-value-row">
+            <span class="score-value" id="score-value">—</span>
+            <span class="score-trend" id="score-trend"></span>
+          </div>
+          <div class="score-verdict" id="score-verdict"></div>
+          <div class="score-explain" id="score-explain"></div>
+        </div>
+        <div class="score-spark">
+          <div class="kicker" data-i18n="days14">14 derniers jours</div>
+          <svg id="spark" viewBox="0 0 220 64" width="100%" height="64" preserveAspectRatio="none" role="img" aria-labelledby="spark-desc">
+            <desc id="spark-desc"></desc>
+          </svg>
+          <div class="spark-axis"><span id="spark-from"></span><span id="spark-to"></span></div>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="logout-btn" onclick="downloadCurrentReport()"
-                style="border-color:var(--accent);color:var(--accent)"
-                data-fr="↓ Télécharger" data-en="↓ Download">↓ Télécharger</button>
-        <button class="logout-btn" onclick="closeReport()">✕</button>
+      <div class="score-foot">
+        <span><span data-i18n="source">source</span> /portal/summary</span><span>·</span>
+        <span id="freshness"></span><span>·</span>
+        <span data-i18n="tz">heures en UTC+1</span>
       </div>
-    </div>
-    <iframe id="report-iframe" sandbox="allow-same-origin"
-            style="border:0;width:100%;height:65vh;background:var(--bg-2)"></iframe>
-  </div>
-</div>
+    </section>
 
-<!-- ── Contenu principal ─────────────────────────────────────────────── -->
-<div class="container">
+    <div class="kpi-grid" id="kpis"></div>
 
-  <!-- Score + KPIs -->
-  <div class="top-row">
-    <div class="score-card">
-      <div>
-        <div class="score-label" data-fr="Score de sécurité" data-en="Security score">Score de sécurité</div>
-        <div class="score-value" id="score-val" style="color:var(--teal)">—</div>
-        <div class="score-sub" id="score-sub">Chargement…</div>
+    <section class="analyst" id="analyst" hidden>
+      <div class="analyst-head">
+        <span class="kicker" data-i18n="analyst">Analyse NEXUS</span>
+        <span class="live" aria-hidden="true"></span>
       </div>
-    </div>
-    <div class="kpi-row" id="kpi-row">
-      <div class="kpi-mini skeleton" style="height:72px"></div>
-      <div class="kpi-mini skeleton" style="height:72px"></div>
-      <div class="kpi-mini skeleton" style="height:72px"></div>
-    </div>
+      <p id="analyst-text"></p>
+      <div class="analyst-meta" id="analyst-meta"></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2 class="section-title" data-i18n="incidents">Ce qui se passe sur votre périmètre</h2>
+        <span class="section-meta" id="alerts-meta"></span>
+      </div>
+      <div class="alert-list" id="alert-list"></div>
+      <div class="state ok" id="healthy-state" hidden>
+        <div class="state-mark">✓</div>
+        <h3 id="healthy-title"></h3>
+        <p id="healthy-body"></p>
+        <dl class="state-facts">
+          <div><dt data-i18n="lastIncident">Dernier incident</dt><dd id="healthy-last">—</dd></div>
+          <div><dt data-i18n="coverage">Couverture</dt><dd id="healthy-cov">—</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2 class="section-title" data-i18n="agents">Postes et serveurs surveillés</h2>
+        <span class="section-meta" id="agents-meta"></span>
+      </div>
+      <div class="agent-grid" id="agent-grid"></div>
+    </section>
+
   </div>
+</main>
 
-  <!-- Alertes actives -->
-  <div style="margin-bottom:28px">
-    <div class="section-header">
-      <div class="section-title" data-fr="Incidents actifs" data-en="Active incidents">Incidents actifs</div>
-      <button class="refresh-btn" onclick="loadAlerts()">↻ Actualiser</button>
-    </div>
-    <div class="alert-list" id="alert-list">
-      <div class="skeleton" style="height:80px;margin-bottom:6px"></div>
-      <div class="skeleton" style="height:80px"></div>
-    </div>
-  </div>
-
-  <!-- Agents -->
-  <div>
-    <div class="section-header">
-      <div class="section-title" data-fr="Agents surveillés" data-en="Monitored agents">Agents surveillés</div>
-      <span id="agent-count" style="font-family:var(--mono);font-size:11px;color:var(--text-3)">—</span>
-    </div>
-    <div class="agents-grid" id="agents-grid">
-      <div class="skeleton" style="height:52px"></div>
-      <div class="skeleton" style="height:52px"></div>
-      <div class="skeleton" style="height:52px"></div>
-    </div>
-  </div>
-
-</div>
-
-<!-- ── Modal détail alerte ─────────────────────────────────────────────── -->
-<div class="overlay" id="modal-alert">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <div id="modal-alert-body"></div>
-  </div>
-</div>
-
-<!-- ── Toast container ────────────────────────────────────────────────── -->
-<div class="toasts" id="toasts"></div>
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
 
 <script src="js/api.js"></script>
 <script>
 'use strict';
 
-// ── Guard ──────────────────────────────────────────────────────────────
-if (!NexusAPI.guard(['dsi_client', 'lecteur', 'admin_plateforme'])) { /* redirigé */ }
-
-const tenantId = NexusAPI.tenantId;
-let LANG = 'fr';
-let DATA = { alerts: [], agents: [] };
-
-// ── Init ──────────────────────────────────────────────────────────────
-(async function init() {
-  document.getElementById('org-name').textContent = NexusAPI.user?.email || '—';
-  await Promise.all([loadAlerts(), loadAgents(), loadNotifications()]);
-  NexusAPI.poll(loadAlerts, 60_000);
-  NexusAPI.poll(loadNotifications, 30_000);
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
-})();
-
-// ── Notifications push in-app ─────────────────────────────────────────
-let NOTIFS = [];
-let CURRENT_REPORT = null;
-
-async function loadNotifications() {
-  try {
-    const d = await NexusAPI.getPortalNotifications(false, 50);
-    NOTIFS = d.items || [];
-    renderNotifications(d.unread_count || 0);
-  } catch (e) {
-    // Si l'utilisateur n'a pas de tenant_id (admin pur), ignorer en silence
-    if (e.status !== 403) console.warn('Notifs:', e);
-  }
+/* ═══ Garde de route ══════════════════════════════════════════════════════ */
+if (!NexusAPI.guard(['dsi_client', 'lecteur', 'admin_plateforme', 'analyste_soc'])) {
+  throw new Error('redirect');
 }
 
-function renderNotifications(unread) {
-  const badge = document.getElementById('notif-badge');
-  const bell  = document.getElementById('notif-bell');
-  if (unread > 0) {
-    badge.style.display = 'flex';
-    badge.textContent = unread > 99 ? '99+' : String(unread);
-    bell.classList.add('has-unread');
-  } else {
-    badge.style.display = 'none';
-    bell.classList.remove('has-unread');
+/* ═══ Dictionnaire FR / EN ════════════════════════════════════════════════
+   Bascule en direct, sans rechargement : setLang() parcourt data-i18n et
+   data-fr/data-en (designexus.md §2.6). */
+const I18N = {
+  fr: {
+    ariaNotif:'Notifications', ariaLogout:'Se déconnecter',
+    securityScore:'Score de sécurité', days14:'14 derniers jours',
+    source:'source', tz:'heures en UTC+1',
+    notifications:'Notifications', markAll:'Tout marquer lu', noNotif:'Aucune notification pour ce périmètre.',
+    viewReport:'Voir le rapport', download:'Télécharger', markRead:'Marquer lu',
+    readOnly:'Lecture seule — rôle lecteur',
+    offlineTitle:'Hors ligne',
+    offlineBody:' — données du cache local. La cloche et les rapports déjà consultés restent disponibles.',
+    loadingHint:'Chargement des données du périmètre…',
+    errTitle:'Données momentanément indisponibles',
+    errBody:"La plateforme fonctionne, mais l'API n'a pas répondu. Vos agents continuent d'envoyer leur télémétrie : rien n'est perdu.",
+    lastOk:'dernière réponse valide', retry:'Réessayer',
+    analyst:'Analyse NEXUS',
+    incidents:'Ce qui se passe sur votre périmètre', agents:'Postes et serveurs surveillés',
+    lastIncident:'Dernier incident', coverage:'Couverture', agentsWord:'agents',
+    kpiOpen:'Incidents actifs', kpiRisk:'Risque max', kpiAgents:'Agents actifs', kpiUnread:'Non lues',
+    verdictOk:'Situation normale', verdictWarn:'Attention requise', verdictBad:'Attention requise',
+    close:'Fermer', details:'Détail de l’incident', why:'Pourquoi cette alerte',
+    chain:'Déroulé de l’attaque', techNote:'Références techniques',
+    open:'ouvert', inProgress:'en cours', resolved:'résolu', falsePositive:'faux positif',
+    reportTitle:'Rapport d’incident', reportOpenFail:'Rapport indisponible.',
+    freshNow:'à l’instant', freshSec:'il y a {n} s', freshMin:'il y a {n} min', freshCache:'cache · il y a {n} min',
+    scoreNoData:'Aucune donnée de tendance sur 14 jours.',
+    allRead:'Toutes les notifications sont marquées lues.',
+  },
+  en: {
+    ariaNotif:'Notifications', ariaLogout:'Sign out',
+    securityScore:'Security score', days14:'Last 14 days',
+    source:'source', tz:'times in UTC+1',
+    notifications:'Notifications', markAll:'Mark all read', noNotif:'No notification for this perimeter.',
+    viewReport:'View report', download:'Download', markRead:'Mark read',
+    readOnly:'Read-only — reader role',
+    offlineTitle:'Offline',
+    offlineBody:' — showing cached data. The bell and already-opened reports remain available.',
+    loadingHint:'Loading perimeter data…',
+    errTitle:'Data temporarily unavailable',
+    errBody:'The platform is running, but the API did not answer. Your agents keep sending telemetry: nothing is lost.',
+    lastOk:'last valid response', retry:'Retry',
+    analyst:'NEXUS analysis',
+    incidents:'What is happening on your perimeter', agents:'Monitored hosts and servers',
+    lastIncident:'Last incident', coverage:'Coverage', agentsWord:'agents',
+    kpiOpen:'Active incidents', kpiRisk:'Max risk', kpiAgents:'Active agents', kpiUnread:'Unread',
+    verdictOk:'Normal situation', verdictWarn:'Attention required', verdictBad:'Attention required',
+    close:'Close', details:'Incident detail', why:'Why this alert fired',
+    chain:'How the attack unfolded', techNote:'Technical references',
+    open:'open', inProgress:'in progress', resolved:'resolved', falsePositive:'false positive',
+    reportTitle:'Incident report', reportOpenFail:'Report unavailable.',
+    freshNow:'just now', freshSec:'{n} s ago', freshMin:'{n} min ago', freshCache:'cached · {n} min ago',
+    scoreNoData:'No 14-day trend data.',
+    allRead:'All notifications marked as read.',
   }
-  const list = document.getElementById('notif-list');
-  if (!NOTIFS.length) {
-    list.innerHTML = `<div class="notif-empty">${LANG === 'fr' ? 'Aucune notification' : 'No notifications'}</div>`;
+};
+
+let LANG = localStorage.getItem('nexus_lang') === 'en' ? 'en' : 'fr';
+const t = (k, vars) => {
+  let s = (I18N[LANG][k] !== undefined ? I18N[LANG][k] : k);
+  if (vars) for (const [n, v] of Object.entries(vars)) s = s.replace('{' + n + '}', v);
+  return s;
+};
+
+function setLang(lang) {
+  LANG = lang === 'en' ? 'en' : 'fr';
+  localStorage.setItem('nexus_lang', LANG);
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.dataset.i18n;
+    if (I18N[LANG][k] !== undefined) el.textContent = I18N[LANG][k];
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    const k = el.dataset.i18nAria;
+    if (I18N[LANG][k] !== undefined) el.setAttribute('aria-label', I18N[LANG][k]);
+  });
+  document.querySelectorAll('[data-fr][data-en]').forEach(el => {
+    el.textContent = LANG === 'fr' ? el.dataset.fr : el.dataset.en;
+  });
+  document.getElementById('lang-fr').setAttribute('aria-pressed', String(LANG === 'fr'));
+  document.getElementById('lang-en').setAttribute('aria-pressed', String(LANG === 'en'));
+  render();                              // re-rend les contenus produits en JS
+}
+
+/* ═══ Utilitaires ═════════════════════════════════════════════════════════ */
+const $  = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+/* Palette en hexadécimal côté JS, en miroir des tokens CSS de :root.
+   Ces valeurs alimentent aussi des attributs SVG (stroke, fill) et des
+   compositions rgba() : var(--red) n'y serait pas exploitable. Toute
+   modification d'un token de :root doit être répercutée ici. */
+const C = {
+  red:'#EF4444', amber:'#F5A524', accent:'#5EAAFF', teal:'#3DDC97',
+  text:'#E2E8F0', text2:'#94A3B8', muted:'#64748B',
+};
+const RISK = s => s >= 80 ? C.red : s >= 60 ? C.amber : s >= 40 ? C.accent : C.teal;
+
+/* Fond translucide dérivé d'une couleur de texte hexadécimale. */
+function rgba(hex, a) {
+  if (!hex || hex[0] !== '#') return 'transparent';
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+const fmtTime = iso => iso ? new Date(iso).toLocaleString(LANG === 'fr' ? 'fr-CM' : 'en-GB',
+  { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+const fmtDay = iso => iso ? new Date(iso).toLocaleDateString(LANG === 'fr' ? 'fr-CM' : 'en-GB',
+  { day:'2-digit', month:'short' }) : '—';
+
+/* Ancienneté du dernier battement d'un agent, en clair. Pour un responsable non
+   technicien, « il y a 3 j » dit immédiatement qu'un poste ne remonte plus,
+   là où un horodatage demande un calcul mental. */
+function depuis(secondes) {
+  const fr = LANG === 'fr';
+  if (secondes == null) return fr ? 'jamais vu' : 'never seen';
+  const s = Math.max(0, Math.round(secondes));
+  if (s < 60)    return fr ? `il y a ${s} s`               : `${s} s ago`;
+  if (s < 3600)  return fr ? `il y a ${Math.round(s/60)} min`   : `${Math.round(s/60)} min ago`;
+  if (s < 86400) return fr ? `il y a ${Math.round(s/3600)} h`   : `${Math.round(s/3600)} h ago`;
+  return fr ? `il y a ${Math.round(s/86400)} j` : `${Math.round(s/86400)} d ago`;
+}
+
+function toast(msg, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind ? ' ' + kind : '');
+  el.textContent = msg;
+  $('toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 250); }, 4000);
+}
+
+/* ═══ État ════════════════════════════════════════════════════════════════ */
+const S = {
+  summary:null, alerts:[], agents:[], notifs:[], unread:0,
+  scoreHistory:[],          // série journalière du serveur ; null = jour non mesuré
+  loaded:false, error:null, offline:!navigator.onLine,
+  fetchedAt:null, perimName:'—',
+};
+
+/* ═══ Mise en langage clair ═══════════════════════════════════════════════
+   Le responsable doit lire « une tentative d'exfiltration a été détectée sur
+   POSTE-RH-07 » avant de voir T1041. Modèles déterministes, aucune invention :
+   seuls type, entité et horodatage viennent de l'alerte. */
+const PLAIN = {
+  fr: {
+    'Ransomware':            e => `Un chiffrement massif de fichiers a été détecté sur ${e} : c'est le comportement typique d'un rançongiciel.`,
+    'Fraude interne':        e => `Le compte ${e} a effectué une série d'actions très inhabituelles par rapport à ses habitudes de travail.`,
+    'Exfiltration':          e => `Un transfert inhabituel de données a quitté ${e} vers une destination externe.`,
+    'Anomalie réseau / C2':  e => `${e} contacte de façon répétée une machine qu'il n'avait jamais jointe auparavant.`,
+    'Anomalie réseau':       e => `Le trafic réseau de ${e} s'écarte nettement de son comportement habituel.`,
+    _:                       (e, ty) => `Un comportement anormal (${ty}) a été détecté sur ${e}.`,
+  },
+  en: {
+    'Ransomware':            e => `Mass file encryption was detected on ${e}: this is typical ransomware behaviour.`,
+    'Fraude interne':        e => `Account ${e} performed a series of actions well outside its usual working pattern.`,
+    'Exfiltration':          e => `An unusual data transfer left ${e} towards an external destination.`,
+    'Anomalie réseau / C2':  e => `${e} repeatedly contacts a machine it had never reached before.`,
+    'Anomalie réseau':       e => `Network traffic from ${e} deviates markedly from its usual behaviour.`,
+    _:                       (e, ty) => `Abnormal behaviour (${ty}) was detected on ${e}.`,
+  }
+};
+function plainSentence(a) {
+  const dict = PLAIN[LANG];
+  const f = dict[a.type];
+  return f ? f(a.entite || '—') : dict._(a.entite || '—', a.type || '—');
+}
+
+const TYPE_LABEL = {
+  en: { 'Fraude interne':'Insider fraud', 'Exfiltration':'Exfiltration', 'Ransomware':'Ransomware',
+        'Anomalie réseau / C2':'Network anomaly / C2', 'Anomalie réseau':'Network anomaly' }
+};
+const typeLabel = ty => (LANG === 'en' && TYPE_LABEL.en[ty]) ? TYPE_LABEL.en[ty] : (ty || '—');
+
+const STATUT_LABEL = {
+  fr:{ ouverte:'ouvert', en_cours:'en cours', resolue:'résolu', faux_positif:'faux positif' },
+  en:{ ouverte:'open',   en_cours:'in progress', resolue:'resolved', faux_positif:'false positive' },
+};
+
+/* Tactiques MITRE — nouveaux tokens de couleur, réservés à la chaîne d'attaque. */
+const TACTICS = {
+  T1566:['Initial Access','#E879F9'], T1078:['Initial Access','#E879F9'],
+  T1059:['Execution','#EF4444'], T1204:['Execution','#EF4444'],
+  T1136:['Persistence','#F5A524'], T1053:['Persistence','#F5A524'],
+  T1027:['Defense Evasion','#F5A524'],
+  T1005:['Collection','#FB923C'], T1083:['Discovery','#FB923C'], T1114:['Collection','#FB923C'],
+  T1071:['Command & Control','#5EAAFF'], T1571:['Command & Control','#5EAAFF'], T1090:['Command & Control','#5EAAFF'],
+  T1041:['Exfiltration','#EF4444'], T1048:['Exfiltration','#EF4444'], T1486:['Impact','#EF4444'],
+};
+/* La colonne `mitre` n'est pas normalisée : le moteur de corrélation y écrit
+   « T1071 · C2 », parfois « T1059.001 ». On extrait l'identifiant par motif et
+   on garde le libellé de tactique porté par la donnée quand il existe. */
+const TID_RE = /T\d{4}(?:\.\d{3})?/;
+function tactic(raw) {
+  const s = String(raw).trim();
+  const m = s.match(TID_RE);
+  const tid = m ? m[0] : s;
+  const ref = TACTICS[tid.split('.')[0]];
+  const inline = s.replace(TID_RE, '').replace(/^[\s·:,–—-]+/, '').trim();
+  return { tid, tac: inline || (ref ? ref[0] : 'Technique'), col: ref ? ref[1] : '#94A3B8' };
+}
+/* Extraction des identifiants ATT&CK. Deux formats coexistent en base :
+   « T1005, T1059, T1071 » (corrélation) et « T1071 · C2 » (scoring, identifiant
+   suivi de sa tactique). Découper sur la virgule ne résout que le premier ; on
+   extrait donc par motif, ce qui couvre les deux et les sous-techniques. */
+function mitreList(m) {
+  if (!m) return [];
+  const src = Array.isArray(m) ? m.join(',') : String(m);
+  const ids = src.match(/T\d{4}(?:\.\d{3})?/g);
+  return ids ? [...new Set(ids)] : [];
+}
+/* Les raisons arrivent soit en chaînes déjà rédigées (alertes antérieures à la
+   refonte), soit en objets {label, sigma, texte}. On normalise sans perdre les
+   unes ni les autres. Le portail affiche la phrase : l'écart chiffré est un
+   outil d'analyste, il vit dans la console. */
+function reasonList(r) {
+  let raw = r;
+  if (!raw) return [];
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch { return [{ texte: raw, sigma: null }]; }
+  }
+  if (!Array.isArray(raw)) return [{ texte: String(raw), sigma: null }];
+  return raw.map(x => (x && typeof x === 'object')
+    ? { label: x.label || x.texte || '', sigma: x.sigma == null ? null : Number(x.sigma),
+        texte: x.texte || x.label || '' }
+    : { label: String(x), sigma: null, texte: String(x) });
+}
+
+function chainList(c) {
+  let raw = c;
+  if (!raw) return [];
+  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { return []; } }
+  return Array.isArray(raw) ? raw.filter(x => x && typeof x === 'object') : [];
+}
+
+/* ═══ Chargement ══════════════════════════════════════════════════════════ */
+async function load() {
+  try {
+    const [summary, alerts, agents, notifs, hist] = await Promise.all([
+      NexusAPI.getPortalSummary(),
+      NexusAPI.getPortalAlerts(50),
+      NexusAPI.getPortalAgents(),
+      NexusAPI.getPortalNotifications(false, 50).catch(() => ({ items: [], unread_count: 0 })),
+      // Endpoint récent : sur un serveur non redémarré il répond 404. Série vide
+      // plutôt qu'une reconstruction locale — c'est cette reconstruction qui
+      // fabriquait des jours à 100.
+      NexusAPI.getScoreHistory(14).catch(() => null),
+    ]);
+    S.summary      = summary || {};
+    S.scoreHistory = (hist && hist.serie) || [];
+    S.alerts    = Array.isArray(alerts) ? alerts : [];
+    S.agents    = Array.isArray(agents) ? agents : [];
+    S.notifs    = (notifs && notifs.items) || [];
+    S.unread    = (notifs && notifs.unread_count) || 0;
+    S.error     = null;
+    S.loaded    = true;
+    S.fetchedAt = Date.now();
+    S.offline   = !navigator.onLine;
+  } catch (err) {
+    S.error = err;
+    if (err && err._network) S.offline = true;
+  }
+  render();
+}
+
+/* ═══ Rendu ═══════════════════════════════════════════════════════════════ */
+function render() {
+  $('banner-readonly').hidden = NexusAPI.role !== 'lecteur';
+  $('banner-offline').hidden  = !S.offline;
+  $('perim-name').textContent = S.perimName;
+
+  if (!S.loaded && S.error) {
+    $('skeleton').hidden = true; $('content').hidden = true; $('error-state').hidden = false;
+    $('error-code').textContent =
+      `GET /portal/summary → ${S.error.status || 0} · ${t('lastOk')} —`;
     return;
   }
-  list.innerHTML = NOTIFS.map(n => `
-    <div class="notif-item severity-${esc(n.severity || 'info')} ${n.read_at ? 'read' : ''}"
-         onclick="openReport('${esc(n.id)}', ${n.has_report ? 'true' : 'false'})">
-      <div class="notif-item-title">${esc(n.title || '—')}</div>
-      <div class="notif-item-body">${esc(n.body || '')}</div>
-      <div class="notif-item-time">${NexusAPI.formatDate(n.created_at, LANG)}</div>
-    </div>
-  `).join('');
+  if (!S.loaded) { $('skeleton').hidden = false; $('content').hidden = true; $('error-state').hidden = true; return; }
+
+  $('skeleton').hidden = true; $('error-state').hidden = true; $('content').hidden = false;
+
+  /* « agregee » exclue comme « resolue » : une condition persistante ne doit pas
+     peser autant de fois sur le score de sécurité qu'elle a été détectée. */
+  const open = S.alerts.filter(a => a.statut !== 'resolue'
+                                 && a.statut !== 'faux_positif'
+                                 && a.statut !== 'agregee');
+  renderScore(open);
+  renderKpis(open);
+  renderAnalyst(open);
+  renderAlerts(open);
+  renderAgents();
+  renderNotifs();
 }
 
-function toggleNotifPanel(e) {
-  e?.stopPropagation?.();
-  document.getElementById('notif-panel').classList.toggle('open');
+/* ── Score : 100 − risque max. Tendance reconstruite sur 14 jours à partir
+      des alertes réelles du périmètre (une seule source, pas d'invention). ── */
+/* L'historique du score vient du SERVEUR, qui croise alertes et télémétrie.
+   Il était reconstruit ici avec la règle « score = 100 − pire risque du jour »,
+   qui attribuait 100 à tout jour sans alerte — y compris les jours où la
+   plateforme ne collectait rien. Un parc mesuré 3 jours sur 14 affichait
+   quatorze jours de santé, dont onze n'avaient jamais été observés.
+
+   Un jour sans télémétrie revient désormais avec `score: null` et interrompt
+   la courbe. */
+function dailyScores() {
+  return (S.scoreHistory || []).map(d => ({
+    day:   new Date(d.jour + 'T00:00:00'),
+    score: d.score,                 // null = jour non mesuré
+    mesures: d.mesures, alertes: d.alertes,
+  }));
 }
 
-document.addEventListener('click', (e) => {
-  const panel = document.getElementById('notif-panel');
-  const bell  = document.getElementById('notif-bell');
-  if (panel && !panel.contains(e.target) && !bell.contains(e.target)) panel.classList.remove('open');
-});
+function renderScore(open) {
+  const maxRisk = Number(S.summary.max_risk || 0);
+  const value   = Math.max(0, 100 - maxRisk);
+  const color   = value >= 80 ? C.teal : value >= 50 ? C.amber : C.red;
 
-async function markAllRead() {
-  try {
-    await NexusAPI.markAllNotifsRead();
-    await loadNotifications();
-  } catch (e) { showToast(e.detail || 'Erreur', 'error'); }
-}
+  $('score-value').textContent = value;
+  $('score-value').style.color = color;
 
-async function openReport(notifId, hasReport) {
-  // Marquer comme lue (idempotent), puis charger et afficher le rapport
-  try { await NexusAPI.markNotifRead(notifId); } catch {}
-  await loadNotifications();
-  if (!hasReport) {
-    showToast(LANG === 'fr' ? 'Aucun rapport attaché à cette notification.' : 'No report attached.', 'info');
-    return;
+  const series = dailyScores();
+  const vals   = series.map(d => d.score);
+
+  /* La tendance se compare au dernier jour RÉELLEMENT mesuré avant aujourd'hui.
+     Comparer à un jour non mesuré produirait un écart inventé. */
+  const mesures = series.filter(d => d.score !== null);
+  const prev = mesures.length > 1 ? mesures[mesures.length - 2].score : null;
+  const delta = prev === null ? null : value - prev;
+
+  const trendEl = $('score-trend');
+  if (delta === null) {
+    trendEl.textContent = LANG === 'fr' ? 'pas de comparaison' : 'no comparison';
+    trendEl.style.color = C.muted;
+  } else if (delta === 0) { trendEl.textContent = '= 0'; trendEl.style.color = C.muted; }
+  else {
+    trendEl.textContent = (delta > 0 ? '▲ +' : '▼ −') + Math.abs(delta);
+    trendEl.style.color = delta > 0 ? C.teal : C.red;
   }
-  try {
-    const r = await NexusAPI.getNotifReport(notifId);
-    CURRENT_REPORT = { id: notifId, ...r };
-    document.getElementById('report-title').textContent = r.title || 'Rapport';
-    document.getElementById('report-meta').textContent =
-      `${r.severity?.toUpperCase() || ''} · ${NexusAPI.formatDate(r.created_at, LANG)}`;
-    const iframe = document.getElementById('report-iframe');
-    iframe.srcdoc = r.report_html || '<p>Rapport vide</p>';
-    document.getElementById('modal-report').classList.add('open');
-    document.body.style.overflow = 'hidden';
-    document.getElementById('notif-panel').classList.remove('open');
-  } catch (e) {
-    showToast(e.detail || (LANG === 'fr' ? 'Impossible de charger le rapport' : 'Cannot load report'), 'error');
+
+  const healthy = open.length === 0;
+  $('score-verdict').textContent = healthy ? t('verdictOk') : t('verdictWarn');
+
+  const worst = open.reduce((w, a) => (Number(a.risque) > Number(w.risque || 0) ? a : w), {});
+  $('score-explain').textContent = healthy
+    ? (LANG === 'fr'
+        ? `Stable sur les 14 derniers jours. Aucun incident ouvert.`
+        : `Stable over the last 14 days. No open incident.`)
+    : (LANG === 'fr'
+        ? `Incident de risque ${worst.risque} sur ${worst.entite}. ${open.length} incident${open.length > 1 ? 's' : ''} en cours de traitement.`
+        : `Risk-${worst.risque} incident on ${worst.entite}. ${open.length} incident${open.length > 1 ? 's' : ''} being handled.`);
+
+  drawSpark(vals, color);
+  if (series.length) {
+    $('spark-from').textContent = fmtDay(series[0].day);
+    const aveugles = series.filter(d => d.score === null).length;
+    /* Le nombre de jours non mesurés est annoncé : une courbe trouée sans
+       légende se lit comme un défaut d'affichage, pas comme une information. */
+    $('spark-to').textContent = aveugles
+      ? (LANG === 'fr' ? `${aveugles} j non mesurés` : `${aveugles} d unmeasured`)
+      : fmtDay(series[series.length - 1].day);
+    document.querySelector('#spark desc').textContent =
+      (LANG === 'fr' ? 'Score de sécurité sur 14 jours : ' : '14-day security score: ')
+      + vals.map(v => v === null ? (LANG === 'fr' ? 'non mesuré' : 'unmeasured') : v).join(', ');
+  }
+
+  const ageMin = S.fetchedAt ? Math.round((Date.now() - S.fetchedAt) / 60000) : 0;
+  const ageSec = S.fetchedAt ? Math.round((Date.now() - S.fetchedAt) / 1000) : 0;
+  $('freshness').textContent = S.offline ? t('freshCache', { n: ageMin })
+    : (ageSec < 10 ? t('freshNow') : ageSec < 90 ? t('freshSec', { n: ageSec }) : t('freshMin', { n: ageMin }));
+}
+
+/* Sparkline SVG produite à la main — pas de bibliothèque distante.
+   `vals` peut contenir des null : ce sont les jours sans télémétrie. La courbe
+   s'y interrompt au lieu de les relier, sinon le tracé comblerait visuellement
+   une absence de mesure et donnerait à voir une continuité qui n'existe pas. */
+function drawSpark(vals, color) {
+  const svg = $('spark'), W = 212, H = 56;
+  [...svg.querySelectorAll('polyline,circle,rect')].forEach(n => n.remove());
+  const connus = vals.filter(v => v !== null && v !== undefined);
+  if (!connus.length) return;
+
+  const min = Math.min(...connus) - 4, max = Math.max(...connus) + 4;
+  const sx = W / Math.max(1, vals.length - 1), sy = H / Math.max(1, max - min);
+  const NS = 'http://www.w3.org/2000/svg';
+  const xy = (v, i) => [i * sx, H - (v - min) * sy];
+
+  // Segments continus, séparés par les trous
+  const segments = [];
+  let courant = [];
+  vals.forEach((v, i) => {
+    if (v === null || v === undefined) { if (courant.length) segments.push(courant); courant = []; return; }
+    courant.push(xy(v, i));
+  });
+  if (courant.length) segments.push(courant);
+
+  // Bandes grises sur les jours non mesurés : l'absence doit se voir.
+  vals.forEach((v, i) => {
+    if (v !== null && v !== undefined) return;
+    const r = document.createElementNS(NS, 'rect');
+    r.setAttribute('x', Math.max(0, (i - .5) * sx)); r.setAttribute('y', 0);
+    r.setAttribute('width', sx); r.setAttribute('height', H);
+    r.setAttribute('fill', 'var(--border)'); r.setAttribute('opacity', '.35');
+    svg.appendChild(r);
+  });
+
+  segments.forEach(seg => {
+    const pts = seg.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+    if (seg.length > 1) {
+      const fill = document.createElementNS(NS, 'polyline');
+      fill.setAttribute('points', `${seg[0][0].toFixed(1)},${H} ${pts} ${seg[seg.length - 1][0].toFixed(1)},${H}`);
+      fill.setAttribute('fill', rgba(color, .1)); fill.setAttribute('stroke', 'none');
+      svg.appendChild(fill);
+      const line = document.createElementNS(NS, 'polyline');
+      line.setAttribute('points', pts);
+      line.setAttribute('fill', 'none'); line.setAttribute('stroke', color);
+      line.setAttribute('stroke-width', '2');
+      line.setAttribute('stroke-linejoin', 'round'); line.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(line);
+    } else {
+      // Jour mesuré isolé entre deux trous : un point, pas un trait.
+      const p = document.createElementNS(NS, 'circle');
+      p.setAttribute('cx', seg[0][0].toFixed(1)); p.setAttribute('cy', seg[0][1].toFixed(1));
+      p.setAttribute('r', '2.5'); p.setAttribute('fill', color);
+      svg.appendChild(p);
+    }
+  });
+
+  const dernier = segments[segments.length - 1];
+  if (dernier && vals[vals.length - 1] !== null && vals[vals.length - 1] !== undefined) {
+    const [x, y] = dernier[dernier.length - 1];
+    const dot = document.createElementNS(NS, 'circle');
+    dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', y.toFixed(1));
+    dot.setAttribute('r', '3.5'); dot.setAttribute('fill', color);
+    svg.appendChild(dot);
   }
 }
 
-function closeReport() {
-  document.getElementById('modal-report').classList.remove('open');
-  document.body.style.overflow = '';
-  CURRENT_REPORT = null;
-}
-
-async function downloadCurrentReport() {
-  if (!CURRENT_REPORT) return;
-  try {
-    await NexusAPI.downloadNotifReport(CURRENT_REPORT.id);
-    showToast(LANG === 'fr' ? 'Téléchargement démarré' : 'Download started', 'success');
-  } catch (e) {
-    showToast(e.detail || 'Erreur', 'error');
-  }
-}
-
-document.getElementById('modal-report').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) closeReport();
-});
-
-// ── Langue ────────────────────────────────────────────────────────────
-function setLang(l) {
-  LANG = l;
-  document.getElementById('btn-fr').classList.toggle('active', l === 'fr');
-  document.getElementById('btn-en').classList.toggle('active', l === 'en');
-  document.querySelectorAll('[data-fr][data-en]').forEach(el =>
-    el.textContent = el.getAttribute('data-' + l) || el.textContent);
-  renderAlerts();
-}
-
-// ── Alertes ───────────────────────────────────────────────────────────
-async function loadAlerts() {
-  try {
-    const d = await NexusAPI.getPortalAlerts(50);
-    DATA.alerts = Array.isArray(d) ? d : (d?.items || []);
-    renderAlerts();
-    updateScore();
-  } catch (e) {
-    document.getElementById('alert-list').innerHTML =
-      `<div class="empty"><div class="icon">⚠</div><p>${esc(e.detail || 'Erreur de chargement')}</p></div>`;
-  }
-}
-
-function renderAlerts() {
-  const el = document.getElementById('alert-list');
-  const open = DATA.alerts.filter(a => a.statut !== 'fermee');
-  if (!open.length) {
-    el.innerHTML = `<div class="empty"><div class="icon">✓</div><p>${LANG === 'fr' ? 'Aucun incident actif — votre infrastructure est sous contrôle.' : 'No active incidents — your infrastructure is under control.'}</p></div>`;
-    return;
-  }
-  open.sort((a, b) => b.risque - a.risque);
-  el.innerHTML = open.map(a => {
-    const cls = a.risque >= 80 ? 'crit' : a.risque >= 60 ? 'high' : 'med';
-    const kc  = (a.kill_chain_fr || a.kill_chain || []).slice(0, 5)
-      .map(k => `<span class="kc-pill">${esc(k)}</span>`).join('');
-    const statusLabel = a.statut === 'ouverte'  ? (LANG === 'fr' ? 'ouvert' : 'open')
-                      : a.statut === 'en_cours' ? (LANG === 'fr' ? 'en cours' : 'in progress')
-                      : esc(a.statut || '');
-    return `
-    <div class="alert-item ${cls}" onclick="openAlertDetail('${esc(a.id)}')">
-      <div class="alert-row">
-        <span class="alert-score" style="color:${NexusAPI.riskColor(a.risque)}">${a.risque}</span>
-        <div class="alert-info">
-          <div class="alert-title-text">${esc(LANG === 'fr' ? (a.type_fr || a.type) : (a.type_en || a.type))} — ${esc(a.entite || '—')}</div>
-          <div class="alert-meta-text">${esc(a.source_modele || '—')} · ${esc(a.mitre || '')} · ${NexusAPI.formatDate(a.cree_le, LANG)}</div>
-        </div>
-        <span class="alert-status" style="color:${a.statut==='ouverte'?'var(--red)':'var(--amber)'};border-color:currentColor;background:currentColor15">${statusLabel}</span>
-      </div>
-      ${kc ? `<div class="alert-kc">${kc}</div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function openAlertDetail(id) {
-  const a = DATA.alerts.find(x => x.id === id);
-  if (!a) return;
-  const kc = (a.kill_chain_fr || a.kill_chain || []).map((k, i) => {
-    const clsMap = ['kc-ia','kc-ex','kc-pe','kc-co','kc-c2','kc-im'];
-    return `<span class="kc-pill" style="font-size:11px;padding:3px 9px;border-color:rgba(94,170,255,.3)">${esc(k)}</span>`;
-  }).join('');
-  const explication = LANG === 'fr'
-    ? (a.explication_fr || a.explication || '')
-    : (a.explication_en || a.explication || '');
-  const raisons = (LANG === 'fr' ? a.raisons_fr : a.raisons_en) || a.raisons || [];
-
-  document.getElementById('modal-alert-body').innerHTML = `
-    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px">
-      <span style="font-family:var(--display);font-size:36px;font-weight:600;color:${NexusAPI.riskColor(a.risque)}">${a.risque}<span style="font-size:14px;opacity:.5">/100</span></span>
-      <div>
-        <div style="font-weight:700;font-size:15px">${esc(LANG==='fr' ? (a.type_fr||a.type) : (a.type_en||a.type))} — ${esc(a.entite||'—')}</div>
-        <div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">${esc(a.source_modele||'')} · ${esc(a.mitre||'')} · ${NexusAPI.formatDate(a.cree_le, LANG)}</div>
-      </div>
-    </div>
-    ${kc ? `<div class="alert-kc" style="margin-bottom:14px">${kc}</div>` : ''}
-    <blockquote style="border-left:3px solid var(--accent);padding:10px 14px;margin:0 0 14px;background:rgba(94,170,255,.04);border-radius:0 8px 8px 0;font-family:var(--display);font-style:italic;color:var(--text-2);font-size:13.5px;line-height:1.7">
-      ${esc(explication || (LANG==='fr' ? 'Aucune explication disponible.' : 'No explanation available.'))}
-    </blockquote>
-    ${raisons.length ? `<ul style="padding-left:18px;font-size:13px;color:var(--text-2);">${raisons.map(r=>`<li style="margin-bottom:6px">${esc(r)}</li>`).join('')}</ul>` : ''}`;
-
-  document.getElementById('modal-alert').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal() {
-  document.getElementById('modal-alert').classList.remove('open');
-  document.body.style.overflow = '';
-}
-document.getElementById('modal-alert').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeModal();
-});
-
-// ── Score ──────────────────────────────────────────────────────────────
-function updateScore() {
-  const open = DATA.alerts.filter(a => a.statut !== 'fermee');
-  const maxRisk = open.length ? Math.max(...open.map(a => a.risque)) : 0;
-  const score = open.length === 0 ? 100 : Math.max(0, 100 - maxRisk);
-  const el = document.getElementById('score-val');
-  el.textContent = score;
-  el.style.color = score >= 80 ? 'var(--teal)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
-  document.getElementById('score-sub').textContent =
-    score >= 80 ? (LANG==='fr'?'Statut normal':'Normal status')
-    : score >= 50 ? (LANG==='fr'?'Incidents en cours':'Incidents ongoing')
-    : (LANG==='fr'?'Attention requise':'Attention required');
-
-  document.getElementById('kpi-row').innerHTML = [
-    { label: LANG==='fr'?'Incidents actifs':'Active incidents', value: open.length,
-      color: open.length > 0 ? 'var(--red)' : 'var(--teal)' },
-    { label: LANG==='fr'?'Risque max':'Max risk', value: maxRisk || '—',
-      color: NexusAPI.riskColor(maxRisk) },
-    { label: LANG==='fr'?'Agents actifs':'Active agents',
-      value: DATA.agents.filter(a => a.statut === 'actif').length + '/' + DATA.agents.length,
-      color: 'var(--text)' },
-  ].map(k => `
-    <div class="kpi-mini">
-      <div class="kpi-mini-label">${k.label}</div>
-      <div class="kpi-mini-value" style="color:${k.color}">${k.value}</div>
+function renderKpis(open) {
+  const s = S.summary;
+  const crit = open.filter(a => Number(a.risque) >= 80).length;
+  const off  = (Number(s.agents_total) || 0) - (Number(s.agents_active) || 0);
+  const items = [
+    { label: t('kpiOpen'), value: open.length,
+      sub: crit ? (LANG === 'fr' ? `dont ${crit} critique${crit > 1 ? 's' : ''}` : `${crit} critical`)
+                : (LANG === 'fr' ? 'aucun critique' : 'none critical'),
+      color: open.length === 0 ? C.teal : crit ? C.red : C.amber },
+    { label: t('kpiRisk'), value: Number(s.max_risk) || 0,
+      sub: open.length ? (open.reduce((w, a) => Number(a.risque) > Number(w.risque || 0) ? a : w, {}).entite || '—')
+                       : (LANG === 'fr' ? 'surveillance' : 'monitoring'),
+      color: RISK(Number(s.max_risk) || 0) },
+    { label: t('kpiAgents'), value: `${s.agents_active || 0}/${s.agents_total || 0}`,
+      sub: off > 0 ? (LANG === 'fr' ? `${off} hors ligne` : `${off} offline`)
+                   : (LANG === 'fr' ? 'aucun hors ligne' : 'none offline'),
+      color: off > 0 ? C.amber : C.text },
+    { label: t('kpiUnread'), value: S.unread,
+      sub: S.notifs.filter(n => n.has_report).length
+             ? (LANG === 'fr' ? 'rapports disponibles' : 'reports available')
+             : (LANG === 'fr' ? 'rien à lire' : 'nothing to read'),
+      color: S.unread ? C.accent : C.text },
+  ];
+  $('kpis').innerHTML = items.map(k => `
+    <div class="kpi">
+      <div class="kpi-label">${esc(k.label)}</div>
+      <div class="kpi-value" style="color:${k.color}">${esc(k.value)}</div>
+      <div class="kpi-sub">${esc(k.sub)}</div>
     </div>`).join('');
 }
 
-// ── Agents ─────────────────────────────────────────────────────────────
-async function loadAgents() {
-  try {
-    const d = await NexusAPI.getPortalAgents();
-    DATA.agents = Array.isArray(d) ? d : (d?.items || []);
-    renderAgents();
-  } catch {}
+/* Analyse NEXUS — produite par le SERVEUR (module Analyst du Lot 5) et non plus
+   recomposée dans le navigateur. Un seul texte fait alors autorité, identique
+   dans le portail, le rapport HTML et les notifications ; et le mode LLM
+   optionnel devient accessible sans toucher au frontend.
+   Le repli local ci-dessous ne sert qu'en cas d'endpoint indisponible : mieux
+   vaut une phrase construite localement qu'un encart vide. */
+const _analystCache = new Map();      // `${alertId}:${lang}` -> texte
+
+function analystFallback(a, open) {
+  const fr = LANG === 'fr';
+  const reasons = reasonList(a.raisons).slice(0, 3).map(r => r.texte || r.label).filter(Boolean);
+  const tids = mitreList(a.mitre);
+  const parts = [plainSentence(a)];
+  parts.push(fr
+    ? `L'événement a été observé le ${fmtTime(a.cree_le)} et le modèle lui attribue un risque de ${a.risque} sur 100.`
+    : `The event was observed on ${fmtTime(a.cree_le)} and the model scored it ${a.risque} out of 100.`);
+  if (reasons.length) parts.push(fr
+    ? `Ce qui a déclenché l'alerte : ${reasons.join(' ; ').replace(/\.$/, '')}.`
+    : `What triggered the alert: ${reasons.join('; ').replace(/\.$/, '')}.`);
+  if (tids.length >= 2) parts.push(fr
+    ? `La séquence correspond à ${tids.length} techniques d'attaque corrélées (${tids.join(', ')}).`
+    : `The sequence matches ${tids.length} correlated attack techniques (${tids.join(', ')}).`);
+  parts.push(open.length > 1
+    ? (fr ? `${open.length - 1} autre${open.length > 2 ? 's' : ''} incident${open.length > 2 ? 's' : ''} du périmètre ${open.length > 2 ? 'sont' : 'est'} en cours de traitement.`
+          : `${open.length - 1} other incident${open.length > 2 ? 's' : ''} on this perimeter ${open.length > 2 ? 'are' : 'is'} being handled.`)
+    : (fr ? `Aucun autre incident n'est ouvert sur le périmètre.` : `No other incident is open on this perimeter.`));
+  return parts.join(' ');
+}
+
+function renderAnalyst(open) {
+  const box = $('analyst');
+  if (!open.length) { box.hidden = true; return; }
+  const a = open.reduce((w, x) => Number(x.risque) > Number(w.risque || 0) ? x : w, {});
+  const when = fmtTime(a.cree_le);
+  const fr   = LANG === 'fr';
+  const cle  = `${a.id}:${LANG}`;
+
+  const poser = (texte, mode) => {
+    $('analyst-text').textContent = texte;
+    $('analyst-meta').textContent = (fr
+      ? `Généré par le module Analyst · mode ${mode} · français · `
+      : `Produced by the Analyst module · ${mode} mode · English · `) + when;
+  };
+
+  if (_analystCache.has(cle)) { poser(_analystCache.get(cle), _analystCache.get(cle + ':mode') || 'template'); }
+  else {
+    poser(analystFallback(a, open), fr ? 'local' : 'local');
+    NexusAPI.explainAlert(a.id, LANG)
+      .then(r => {
+        if (!r || !r.texte) return;
+        _analystCache.set(cle, r.texte);
+        _analystCache.set(cle + ':mode', r.mode || 'template');
+        // L'alerte affichée a pu changer entre-temps (scrutation 30 s)
+        if ($('analyst-text').dataset.id === String(a.id)) poser(r.texte, r.mode || 'template');
+      })
+      .catch(() => {});   // repli déjà affiché : rien à signaler à l'utilisateur
+  }
+  $('analyst-text').dataset.id = String(a.id);
+  box.hidden = false;
+}
+
+function renderAlerts(open) {
+  const list = $('alert-list'), healthy = $('healthy-state');
+
+  if (!open.length) {
+    list.innerHTML = '';
+    healthy.hidden = false;
+    const last = S.alerts.length
+      ? S.alerts.reduce((m, a) => new Date(a.cree_le) > new Date(m.cree_le) ? a : m)
+      : null;
+    const days = last ? Math.round((Date.now() - new Date(last.cree_le)) / 86400000) : null;
+    $('healthy-title').textContent = LANG === 'fr'
+      ? `Aucun incident actif sur ${S.perimName}`
+      : `No active incident on ${S.perimName}`;
+    $('healthy-body').textContent = LANG === 'fr'
+      ? (days !== null
+          ? `Le dernier incident a été résolu il y a ${days} jour${days > 1 ? 's' : ''}. Les agents remontent leur télémétrie et aucune anomalie n'a franchi le seuil d'alerte.`
+          : `Aucune anomalie n'a franchi le seuil d'alerte depuis la mise sous supervision de ce périmètre.`)
+      : (days !== null
+          ? `The last incident was resolved ${days} day${days > 1 ? 's' : ''} ago. Agents report telemetry and no anomaly crossed the alerting threshold.`
+          : `No anomaly has crossed the alerting threshold since this perimeter was onboarded.`);
+    $('healthy-last').textContent = last ? `${fmtDay(last.cree_le)} · ${days} j` : '—';
+    $('healthy-cov').textContent  = `${S.summary.agents_active || 0}/${S.summary.agents_total || 0} ${t('agentsWord')}`;
+    $('alerts-meta').textContent  = LANG === 'fr' ? '0 incident ouvert' : '0 open incident';
+    return;
+  }
+
+  healthy.hidden = true;
+  const sorted = [...open].sort((a, b) => Number(b.risque) - Number(a.risque));
+  $('alerts-meta').textContent = LANG === 'fr'
+    ? `${sorted.length} incident${sorted.length > 1 ? 's' : ''} · trié par risque`
+    : `${sorted.length} incident${sorted.length > 1 ? 's' : ''} · sorted by risk`;
+
+  list.innerHTML = sorted.map(a => {
+    const c   = RISK(Number(a.risque));
+    const tags = [typeLabel(a.type), ...mitreList(a.mitre), a.source_modele].filter(Boolean);
+    const st  = STATUT_LABEL[LANG][a.statut] || a.statut || '—';
+    return `
+      <button class="alert-card" style="border-left-color:${c}" data-alert="${esc(a.id)}">
+        <span class="alert-risk"><b style="color:${c}">${esc(a.risque)}</b><span>/100</span></span>
+        <span class="alert-body">
+          <span class="alert-plain">${esc(plainSentence(a))}</span>
+          <span class="alert-meta">
+            <span class="pill" style="color:${c};background:${rgba(c, .1)}">${esc(st)}</span>
+            <span>${esc(a.entite || '—')}</span><span>·</span><span>${esc(fmtTime(a.cree_le))}</span>
+          </span>
+          <span class="tags">${tags.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</span>
+        </span>
+      </button>`;
+  }).join('');
+
+  list.querySelectorAll('[data-alert]').forEach(btn =>
+    btn.addEventListener('click', () => openAlert(btn.dataset.alert)));
 }
 
 function renderAgents() {
-  const el = document.getElementById('agents-grid');
-  document.getElementById('agent-count').textContent =
-    `${DATA.agents.filter(a => a.statut === 'actif').length} actif(s) / ${DATA.agents.length} total`;
-  if (!DATA.agents.length) {
-    el.innerHTML = `<div class="empty" style="grid-column:1/-1;padding:30px"><p>${LANG==='fr'?'Aucun agent enrôlé':'No enrolled agents'}</p></div>`;
+  const grid = $('agent-grid');
+  if (!S.agents.length) {
+    grid.innerHTML = `<div class="state" style="grid-column:1/-1;padding:22px"><p>${
+      esc(LANG === 'fr' ? "Aucun agent enrôlé sur ce périmètre. Contactez l'équipe SOC du CENADI pour lancer l'enrôlement."
+                        : 'No agent enrolled on this perimeter. Contact the CENADI SOC team to start enrolment.')}</p></div>`;
+    $('agents-meta').textContent = '0';
     return;
   }
-  el.innerHTML = DATA.agents.map(a => {
-    const dotCls = a.statut === 'actif' ? 'online' : a.statut === 'isole' ? 'isolated' : 'offline';
-    return `
-    <div class="agent-chip">
-      <div class="agent-dot ${dotCls}"></div>
-      <div style="min-width:0">
-        <div class="agent-name">${esc(a.hostname || '—')}</div>
-        <div class="agent-os">${esc(a.os || '—')} · ${NexusAPI.formatDate(a.vu_le, LANG)}</div>
+  const label = { fr:{ actif:'actif', isole:'isolé', hors_ligne:'hors ligne' },
+                  en:{ actif:'active', isole:'isolated', hors_ligne:'offline' } }[LANG];
+  const color = { actif:C.teal, isole:C.amber, hors_ligne:C.muted };
+
+  grid.innerHTML = S.agents.map(g => {
+    const c = color[g.statut] || C.muted;
+    return `<div class="agent" title="${esc(fmtTime(g.vu_le))}">
+      <span class="dot" style="background:${c};${g.statut !== 'hors_ligne' ? `box-shadow:0 0 6px ${c}` : ''}"></span>
+      <span class="agent-id">
+        <span class="agent-host">${esc(g.hostname)}</span>
+        <span class="agent-meta">${esc(g.os || '—')} · ${esc(depuis(g.vu_il_y_a_s))}</span>
+      </span>
+      <span class="agent-state" style="color:${c}">${esc(label[g.statut] || g.statut)}</span>
+    </div>`;
+  }).join('');
+  $('agents-meta').textContent = `${S.summary.agents_active || 0}/${S.summary.agents_total || S.agents.length} ${t('agentsWord')}`;
+}
+
+/* ── Notifications ─────────────────────────────────────────────────────── */
+const SEV_COLOR = { critical:C.red, warning:C.amber, info:C.accent };
+
+function renderNotifs() {
+  const count = $('bell-count');
+  count.hidden = !S.unread;
+  count.textContent = S.unread > 99 ? '99+' : S.unread;
+
+  const list = $('notif-list');
+  if (!S.notifs.length) {
+    list.innerHTML = `<div style="padding:24px 16px;text-align:center;color:var(--text-3);font-size:12.5px">${esc(t('noNotif'))}</div>`;
+    return;
+  }
+  list.innerHTML = S.notifs.map(n => {
+    const c = SEV_COLOR[n.severity] || C.accent;
+    const unread = !n.read_at;
+    return `<div class="notif${unread ? ' unread' : ''}" data-notif="${esc(n.id)}">
+      <span class="sev" style="background:${c};${n.severity === 'critical' ? `box-shadow:0 0 6px ${c}` : ''}"></span>
+      <div class="notif-top">
+        <span class="title">${esc(n.title)}</span>
+        <span class="kind" style="color:${c}">${esc(n.type)}</span>
+      </div>
+      <div class="body">${esc(n.body || '')}</div>
+      <div class="notif-actions">
+        <span class="time">${esc(fmtTime(n.created_at))}</span>
+        ${n.has_report ? `
+          <button class="mini-btn accent" data-report="${esc(n.id)}">${esc(t('viewReport'))}</button>
+          <button class="mini-btn" data-download="${esc(n.id)}">↓ ${esc(t('download'))}</button>` : ''}
+        ${unread ? `<button class="mini-btn" data-read="${esc(n.id)}">${esc(t('markRead'))}</button>` : ''}
       </div>
     </div>`;
   }).join('');
+
+  list.querySelectorAll('[data-report]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); openReport(b.dataset.report); }));
+  list.querySelectorAll('[data-download]').forEach(b =>
+    b.addEventListener('click', async e => {
+      e.stopPropagation();
+      try { await NexusAPI.downloadNotifReport(b.dataset.download); }
+      catch { toast(t('reportOpenFail'), 'err'); }
+    }));
+  list.querySelectorAll('[data-read]').forEach(b =>
+    b.addEventListener('click', async e => { e.stopPropagation(); await markRead(b.dataset.read); }));
 }
 
-// ── Toast ──────────────────────────────────────────────────────────────
-function showToast(msg, type = 'info') {
-  const c = document.getElementById('toasts');
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.innerHTML = `<span>${esc(msg)}</span>`;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
+async function markRead(id) {
+  try {
+    await NexusAPI.markNotifRead(id);
+    const n = S.notifs.find(x => x.id === id);
+    if (n && !n.read_at) { n.read_at = new Date().toISOString(); S.unread = Math.max(0, S.unread - 1); }
+    renderNotifs();
+  } catch { toast(t('errTitle'), 'err'); }
 }
 
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+$('mark-all').addEventListener('click', async () => {
+  try {
+    await NexusAPI.markAllNotifsRead();
+    S.notifs.forEach(n => { if (!n.read_at) n.read_at = new Date().toISOString(); });
+    S.unread = 0;
+    renderNotifs(); render();
+    toast(t('allRead'), 'ok');
+  } catch { toast(t('errTitle'), 'err'); }
+});
+
+$('bell').addEventListener('click', () => {
+  const p = $('notif-panel');
+  const open = p.hidden;
+  p.hidden = !open;
+  $('bell').setAttribute('aria-expanded', String(open));
+  if (open) p.scrollIntoView({ behavior:'smooth', block:'nearest' });
+});
+
+/* ═══ Modales — piège de focus + fermeture Échap (dette n°9) ══════════════ */
+let closeModal = null;
+
+function modal(title, bodyHTML, footHTML) {
+  if (closeModal) closeModal();
+  const prev = document.activeElement;
+  const ov = document.createElement('div');
+  ov.className = 'overlay';
+  ov.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head">
+        <h2 id="modal-title">${title}</h2>
+        <button class="icon-btn" data-close aria-label="${esc(t('close'))}">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">${bodyHTML}</div>
+      ${footHTML ? `<div class="modal-foot">${footHTML}</div>` : ''}
+    </div>`;
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+
+  const focusables = () => [...ov.querySelectorAll('button,[href],input,select,textarea,iframe,[tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+
+  function onKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    if (e.key !== 'Tab') return;
+    const f = focusables(); if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  function close() {
+    document.removeEventListener('keydown', onKey);
+    ov.remove(); document.body.style.overflow = '';
+    closeModal = null;
+    if (prev && prev.focus) prev.focus();
+  }
+  closeModal = close;
+  document.addEventListener('keydown', onKey);
+  ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+  ov.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
+  (focusables()[0] || ov.querySelector('.modal')).focus();
+  return { overlay: ov, close };
 }
+
+function openAlert(id) {
+  const a = S.alerts.find(x => String(x.id) === String(id));
+  if (!a) return;
+  const c       = RISK(Number(a.risque));
+  const reasons = reasonList(a.raisons);
+  const tids    = mitreList(a.mitre);
+  const st      = STATUT_LABEL[LANG][a.statut] || a.statut;
+
+  /* Déroulé horodaté quand le moteur de corrélation en a produit un, simple
+     liste de techniques sinon. Le responsable lit d'abord l'heure et ce qui
+     s'est passé ; l'identifiant ATT&CK reste en second plan. */
+  const etapes = chainList(a.chaine);
+
+  const chain = etapes.length ? `
+    <div class="block">
+      <div class="kicker">${esc(t('chain'))} · MITRE ATT&amp;CK</div>
+      <div class="chain">
+        ${etapes.map((e, i) => {
+          const { tac, col } = tactic(e.technique_id || '');
+          const last = i === etapes.length - 1;
+          return `<div class="chain-step">
+            <div class="chain-rail">
+              <span class="chain-dot" style="background:${col};box-shadow:0 0 0 3px ${col}26"></span>
+              ${last ? '' : `<span class="chain-line" style="background:linear-gradient(180deg,${col},var(--border))"></span>`}
+            </div>
+            <div class="chain-content">
+              <span style="font-family:var(--mono);font-size:10px;color:var(--text-3)">${esc(e.heure || '')}</span>
+              <span class="chain-tac" style="color:${col};background:${col}0F;margin-left:8px">${esc(e.tactique || tac)}</span>
+              ${e.detail ? `<div class="chain-desc">${esc(e.detail)}</div>` : ''}
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-top:3px">${esc(e.technique || e.technique_id || '')}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`
+  : tids.length ? `
+    <div class="block">
+      <div class="kicker">${esc(t('chain'))} · MITRE ATT&amp;CK</div>
+      <div class="chain">
+        ${tids.map((tid, i) => {
+          const { tid: tidClean, tac, col } = tactic(tid);
+          const last = i === tids.length - 1;
+          return `<div class="chain-step">
+            <div class="chain-rail">
+              <span class="chain-dot" style="background:${col};box-shadow:0 0 0 3px ${col}26"></span>
+              ${last ? '' : `<span class="chain-line" style="background:linear-gradient(180deg,${col},var(--border))"></span>`}
+            </div>
+            <div class="chain-content">
+              <span class="chain-tac" style="color:${col};background:${col}0F">${esc(tac)}</span>
+              <span class="chain-tid">${esc(tidClean)}</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  const why = reasons.length ? `
+    <div class="block">
+      <div class="kicker">${esc(t('why'))}</div>
+      <div class="reason-list">${reasons.map(r =>
+        `<div class="reason">${esc(r.texte || r.label)}</div>`).join('')}</div>
+    </div>` : '';
+
+  modal(esc(plainSentence(a)), `
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="font-family:var(--display);font-size:44px;font-weight:600;letter-spacing:-.04em;line-height:1;color:${c}">
+        ${esc(a.risque)}<span style="font-size:16px;opacity:.5">/100</span>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:15px;font-weight:700">${esc(typeLabel(a.type))} — <span style="font-family:var(--mono)">${esc(a.entite || '—')}</span></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:3px">${esc(fmtTime(a.cree_le))} · ${esc(a.source_modele || '—')}</div>
+        <div style="margin-top:8px"><span class="pill" style="color:${c};background:${rgba(c, .1)}">${esc(st)}</span></div>
+      </div>
+    </div>
+    ${why}${chain}
+    <div class="block">
+      <div class="kicker">${esc(t('techNote'))}</div>
+      <div style="font-family:var(--mono);font-size:11.5px;color:var(--text-2);line-height:1.9">
+        id ${esc(String(a.id).slice(0, 8))}<br>
+        ${esc(a.source_modele || '—')}<br>
+        ${tids.length ? esc(tids.join(', ')) : '—'}
+      </div>
+    </div>`, `<button class="btn" data-close>${esc(t('close'))}</button>`);
+}
+
+/* Rapport HTML : document autonome produit côté serveur, affiché en iframe
+   sandboxée (le sandbox bloque le JavaScript) ou téléchargé. */
+async function openReport(id) {
+  /* Le rapport était le seul écran resté monolingue alors que tout le portail
+     bascule FR/EN. Il suit désormais la langue choisie — c'est celui qui sort
+     de la plateforme par courriel ou impression, donc celui qui en avait le
+     plus besoin. */
+  let data;
+  try { data = await NexusAPI.getNotifReport(id, LANG); }
+  catch { toast(t('reportOpenFail'), 'err'); return; }
+
+  const m = modal(esc(data.title || t('reportTitle')),
+    `<iframe class="report-frame" sandbox="allow-same-origin" title="${esc(data.title || t('reportTitle'))}"></iframe>
+     ${data.lang_note ? `<p class="note" style="margin-top:8px">${esc(data.lang_note)}</p>` : ''}`,
+    `<button class="btn" id="dl-report">↓ ${esc(t('download'))}</button>
+     <button class="btn btn-primary" data-close>${esc(t('close'))}</button>`);
+
+  const frame = m.overlay.querySelector('iframe');
+  frame.srcdoc = data.report_html || '';
+  m.overlay.querySelector('#dl-report').addEventListener('click', async () => {
+    try { await NexusAPI.downloadNotifReport(id, null, LANG); }
+    catch { toast(t('reportOpenFail'), 'err'); }
+  });
+  markRead(id);
+}
+
+/* ═══ Chrome : langue, déconnexion, réseau ════════════════════════════════ */
+$('lang-fr').addEventListener('click', () => setLang('fr'));
+$('lang-en').addEventListener('click', () => setLang('en'));
+$('logout').addEventListener('click', () => NexusAPI.logout());
+$('retry').addEventListener('click', () => { S.error = null; render(); load(); });
+
+window.addEventListener('online',  () => { S.offline = false; render(); load(); });
+window.addEventListener('offline', () => { S.offline = true;  render(); });
+
+/* Nom du périmètre : le JWT ne le porte pas, /auth/me le complète. */
+(async () => {
+  try {
+    const me = await NexusAPI.me();
+    S.perimName = me.tenant_nom || me.tenant_name || me.perimetre || S.perimName;
+  } catch {}
+  render();
+})();
+
+setLang(LANG);
+NexusAPI.poll(load, 30_000);           // 30 s : chaque appel touche la base
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>

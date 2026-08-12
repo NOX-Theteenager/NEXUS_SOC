@@ -1,361 +1,416 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="theme-color" content="#0A0F1C"/>
-<meta name="description" content="NEXUS SOC — Connexion sécurisée"/>
-<title>NEXUS SOC — Connexion</title>
-<link rel="manifest" href="manifest.json"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Connexion — NEXUS SOC</title>
+<meta name="description" content="Plateforme SOC souveraine du CENADI — accès réservé aux personnels habilités.">
+<meta name="theme-color" content="#0A0F1C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXUS SOC — Connexion
+   Design system : voir designexus.md §3. Tokens ci-dessous, identiques sur
+   toutes les pages. Aucune ressource distante : polices auto-hébergées.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg:       #0A0F1C;
-  --bg-2:     #0D1424;
-  --surface:  #0F1729;
-  --surface-2:#131D33;
-  --border:   #1E293B;
-  --border-2: #334155;
-  --text:     #E2E8F0;
-  --text-2:   #94A3B8;
-  --text-3:   #64748B;
-  --accent:   #5EAAFF;
-  --teal:     #3DDC97;
-  --amber:    #F5A524;
-  --red:      #EF4444;
-  --display:  "Fraunces", Georgia, serif;
-  --body:     "Manrope", sans-serif;
-  --mono:     "JetBrains Mono", monospace;
+  /* Fonds, du plus profond au plus élevé */
+  --bg:        #0A0F1C;
+  --bg-2:      #0D1424;
+  --surface:   #0F1729;
+  --surface-2: #131D33;
+  /* Bordures */
+  --border:    #1E293B;
+  --border-2:  #334155;
+  /* Texte, du plus fort au plus faible */
+  --text:      #E2E8F0;
+  --text-2:    #94A3B8;
+  --text-3:    #64748B;
+  --text-4:    #475569;   /* nouveau : sur-titres de section, jamais du contenu */
+  /* Accents fonctionnels — la couleur porte du sens, jamais de la décoration */
+  --accent:    #5EAAFF;
+  --teal:      #3DDC97;
+  --amber:     #F5A524;
+  --red:       #EF4444;
+  /* Typographie */
+  --display: "Fraunces", Georgia, serif;
+  --body:    "Manrope", system-ui, -apple-system, sans-serif;
+  --mono:    "JetBrains Mono", ui-monospace, "Courier New", monospace;
+  /* Formes */
+  --r-lg:    20px;
+  --r-card:  12px;
+  --r-field: 9px;
+  --r-pill:  999px;
+  --sh-float: 0 24px 80px rgba(0,0,0,.55);
+  --focus:    0 0 0 3px rgba(94,170,255,.15);
 }
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 html, body { height: 100%; }
 body {
-  font-family: var(--body);
   background: var(--bg);
   color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  overflow: hidden;
+  padding: 24px 18px;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* ── Fond animé ─────────────────────────────────────────────────────────── */
+/* ── Ambiance : grille, halo, ligne de balayage ─────────────────────────────
+   La ligne de balayage reste cantonnée au login : elle distrait sur une
+   session de travail de 8 heures (designexus.md §3.4). */
+.bg-grid, .bg-glow, .scan-line { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 .bg-grid {
-  position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background-image:
     linear-gradient(rgba(94,170,255,.018) 1px, transparent 1px),
     linear-gradient(90deg, rgba(94,170,255,.018) 1px, transparent 1px);
   background-size: 36px 36px;
 }
-.bg-glow {
-  position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background: radial-gradient(ellipse 70% 60% at 50% 40%,
-    rgba(94,170,255,.07) 0%, transparent 65%);
-}
+.bg-glow { background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(94,170,255,.07) 0%, transparent 65%); }
 .scan-line {
-  position: fixed; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(94,170,255,.4), transparent);
+  height: 1px; inset: auto 0 auto 0;
+  background: linear-gradient(90deg, transparent, rgba(94,170,255,.35), transparent);
   animation: scan 6s linear infinite;
-  z-index: 0;
 }
-@keyframes scan { from { top: 0; } to { top: 100vh; } }
+@keyframes scan { 0% { top: -2%; opacity: 0 } 12% { opacity: 1 } 88% { opacity: 1 } 100% { top: 102%; opacity: 0 } }
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+@keyframes cardIn { from { opacity: 0; transform: translateY(20px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes spin { to { transform: rotate(360deg) } }
 
-/* ── Carte centrale ─────────────────────────────────────────────────────── */
+/* ── Carte ─────────────────────────────────────────────────────────────── */
 .card {
   position: relative; z-index: 1;
-  width: min(420px, calc(100vw - 32px));
+  width: min(420px, 100%);
   background: var(--surface);
   border: 1px solid var(--border-2);
-  border-radius: 20px;
-  padding: 44px 40px 40px;
-  box-shadow: 0 24px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(94,170,255,.06);
+  border-radius: var(--r-lg);
+  padding: 34px 30px;
+  box-shadow: var(--sh-float);
   animation: cardIn .6s cubic-bezier(.22,1,.36,1) both;
 }
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(28px) scale(.97); }
-  to   { opacity: 1; transform: none; }
-}
 
-/* ── Logo ───────────────────────────────────────────────────────────────── */
+.brand { text-align: center; margin-bottom: 26px; }
 .logo {
-  text-align: center;
-  margin-bottom: 32px;
-}
-.logo-mark {
   font-family: var(--display);
-  font-style: italic;
-  font-weight: 600;
-  font-size: 32px;
-  letter-spacing: -.03em;
-  color: var(--text);
-  display: block;
+  font-style: italic; font-weight: 600;
+  font-size: 30px; letter-spacing: -.03em; line-height: 1.1;
 }
-.logo-mark em { color: var(--amber); font-style: italic; }
-.logo-sub {
+.logo em { font-style: inherit; color: var(--amber); }
+.tagline {
   font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  display: block;
-  margin-top: 5px;
+  font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--text-3); margin-top: 6px;
 }
-.logo-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  margin-top: 10px;
-  padding: 4px 12px;
-  background: rgba(61,220,151,.08);
-  border: 1px solid rgba(61,220,151,.2);
-  border-radius: 999px;
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--teal);
-  letter-spacing: .08em;
-}
-.logo-badge::before {
-  content: "";
-  width: 6px; height: 6px;
-  background: var(--teal);
-  border-radius: 50%;
-  animation: pulse 2.2s infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-/* ── Formulaire ─────────────────────────────────────────────────────────── */
-.form-group { margin-bottom: 18px; }
-.form-label {
-  display: block;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-2);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  margin-bottom: 7px;
+/* Badge d'état de la plateforme — jamais purement décoratif : il dit si
+   l'API répond. Le mot accompagne toujours la couleur (accessibilité). */
+.status {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 12px; padding: 4px 12px;
+  border-radius: var(--r-pill);
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  background: rgba(61,220,151,.08); border: 1px solid rgba(61,220,151,.2); color: var(--teal);
+  transition: all .25s;
 }
-.form-input {
+.status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2.2s infinite; }
+.status[data-state="offline"] { background: rgba(245,165,36,.08); border-color: rgba(245,165,36,.25); color: var(--amber); }
+.status[data-state="checking"] { background: rgba(100,116,139,.1); border-color: var(--border); color: var(--text-3); }
+
+/* ── Bandeau d'erreur — auth refusée (rouge) vs réseau (ambre) ──────────── */
+.alert {
+  padding: 11px 14px; border-radius: var(--r-field);
+  font-size: 12.5px; line-height: 1.5; margin-bottom: 18px;
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #FCA5A5;
+}
+.alert[hidden] { display: none; }
+.alert strong { display: block; font-weight: 700; margin-bottom: 2px; }
+.alert span { color: var(--text-2); }
+.alert[data-kind="network"] { background: rgba(245,165,36,.1); border-color: rgba(245,165,36,.3); color: var(--amber); }
+
+/* ── Champs ────────────────────────────────────────────────────────────── */
+.field { margin-bottom: 16px; }
+.field-label {
+  display: block;
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-2); margin-bottom: 7px;
+}
+.field-wrap { position: relative; }
+.field-input {
   width: 100%;
-  padding: 11px 14px;
   background: var(--bg-2);
   border: 1px solid var(--border-2);
-  border-radius: 9px;
+  border-radius: var(--r-field);
+  padding: 11px 14px;
+  font-family: var(--mono); font-size: 13.5px;
   color: var(--text);
-  font-family: var(--mono);
-  font-size: 14px;
   outline: none;
   transition: border-color .2s, box-shadow .2s;
-  -webkit-appearance: none;
 }
-.form-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(94,170,255,.15);
-}
-.form-input.error { border-color: var(--red); }
-.form-input::placeholder { color: var(--text-3); }
+.field-input::placeholder { color: var(--text-4); }
+.field-input:focus { border-color: var(--accent); box-shadow: var(--focus); }
+.field-input[aria-invalid="true"] { border-color: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,.12); }
+.has-toggle .field-input { padding-right: 78px; }
 
-/* ── Rôle sélecteur (visuel uniquement) ─────────────────────────────────── */
-.role-hint {
-  font-size: 11px;
-  color: var(--text-3);
-  font-family: var(--mono);
-  margin-top: 5px;
-  letter-spacing: .03em;
+/* Affichage du mot de passe — sur un poste sécurisé avec un mot de passe
+   long, l'absence de bascule est une gêne réelle (designexus.md §5.1). */
+.pwd-toggle {
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  background: none; border: 1px solid var(--border-2); border-radius: 5px;
+  padding: 4px 8px;
+  font-family: var(--mono); font-size: 9.5px; color: var(--text-3);
+  cursor: pointer; transition: all .2s;
 }
+.pwd-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.pwd-toggle:focus-visible { outline: none; box-shadow: var(--focus); border-color: var(--accent); }
 
-/* ── Bouton de connexion ─────────────────────────────────────────────────── */
-.btn-login {
-  width: 100%;
+/* ── Bouton ────────────────────────────────────────────────────────────── */
+.btn-primary {
+  width: 100%; margin-top: 10px;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
   padding: 13px;
-  background: var(--accent);
-  color: #07111F;
-  border: none;
-  border-radius: 10px;
-  font-family: var(--body);
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
-  letter-spacing: .01em;
-  margin-top: 8px;
-  position: relative;
-  overflow: hidden;
-  transition: opacity .2s, transform .1s;
+  background: var(--accent); color: #07111F;
+  border: none; border-radius: 10px;
+  font-family: var(--body); font-weight: 700; font-size: 15px;
+  cursor: pointer; transition: filter .2s, opacity .2s;
 }
-.btn-login:active { transform: scale(.99); }
-.btn-login:disabled { opacity: .5; cursor: not-allowed; }
-.btn-login .spinner {
-  display: none;
-  width: 16px; height: 16px;
-  border: 2px solid rgba(0,0,0,.3);
-  border-top-color: #07111F;
-  border-radius: 50%;
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(94,170,255,.4); }
+.btn-primary:disabled { cursor: not-allowed; opacity: .55; background: var(--border); color: var(--text-3); }
+.spinner {
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid rgba(7,17,31,.3); border-top-color: #07111F;
   animation: spin .7s linear infinite;
-  margin: 0 auto;
 }
-.btn-login.loading .spinner { display: block; }
-.btn-login.loading .btn-text { display: none; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.btn-primary:disabled .spinner { border-color: rgba(148,163,184,.25); border-top-color: var(--text-3); }
 
-/* ── Message d'erreur ───────────────────────────────────────────────────── */
-.alert-error {
-  display: none;
-  padding: 11px 14px;
-  background: rgba(239,68,68,.1);
-  border: 1px solid rgba(239,68,68,.3);
-  border-radius: 9px;
-  color: #FCA5A5;
-  font-size: 13px;
-  line-height: 1.5;
-  margin-bottom: 18px;
-}
-.alert-error.show { display: block; }
-
-/* ── Séparateur + lien ───────────────────────────────────────────────────── */
-.divider {
-  text-align: center;
+.foot {
+  text-align: center; margin-top: 20px;
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; line-height: 1.6;
   color: var(--text-3);
-  font-size: 12px;
-  margin: 22px 0 0;
-  font-family: var(--mono);
-  letter-spacing: .04em;
 }
-.divider a {
-  color: var(--accent);
-  text-decoration: none;
-}
-.divider a:hover { text-decoration: underline; }
+.foot a { color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--border-2); }
+.foot a:hover { color: var(--accent); border-color: var(--accent); }
 
-/* ── Responsive ─────────────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
 @media (max-width: 480px) {
-  .card { padding: 32px 24px; }
-  .logo-mark { font-size: 26px; }
+  .card { padding: 28px 22px; border-radius: 16px; }
+  .logo { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-line { display: none; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 </style>
 </head>
 <body>
-<div class="bg-grid"></div>
-<div class="bg-glow"></div>
-<div class="scan-line"></div>
 
-<div class="card" role="main">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+<div class="scan-line" aria-hidden="true"></div>
 
-  <div class="logo">
-    <span class="logo-mark">NEXUS <em>SOC</em></span>
-    <span class="logo-sub">SOCaaS · Cameroun</span>
-    <span class="logo-badge">Connexion sécurisée</span>
+<main class="card">
+  <div class="brand">
+    <div class="logo">NEXUS <em>SOC</em></div>
+    <!-- Dette n°2 corrigée : « SOCaaS · Cameroun » appartenait au positionnement
+         commercial abandonné (voir MIGRATION.md). -->
+    <div class="tagline">CENADI · Plateforme souveraine</div>
+    <div class="status" id="status" data-state="checking" role="status">
+      <span class="dot" aria-hidden="true"></span><span id="status-label">Vérification du service…</span>
+    </div>
   </div>
 
-  <div class="alert-error" id="err" role="alert"></div>
+  <div class="alert" id="alert" hidden role="alert" aria-live="assertive">
+    <strong id="alert-title"></strong><span id="alert-body"></span>
+  </div>
 
-  <form id="login-form" novalidate>
-    <div class="form-group">
-      <label class="form-label" for="email">Adresse e-mail</label>
-      <input class="form-input" type="email" id="email"
-             placeholder="vous@organisation.cm"
-             autocomplete="email" required autofocus/>
+  <form id="form" novalidate autocomplete="on">
+    <div class="field">
+      <label class="field-label" for="email">Adresse e-mail</label>
+      <div class="field-wrap">
+        <input class="field-input" type="email" id="email" name="email"
+               autocomplete="username" required spellcheck="false"
+               placeholder="prenom.nom@cenadi.cm">
+      </div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label" for="password">Mot de passe</label>
-      <input class="form-input" type="password" id="password"
-             placeholder="••••••••••••"
-             autocomplete="current-password" required/>
+    <div class="field">
+      <label class="field-label" for="password">Mot de passe</label>
+      <div class="field-wrap has-toggle">
+        <input class="field-input" type="password" id="password" name="password"
+               autocomplete="current-password" required placeholder="••••••••••••">
+        <button type="button" class="pwd-toggle" id="pwd-toggle"
+                aria-controls="password" aria-pressed="false">afficher</button>
+      </div>
     </div>
 
-    <button class="btn-login" id="btn-submit" type="submit">
-      <span class="btn-text">Se connecter →</span>
-      <span class="spinner"></span>
+    <button type="submit" class="btn-primary" id="submit">
+      <span id="submit-label">Se connecter →</span>
     </button>
   </form>
 
-  <p class="divider">
-    Accès réservé aux personnels habilités du CENADI.
+  <p class="foot">
+    Accès réservé aux personnels habilités du CENADI<br>
+    <a href="docs.html">Documentation</a> · <a href="contact.html">Demande à l'équipe SOC</a>
   </p>
-</div>
+</main>
 
 <script src="js/api.js"></script>
 <script>
-(function () {
-  'use strict';
+'use strict';
 
-  // Déjà connecté → rediriger directement
-  if (NexusAPI.isAuthenticated) {
+/* ─── Routage par rôle (contrainte SQL : 4 rôles) ─────────────────────────
+   dsi_client s'affiche « Responsable de périmètre » à l'écran, mais reste
+   cet identifiant technique en base. */
+const HOME_BY_ROLE = {
+  admin_plateforme: 'console.html',
+  analyste_soc:     'console.html',
+  dsi_client:       'portail.html',
+  lecteur:          'portail.html',
+};
+
+const $ = id => document.getElementById(id);
+const form      = $('form');
+const emailIn   = $('email');
+const pwdIn     = $('password');
+const submitBtn = $('submit');
+const submitLbl = $('submit-label');
+const alertBox  = $('alert');
+
+/* ─── Session déjà ouverte : ne pas redemander les identifiants ───────────── */
+if (window.NexusAPI && NexusAPI.isAuthenticated) {
+  const dest = HOME_BY_ROLE[NexusAPI.role];
+  if (dest) location.replace(dest);
+}
+
+/* ─── Sonde de disponibilité ──────────────────────────────────────────────
+   Le service worker peut servir cette page depuis le cache sans que l'API
+   soit joignable. On le dit au lieu de laisser l'utilisateur le découvrir
+   en tapant son mot de passe. */
+let apiReachable = null;
+
+async function probe() {
+  const st = $('status'), lbl = $('status-label');
+  if (!navigator.onLine) {
+    apiReachable = false;
+    st.dataset.state = 'offline';
+    lbl.textContent = 'Plateforme hors ligne';
+    return;
+  }
+  try {
+    await NexusAPI.getHealthSimple();
+    apiReachable = true;
+    st.dataset.state = 'ok';
+    lbl.textContent = 'Connexion sécurisée';
+  } catch (e) {
+    apiReachable = false;
+    st.dataset.state = 'offline';
+    lbl.textContent = 'Serveur injoignable';
+  }
+}
+probe();
+window.addEventListener('online',  probe);
+window.addEventListener('offline', probe);
+setInterval(probe, 15000);   // nouvelle tentative annoncée dans le message d'erreur
+
+/* ─── Messages ────────────────────────────────────────────────────────────── */
+function showAlert(kind, title, body) {
+  alertBox.dataset.kind = kind;
+  $('alert-title').textContent = title;
+  $('alert-body').textContent  = body;
+  alertBox.hidden = false;
+}
+function clearAlert() { alertBox.hidden = true; }
+
+/* ─── Bascule d'affichage du mot de passe ─────────────────────────────────── */
+$('pwd-toggle').addEventListener('click', () => {
+  const btn = $('pwd-toggle');
+  const show = pwdIn.type === 'password';
+  pwdIn.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'masquer' : 'afficher';
+  btn.setAttribute('aria-pressed', String(show));
+  pwdIn.focus();
+});
+
+/* ─── Soumission ──────────────────────────────────────────────────────────── */
+let busy = false;
+
+form.addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if (busy) return;
+
+  const email = emailIn.value.trim();
+  const pwd   = pwdIn.value;
+
+  if (!email || !pwd) {
+    showAlert('auth', 'Champs incomplets', 'Renseignez votre adresse et votre mot de passe.');
+    (!email ? emailIn : pwdIn).focus();
+    return;
+  }
+
+  busy = true;
+  clearAlert();
+  emailIn.removeAttribute('aria-invalid');
+  pwdIn.removeAttribute('aria-invalid');
+  submitBtn.disabled = true;
+  submitLbl.textContent = 'Connexion…';
+  submitBtn.insertAdjacentHTML('afterbegin', '<span class="spinner" aria-hidden="true"></span>');
+
+  try {
+    await NexusAPI.login(email, pwd);
     const role = NexusAPI.role;
-    redirect(role);
-  }
-
-  const form   = document.getElementById('login-form');
-  const btn    = document.getElementById('btn-submit');
-  const errBox = document.getElementById('err');
-  const inEmail = document.getElementById('email');
-  const inPwd   = document.getElementById('password');
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    clearError();
-
-    const email    = inEmail.value.trim();
-    const password = inPwd.value;
-
-    if (!email || !password) {
-      showError('Veuillez renseigner votre e-mail et votre mot de passe.');
-      return;
+    const dest = HOME_BY_ROLE[role];
+    if (!dest) throw { status: 403, detail: `Rôle « ${role || 'inconnu'} » sans interface associée.` };
+    submitLbl.textContent = 'Redirection…';
+    location.replace(dest);
+    return;                                    // on ne réactive pas le formulaire
+  } catch (err) {
+    if (err && err._network) {
+      // api.js distingue déjà le cas réseau : ne jamais l'afficher comme un
+      // refus d'identifiants, l'utilisateur chercherait une faute inexistante.
+      apiReachable = false;
+      $('status').dataset.state = 'offline';
+      $('status-label').textContent = 'Serveur injoignable';
+      showAlert('network', 'Serveur injoignable',
+        "La page est servie depuis le cache. Vos identifiants n'ont pas été envoyés. Nouvelle tentative automatique dans 15 s.");
+    } else if (err && err.status === 401) {
+      showAlert('auth', 'Identifiants non reconnus',
+        'Vérifiez votre adresse. Après 5 tentatives, le compte est verrouillé 15 minutes.');
+      pwdIn.value = '';                        // e-mail conservé, mot de passe vidé
+      pwdIn.setAttribute('aria-invalid', 'true');
+      emailIn.setAttribute('aria-invalid', 'true');
+      pwdIn.focus();
+    } else {
+      showAlert('auth', 'Connexion refusée',
+        (err && err.detail) ? String(err.detail) : 'Erreur inattendue du serveur.');
     }
-
-    setLoading(true);
-    try {
-      await NexusAPI.login(email, password);
-      const role = NexusAPI.role;
-      if (!role) {
-        showError('Connexion réussie mais rôle utilisateur non reconnu.');
-        return;
-      }
-      redirect(role);
-    } catch (err) {
-      const msg = err.detail || err.message || 'Identifiants invalides.';
-      showError(msg);
-      inPwd.value = '';
-      inEmail.classList.add('error');
-      inPwd.classList.add('error');
-    } finally {
-      setLoading(false);
-    }
-  });
-
-  [inEmail, inPwd].forEach(el =>
-    el.addEventListener('input', () => {
-      clearError();
-      el.classList.remove('error');
-    })
-  );
-
-  function redirect(role) {
-    const routes = {
-      admin_plateforme: 'console.html',
-      analyste_soc:     'console.html',
-      dsi_client:       'portail.html',
-      lecteur:          'portail.html',
-    };
-    window.location.href = routes[role] || 'portail.html';
+  } finally {
+    busy = false;
+    submitBtn.disabled = false;
+    submitLbl.textContent = 'Se connecter →';
+    const sp = submitBtn.querySelector('.spinner');
+    if (sp) sp.remove();
   }
+});
 
-  function setLoading(loading) {
-    btn.disabled = loading;
-    btn.classList.toggle('loading', loading);
-  }
-
-  function showError(msg) {
-    errBox.textContent = msg;
-    errBox.classList.add('show');
-  }
-
-  function clearError() {
-    errBox.textContent = '';
-    errBox.classList.remove('show');
-  }
-})();
+/* ─── Service worker (PWA) ────────────────────────────────────────────────── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

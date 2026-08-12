@@ -1,729 +1,1018 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="theme-color" content="#0A0F1C"/>
-<meta name="description" content="NEXUS SOC — Documentation complète : démarrage rapide, installation, déploiement (Docker, VM, souverain OpenTofu), fonctionnalités, API."/>
-<title>NEXUS SOC — Documentation</title>
-<link rel="manifest" href="manifest.json"/>
-<link rel="icon" type="image/svg+xml" href="icons/icon.svg"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Documentation — NEXUS SOC</title>
+<meta name="description" content="Guide d'exploitation embarqué de la plateforme SOC souveraine du CENADI.">
+<meta name="theme-color" content="#0A0F1C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXUS SOC — Documentation intégrée
+   Guide d'exploitation embarqué : consultable réseau coupé, versionné avec le
+   code. Optimisé pour la lecture prolongée — longueur de ligne bornée à
+   760 px, interlignage 1,8, titres Fraunces.
+   Recherche locale et coloration syntaxique produites sur place : aucune
+   bibliothèque distante (contrainte souveraine, designexus.md §2.2).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg:        #07101e;
-  --bg-2:      #0A0F1C;
-  --surface:   #0F1729;
-  --surface-2: #131D33;
-  --border:    #1E293B;
-  --border-2:  #334155;
-  --text:      #E2E8F0;
-  --text-2:    #94A3B8;
-  --text-3:    #64748B;
-  --accent:    #5EAAFF;
-  --teal:      #3DDC97;
-  --amber:     #F5A524;
-  --red:       #EF4444;
-  --purple:    #B97AFF;
-  --display:   "Fraunces", Georgia, serif;
-  --body:      "Manrope", sans-serif;
-  --mono:      "JetBrains Mono", monospace;
-  --nav-h: 62px;
-  --sidebar-w: 260px;
+  --bg:#0A0F1C; --bg-2:#0D1424; --surface:#0F1729; --surface-2:#131D33;
+  --border:#1E293B; --border-2:#334155;
+  --text:#E2E8F0; --text-2:#94A3B8; --text-3:#64748B; --text-4:#475569;
+  --accent:#5EAAFF; --teal:#3DDC97; --amber:#F5A524; --red:#EF4444; --purple:#B98BFF;
+  --display:"Fraunces",Georgia,serif;
+  --body:"Manrope",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"Courier New",monospace;
+  --r-card:12px; --r-field:8px; --r-pill:999px;
+  --focus:0 0 0 3px rgba(94,170,255,.15);
+  --header-h:58px; --toc-w:246px;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 body {
-  font-family: var(--body);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.7;
-  -webkit-font-smoothing: antialiased;
+  background:var(--bg); color:var(--text);
+  font-family:var(--body); font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
 }
-body::before {
-  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background-image:
-    linear-gradient(rgba(94,170,255,.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94,170,255,.012) 1px, transparent 1px);
-  background-size: 40px 40px;
+button, input { font-family:inherit; color:inherit; }
+:focus-visible { outline:none; box-shadow:var(--focus); border-radius:6px; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-thumb { background:var(--border-2); border-radius:3px; }
+[hidden] { display:none !important; }
+mark { background:rgba(245,165,36,.28); color:inherit; border-radius:3px; padding:0 2px; }
+
+/* ── En-tête ───────────────────────────────────────────────────────────── */
+.hdr {
+  position:sticky; top:0; z-index:30;
+  height:var(--header-h); padding:0 20px;
+  display:flex; align-items:center; gap:18px;
+  border-bottom:1px solid var(--border);
+  background:rgba(10,15,28,.94); backdrop-filter:blur(14px);
+}
+.logo { font-family:var(--display); font-style:italic; font-weight:600; font-size:18px; letter-spacing:-.02em; white-space:nowrap; }
+.logo em { font-style:inherit; color:var(--amber); }
+.hdr nav { display:flex; gap:18px; }
+.hdr nav a { font-size:12.5px; color:var(--text-2); text-decoration:none; }
+.hdr nav a:hover, .hdr nav a[aria-current="page"] { color:var(--accent); }
+.hdr .sp { flex:1; }
+.search-wrap { position:relative; min-width:230px; }
+.search {
+  width:100%; background:var(--bg-2); border:1px solid var(--border-2); border-radius:8px;
+  color:var(--text); font-family:var(--mono); font-size:11.5px; padding:7px 11px; outline:none;
+  transition:border-color .2s, box-shadow .2s;
+}
+.search::placeholder { color:var(--text-4); }
+.search:focus { border-color:var(--accent); box-shadow:var(--focus); }
+.results {
+  position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:40;
+  background:var(--surface); border:1px solid var(--border-2); border-radius:10px;
+  max-height:60vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+.result { display:block; width:100%; text-align:left; background:none; border:none; border-bottom:1px solid var(--border); padding:10px 13px; cursor:pointer; }
+.result:last-child { border-bottom:none; }
+.result:hover, .result:focus-visible { background:var(--surface-2); }
+.result .t { font-size:12.5px; font-weight:600; }
+.result .c { font-size:11.5px; color:var(--text-3); line-height:1.5; margin-top:2px;
+             display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.result .s { font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); }
+.no-result { padding:14px; font-size:12.5px; color:var(--text-3); text-align:center; }
+
+/* ── Grille : sommaire collant + contenu ───────────────────────────────── */
+.wrap { display:grid; grid-template-columns:var(--toc-w) minmax(0,1fr); }
+.toc {
+  border-right:1px solid var(--border); padding:18px 12px 40px;
+  display:flex; flex-direction:column; gap:2px;
+  position:sticky; top:var(--header-h); align-self:start; max-height:calc(100vh - var(--header-h)); overflow-y:auto;
+}
+.toc-title { font-family:var(--mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-4); padding:6px 10px 10px; }
+.toc a {
+  display:flex; gap:10px; align-items:baseline;
+  padding:7px 10px; border-radius:7px; border-left:2px solid transparent;
+  font-size:12.5px; color:var(--text-2); text-decoration:none; transition:background .2s, color .2s;
+}
+.toc a:hover { background:var(--surface-2); }
+.toc a[aria-current="true"] { background:rgba(94,170,255,.06); border-left-color:var(--accent); color:var(--accent); }
+.toc a .n { font-family:var(--mono); font-size:10px; color:var(--text-4); }
+.toc-note { margin-top:14px; padding:11px; background:var(--bg-2); border:1px solid var(--border); border-radius:9px; }
+.toc-note .k { font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); }
+.toc-note .v { font-size:11.5px; color:var(--text-2); margin-top:5px; line-height:1.5; }
+
+/* ── Contenu ───────────────────────────────────────────────────────────── */
+article { padding:30px 40px 70px; max-width:800px; }
+@media (max-width:900px) {
+  .wrap { grid-template-columns:1fr; }
+  .toc { position:static; max-height:none; border-right:none; border-bottom:1px solid var(--border); }
+  article { padding:22px 18px 50px; }
+  .search-wrap { min-width:130px; }
+  .hdr nav { display:none; }
 }
 
-/* ── NAV ── */
-nav {
-  position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h); z-index: 100;
-  background: rgba(7,16,30,.94); backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; padding: 0 28px; gap: 22px;
-}
-nav::after {
-  content: ""; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--amber) 0%, var(--accent) 45%, var(--teal) 100%);
-  opacity: .65;
-}
-.nav-brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; }
-.nav-brand .mark { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 22px; letter-spacing: -.02em; color: var(--text); }
-.nav-brand .mark em { color: var(--amber); font-style: italic; }
-.nav-brand .sub { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; }
-.nav-spacer { flex: 1; }
-.nav-links { display: flex; gap: 22px; align-items: center; }
-.nav-links a { font-size: 13.5px; color: var(--text-2); text-decoration: none; transition: color .2s; }
-.nav-links a:hover { color: var(--text); }
-.btn-nav-ghost {
-  padding: 7px 16px; background: transparent; color: var(--text);
-  border: 1px solid var(--border-2); border-radius: 8px;
-  font-weight: 600; font-size: 13px; text-decoration: none;
-  transition: border-color .2s;
-}
-.btn-nav-ghost:hover { border-color: var(--accent); }
-
-/* ── Layout ── */
-.layout {
-  display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
-  max-width: 1320px; margin: 0 auto;
-  padding-top: var(--nav-h);
-  position: relative; z-index: 1;
-}
-
-/* ── Sidebar TOC ── */
-aside {
-  position: sticky; top: var(--nav-h);
-  height: calc(100vh - var(--nav-h));
-  overflow-y: auto;
-  padding: 32px 18px 32px 28px;
-  border-right: 1px solid var(--border);
-}
-aside h4 {
-  font-family: var(--mono); font-size: 10px;
-  color: var(--text-3); letter-spacing: .14em;
-  text-transform: uppercase; margin: 24px 0 10px;
-}
-aside h4:first-child { margin-top: 0; }
-aside ul { list-style: none; display: flex; flex-direction: column; gap: 2px; }
-aside a {
-  display: block;
-  padding: 7px 12px;
-  font-size: 13.5px; color: var(--text-2);
-  text-decoration: none;
-  border-radius: 7px;
-  border-left: 2px solid transparent;
-  transition: color .15s, background .15s, border-color .15s;
-}
-aside a:hover { color: var(--text); background: var(--surface); }
-aside a.active {
-  color: var(--accent);
-  background: rgba(94,170,255,.07);
-  border-left-color: var(--accent);
-  font-weight: 600;
-}
-
-/* ── Main content ── */
-main { padding: 40px 60px 96px; max-width: 880px; }
-.lead {
-  font-size: 18px; color: var(--text-2);
-  margin-bottom: 32px; line-height: 1.7;
-}
-
-h1 {
-  font-family: var(--display); font-size: 44px;
-  font-weight: 600; letter-spacing: -.025em;
-  margin-bottom: 12px; line-height: 1.1;
-}
-h1 em { font-style: italic; color: var(--accent); }
+.doc-kicker { font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
+h1 { font-family:var(--display); font-size:36px; font-weight:600; letter-spacing:-.035em; line-height:1.12; margin-bottom:14px; }
+h1 em { font-style:italic; color:var(--amber); }
 h2 {
-  font-family: var(--display); font-size: 30px; font-weight: 600;
-  letter-spacing: -.02em;
-  margin: 64px 0 18px; line-height: 1.2;
-  padding-top: 12px;
+  font-family:var(--display); font-size:32px; font-weight:600; letter-spacing:-.03em; line-height:1.15;
+  margin:0 0 14px; scroll-margin-top:calc(var(--header-h) + 16px);
 }
-h2::before {
-  content: "§"; font-family: var(--mono); font-size: 16px;
-  color: var(--text-3); margin-right: 12px;
-}
-h3 {
-  font-size: 18px; font-weight: 700;
-  margin: 32px 0 12px;
-  display: flex; align-items: center; gap: 10px;
-}
-h3 .num {
-  font-family: var(--mono); font-size: 11px; color: var(--accent);
-  background: rgba(94,170,255,.1); padding: 3px 8px; border-radius: 5px;
-}
-p { margin-bottom: 14px; color: var(--text-2); }
-strong { color: var(--text); font-weight: 600; }
-ul.bullets {
-  list-style: none; margin: 8px 0 18px 0; padding-left: 0;
-}
-ul.bullets li {
-  position: relative; padding-left: 22px; margin-bottom: 8px;
-  color: var(--text-2);
-}
-ul.bullets li::before {
-  content: "▸"; position: absolute; left: 4px; top: 0;
-  color: var(--accent);
-}
-ol.steps {
-  counter-reset: step;
-  list-style: none; margin: 18px 0; padding: 0;
-}
-ol.steps li {
-  counter-increment: step;
-  position: relative; padding-left: 42px; margin-bottom: 18px;
-  color: var(--text-2);
-}
+h3 { font-family:var(--display); font-size:20px; font-weight:600; letter-spacing:-.02em; margin:28px 0 10px; scroll-margin-top:calc(var(--header-h) + 16px); }
+h4 { font-size:14px; font-weight:700; margin:20px 0 8px; }
+p  { font-size:15px; color:var(--text-2); line-height:1.8; margin-bottom:18px; text-wrap:pretty; }
+p strong, li strong { color:var(--text); font-weight:600; }
+a { color:var(--accent); text-decoration:none; }
+a:hover { text-decoration:underline; }
+.lead { font-size:16px; color:var(--text-2); line-height:1.75; margin-bottom:26px; }
+
+ul, ol { margin:0 0 20px 20px; }
+li { font-size:15px; color:var(--text-2); line-height:1.8; margin-bottom:7px; }
+ol.steps { counter-reset:s; list-style:none; margin-left:0; }
+ol.steps li { position:relative; padding-left:34px; }
 ol.steps li::before {
-  content: counter(step); position: absolute; left: 0; top: -2px;
-  width: 28px; height: 28px; border-radius: 50%;
-  background: var(--accent); color: #07111F;
-  font-family: var(--mono); font-size: 12px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
+  counter-increment:s; content:counter(s);
+  position:absolute; left:0; top:5px;
+  width:22px; height:22px; border-radius:50%;
+  background:rgba(94,170,255,.12); color:var(--accent);
+  font-family:var(--mono); font-size:11px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
 }
 
-/* ── Code blocks ── */
-.code {
-  position: relative;
-  background: var(--bg-2); border: 1px solid var(--border-2);
-  border-radius: 11px; padding: 18px 20px 18px 20px;
-  font-family: var(--mono); font-size: 12.5px;
-  color: var(--text); line-height: 1.7;
-  overflow-x: auto;
-  margin: 14px 0 22px;
-}
-.code .copy-btn {
-  position: absolute; top: 10px; right: 10px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  color: var(--text-3); font-family: var(--mono); font-size: 11px;
-  padding: 4px 10px; border-radius: 6px; cursor: pointer;
-  transition: color .15s, border-color .15s;
-}
-.code .copy-btn:hover { color: var(--teal); border-color: var(--teal); }
-.code .cmt { color: var(--text-3); font-style: italic; }
-.code .str { color: var(--teal); }
-.code .kw  { color: var(--accent); }
-.code .num { color: var(--amber); }
 code.inline {
-  background: var(--surface-2);
-  padding: 2px 7px; border-radius: 4px;
-  font-family: var(--mono); font-size: 12.5px;
-  color: var(--teal);
-  border: 1px solid var(--border);
+  font-family:var(--mono); font-size:.88em;
+  background:var(--bg-2); border:1px solid var(--border);
+  border-radius:5px; padding:1px 5px; color:var(--text);
 }
 
-/* ── Callouts ── */
-.callout {
-  border-left: 3px solid;
-  background: var(--surface);
-  border-radius: 0 10px 10px 0;
-  padding: 14px 18px; margin: 18px 0;
+/* Bloc de commande : coloration par balisage local, bouton de copie sur
+   chaque bloc, pas de bibliothèque de coloration distante. */
+.code {
+  position:relative; background:var(--bg-2); border:1px solid var(--border-2);
+  border-radius:10px; padding:16px 18px; margin-bottom:22px;
+  font-family:var(--mono); font-size:12.5px; line-height:1.9; color:var(--text-2);
+  white-space:pre-wrap; word-break:break-word; overflow-x:auto;
 }
-.callout.tip   { border-color: var(--teal);   background: rgba(61,220,151,.04); }
-.callout.warn  { border-color: var(--amber);  background: rgba(245,165,36,.04); }
-.callout.info  { border-color: var(--accent); background: rgba(94,170,255,.04); }
-.callout.danger{ border-color: var(--red);    background: rgba(239,68,68,.04); }
-.callout-head {
-  font-family: var(--mono); font-size: 10.5px;
-  letter-spacing: .14em; text-transform: uppercase;
-  margin-bottom: 6px; font-weight: 700;
+.code .cmt { color:var(--text-3); }
+.code .str { color:var(--teal); }
+.code .kw  { color:var(--purple); }
+.code .num { color:var(--amber); }
+.code .flag{ color:var(--amber); }
+.copy-btn {
+  position:absolute; top:11px; right:11px;
+  background:var(--surface-2); border:1px solid var(--border-2); color:var(--text-2);
+  border-radius:6px; padding:4px 10px;
+  font-family:var(--mono); font-size:10px; cursor:pointer; transition:all .2s;
 }
-.callout.tip .callout-head { color: var(--teal); }
-.callout.warn .callout-head { color: var(--amber); }
-.callout.info .callout-head { color: var(--accent); }
-.callout.danger .callout-head { color: var(--red); }
-.callout p:last-child { margin-bottom: 0; }
+.copy-btn:hover { border-color:var(--accent); color:var(--accent); }
 
-/* ── Tableaux ── */
-table {
-  width: 100%; border-collapse: collapse;
-  margin: 18px 0 22px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 11px; overflow: hidden;
-}
-th, td { padding: 12px 16px; text-align: left; font-size: 13.5px; border-bottom: 1px solid var(--border); }
-th { background: var(--surface-2); font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
-tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: rgba(19,29,51,.4); }
+table { width:100%; border-collapse:collapse; margin-bottom:22px; font-size:13.5px; display:block; overflow-x:auto; }
+th, td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+th { font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); background:var(--bg-2); }
+td { color:var(--text-2); line-height:1.6; }
 
-/* ── Cards déploiement ── */
-.deploy-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px; margin: 22px 0;
-}
-.deploy-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 22px 22px;
-  transition: border-color .25s, transform .2s;
-}
-.deploy-card:hover { border-color: var(--border-2); transform: translateY(-3px); }
-.deploy-card .icon { font-size: 28px; margin-bottom: 12px; }
-.deploy-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); font-family: var(--body); letter-spacing: 0; text-transform: none; }
-.deploy-card p { font-size: 13px; line-height: 1.55; margin-bottom: 10px; }
-.deploy-card a {
-  display: inline-block; font-size: 12.5px; color: var(--accent);
-  text-decoration: none; font-weight: 600;
-}
-.deploy-card a:hover { text-decoration: underline; }
+.callout { border-radius:0 10px 10px 0; padding:14px 16px; margin-bottom:22px; border:1px solid; border-left-width:3px; }
+.callout .head { font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; margin-bottom:5px; }
+.callout p { font-size:13.5px; color:var(--text-2); line-height:1.7; margin:0; }
+.callout.tip    { background:rgba(61,220,151,.06);  border-color:rgba(61,220,151,.25);  border-left-color:var(--teal);   }
+.callout.tip .head    { color:var(--teal); }
+.callout.warn   { background:rgba(245,165,36,.06);  border-color:rgba(245,165,36,.25);  border-left-color:var(--amber);  }
+.callout.warn .head   { color:var(--amber); }
+.callout.danger { background:rgba(239,68,68,.06);   border-color:rgba(239,68,68,.25);   border-left-color:var(--red);    }
+.callout.danger .head { color:var(--red); }
+.callout.info   { background:rgba(94,170,255,.05);  border-color:rgba(94,170,255,.2);   border-left-color:var(--accent); }
+.callout.info .head   { color:var(--accent); }
 
-/* ── Anchors visibles au survol ── */
-h2, h3 { scroll-margin-top: 80px; }
+.section { display:none; }
+.section.active { display:block; animation:fade .25s ease both; }
+@keyframes fade { from{opacity:0} to{opacity:1} }
 
-/* ── Mobile ── */
-.toc-toggle {
-  display: none; position: fixed; bottom: 24px; right: 24px; z-index: 50;
-  background: var(--accent); color: #07111F;
-  border: none; padding: 12px 18px; border-radius: 999px;
-  font-weight: 700; font-size: 13px; cursor: pointer;
-  box-shadow: 0 8px 24px rgba(94,170,255,.4);
+.pager { display:flex; justify-content:space-between; gap:12px; margin-top:40px; padding-top:18px; border-top:1px solid var(--border); flex-wrap:wrap; }
+.pager button {
+  background:none; border:none; font-family:var(--mono); font-size:11px;
+  color:var(--text-3); cursor:pointer; transition:color .2s;
 }
-@media (max-width: 880px) {
-  .layout { grid-template-columns: 1fr; }
-  aside {
-    position: fixed; top: var(--nav-h); left: 0; bottom: 0; width: 280px;
-    background: var(--bg-2); transform: translateX(-100%);
-    transition: transform .3s; z-index: 90;
-    height: auto;
-  }
-  aside.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,.5); }
-  main { padding: 32px 24px 96px; }
-  .toc-toggle { display: block; }
-  .nav-links a:not(.btn-nav-ghost) { display: none; }
+.pager button:hover:not(:disabled) { color:var(--accent); }
+.pager button:disabled { opacity:.35; cursor:default; }
+.pager button.next { color:var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
+@media print {
+  .hdr, .toc, .pager, .copy-btn { display:none !important; }
+  .wrap { display:block; }
+  .section { display:block !important; }
+  body { background:#fff; color:#111; }
+  article { max-width:none; padding:0; }
+  p, li, td { color:#333; }
 }
 </style>
 </head>
 <body>
 
-<!-- ── NAV ── -->
-<nav>
-  <a class="nav-brand" href="login.html">
-    <span class="mark">NEXUS <em>SOC</em></span>
-    <span class="sub">Documentation</span>
-  </a>
-  <span class="nav-spacer"></span>
-  <div class="nav-links">
-    <a href="login.html">Connexion</a>
+<header class="hdr">
+  <div class="logo">NEXUS <em>SOC</em></div>
+  <nav>
+    <a href="docs.html" aria-current="page">Documentation</a>
     <a href="contact.html">Contact</a>
-    <a href="login.html" class="btn-nav-ghost">Connexion</a>
+  </nav>
+  <div class="sp"></div>
+  <div class="search-wrap">
+    <input class="search" id="search" type="search" placeholder="Rechercher dans la doc  ⌘K"
+           aria-label="Rechercher dans la documentation" autocomplete="off">
+    <div class="results" id="results" hidden role="listbox" aria-label="Résultats"></div>
   </div>
-</nav>
+</header>
 
-<button class="toc-toggle" onclick="document.querySelector('aside').classList.toggle('open')">☰ Sommaire</button>
+<div class="wrap">
 
-<div class="layout">
+  <nav class="toc" id="toc" aria-label="Sommaire">
+    <div class="toc-title">Sommaire</div>
+    <a href="#prise-en-main"><span class="n">1</span><span>Prise en main</span></a>
+    <a href="#architecture"><span class="n">2</span><span>Architecture du socle</span></a>
+    <a href="#enroler"><span class="n">3</span><span>Enrôler un agent</span></a>
+    <a href="#alerte"><span class="n">4</span><span>Traiter une alerte</span></a>
+    <a href="#soar"><span class="n">5</span><span>Playbooks SOAR</span></a>
+    <a href="#supervision"><span class="n">6</span><span>Supervision et dérive</span></a>
+    <a href="#sauvegarde"><span class="n">7</span><span>Sauvegarde et restauration</span></a>
+    <a href="#hors-ligne"><span class="n">8</span><span>Déploiement hors ligne</span></a>
+    <a href="#licence"><span class="n">9</span><span>API, sécurité, licence</span></a>
+    <div class="toc-note">
+      <div class="k">Recherche locale</div>
+      <div class="v">Index construit au chargement à partir des titres et des paragraphes de cette page. Aucune dépendance externe.</div>
+    </div>
+  </nav>
 
-  <!-- ── SIDEBAR TOC ── -->
-  <aside>
-    <h4>Premiers pas</h4>
-    <ul>
-      <li><a href="#quickstart">Démarrage rapide</a></li>
-      <li><a href="#architecture">Architecture</a></li>
-      <li><a href="#accounts">Comptes &amp; rôles</a></li>
-    </ul>
+  <article id="doc">
 
-    <h4>Installation</h4>
-    <ul>
-      <li><a href="#install-server">Serveur (pile complète)</a></li>
-      <li><a href="#install-agents">Agents endpoint</a></li>
-      <li><a href="#agent-methods">Méthodes de déploiement</a></li>
-    </ul>
+    <!-- ═══ 1 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="prise-en-main" data-n="1" data-label="Prise en main">
+      <div class="doc-kicker">Section 1</div>
+      <h2>Prise en main</h2>
+      <p class="lead">Cette documentation est embarquée dans la plateforme : elle reste consultable
+        quand le réseau est coupé, et elle est versionnée avec le code. Le CENADI exploite NEXUS SOC
+        sans document externe.</p>
 
-    <h4>Déploiements alternatifs</h4>
-    <ul>
-      <li><a href="#deployment">Vue d'ensemble</a></li>
-      <li><a href="#deploy-docker">Docker Compose</a></li>
-      <li><a href="#deploy-vm">Machine virtuelle</a></li>
-      <li><a href="#deploy-cloud">Cloud privé</a></li>
-      <li><a href="#deploy-sovereign">Souverain (OpenTofu)</a></li>
-      <li><a href="#deploy-selfhosted">Auto-hébergé</a></li>
-    </ul>
+      <p>Le chemin le plus court vers une instance fonctionnelle, avec données de démonstration.
+        Seule PostgreSQL est réellement obligatoire : Kafka et Wazuh peuvent être ajoutés plus tard,
+        le service de scoring est conçu pour se dégrader proprement sans eux.</p>
 
-    <h4>Fonctionnalités</h4>
-    <ul>
-      <li><a href="#feat-siem">SIEM &amp; corrélation MITRE</a></li>
-      <li><a href="#feat-ai">Modèles IA</a></li>
-      <li><a href="#feat-soar">SOAR &amp; garde-fous</a></li>
-      <li><a href="#feat-llm">LLM Analyst bilingue</a></li>
-      <li><a href="#feat-multitenant">Multi-tenant (RLS)</a></li>
-      <li><a href="#feat-pwa">Portail PWA</a></li>
-    </ul>
+      <ol class="steps">
+        <li><strong>PostgreSQL</strong> dans Docker (image TimescaleDB officielle).</li>
+        <li><strong>Schémas et jeu de démonstration</strong> appliqués dans l'ordre.</li>
+        <li><strong>Environnement Python</strong> dédié et dépendances installées.</li>
+        <li><strong>Serveur uvicorn</strong> qui monte les routeurs et sert le frontend sur <code class="inline">/app/</code>.</li>
+        <li><strong>Tests pytest</strong> pour valider le parcours de bout en bout.</li>
+      </ol>
 
-    <h4>Référence</h4>
-    <ul>
-      <li><a href="#api">API REST</a></li>
-      <li><a href="#security">Sécurité</a></li>
-      <li><a href="#faq">FAQ</a></li>
-    </ul>
-  </aside>
-
-  <!-- ── MAIN ── -->
-  <main>
-
-    <h1>Documentation <em>NEXUS SOC</em></h1>
-    <p class="lead">Guide complet de la plateforme SOC open source et souveraine : démarrage en 15 minutes, déploiement des agents sur tout type de parc, et choix entre cinq modes de déploiement du serveur (Docker, VM, cloud privé, souverain, auto-hébergé).</p>
-
-    <!-- ============================================================== -->
-    <h2 id="quickstart">Démarrage rapide</h2>
-    <p>Le chemin le plus court pour disposer d'une instance fonctionnelle en local, avec données de démonstration et tests automatisés validés (18/18 PASS).</p>
-
-    <ol class="steps">
-      <li><strong>PostgreSQL</strong> dans Docker (TimescaleDB officiel). C'est la seule infrastructure obligatoire.</li>
-      <li><strong>Schémas + seed SQL</strong> appliqués dans l'ordre. Le seed crée 3 comptes de démonstration et des alertes prêtes à explorer.</li>
-      <li><strong>Environnement Python</strong> dédié (venv) et installation des dépendances.</li>
-      <li><strong>Serveur uvicorn</strong> qui monte tous les routeurs et sert le frontend PWA sur <code class="inline">/app/</code>.</li>
-      <li><strong>Tests pytest</strong> qui valident le parcours bout en bout.</li>
-    </ol>
-
-    <div class="code">
-<button class="copy-btn" onclick="copyCode(this)">Copier</button><span class="cmt"># 1. PostgreSQL (TimescaleDB) en conteneur</span>
-docker run -d --name nexus-pg-test \
+      <div class="code"><button class="copy-btn">copier</button><span class="cmt"># 1. PostgreSQL (TimescaleDB) en conteneur</span>
+docker run -d --name nexus-pg \
   -e POSTGRES_USER=nexus -e POSTGRES_PASSWORD=change_me -e POSTGRES_DB=nexus_soc \
   -p 5432:5432 timescale/timescaledb:2.15.3-pg16
-until docker exec nexus-pg-test pg_isready -U nexus -d nexus_soc; do sleep 2; done
+until docker exec nexus-pg pg_isready -U nexus -d nexus_soc; do sleep 2; done
 
-<span class="cmt"># 2. Schémas + seed (dans l'ordre)</span>
+<span class="cmt"># 2. Schémas + jeu de démonstration, dans l'ordre</span>
 for f in Lot0_Socle/01_schema_patched.sql \
          Lot7_Console_Fournisseur/01_schema_analyst.sql \
          Lot7_Console_Fournisseur/01_schema_provisioning.sql \
+         Lot7_Console_Fournisseur/02_schema_contact.sql \
          Lot0_Socle/03_schema_notifications.sql \
          Lot0_Socle/02_seed_demo.sql; do
-  docker exec -i nexus-pg-test psql -U nexus -d nexus_soc -v ON_ERROR_STOP=1 &lt; "$f"
+  docker exec -i nexus-pg psql -U nexus -d nexus_soc -v ON_ERROR_STOP=1 &lt; "$f"
 done
 
-<span class="cmt"># 3. venv + dépendances</span>
+<span class="cmt"># 3. Environnement Python</span>
 python3 -m venv .venv
-.venv/bin/pip install fastapi "uvicorn[standard]" psycopg2-binary numpy joblib \
-  email-validator python-multipart pytest httpx
+.venv/bin/pip install -r requirements.txt
 
-<span class="cmt"># 4. Serveur</span>
+<span class="cmt"># 4. Serveur applicatif</span>
 export DB_DSN=<span class="str">"postgresql://nexus:change_me@localhost:5432/nexus_soc"</span>
-.venv/bin/uvicorn run:app --port 8000
+.venv/bin/uvicorn run:app --host 0.0.0.0 --port 8000 <span class="flag">--reload</span>
 
-<span class="cmt"># 5. Tests (18 passed attendus)</span>
+<span class="cmt"># 5. Tests</span>
 NEXUS_BASE_URL=http://127.0.0.1:8000 NEXUS_TEST_PWD=admin \
   .venv/bin/pytest Lot6_Tests/test_api.py -v</div>
 
-    <div class="callout tip">
-      <div class="callout-head">Astuce</div>
-      <p>Kafka et Wazuh ne sont <strong>pas requis</strong> pour démarrer : le service de scoring est conçu pour fonctionner en dégradation gracieuse. Vous pouvez les ajouter plus tard via le <code class="inline">docker-compose.yml</code> du Lot 0.</p>
-    </div>
+      <div class="callout tip">
+        <div class="head">Socle complet</div>
+        <p>Pour lever Kafka, Wazuh et le service de scoring d'un coup :
+          <code class="inline">cd Lot0_Socle &amp;&amp; docker compose up -d --wait</code>.
+          Prévoir 8 Go de RAM — l'indexeur Wazuh est le poste le plus gourmand.</p>
+      </div>
 
-    <!-- ============================================================== -->
-    <h2 id="architecture">Architecture</h2>
-    <p>Sept composants principaux travaillent ensemble : un agent endpoint léger en Go, une passerelle d'ingestion FastAPI, un pipeline temps réel via Kafka, deux modèles d'IA (Isolation Forest réseau + UEBA fraude), un moteur SOAR avec garde-fous, un LLM Analyst pour la restitution bilingue, et une console opérateur multi-tenant.</p>
+      <h3>Adresses de la plateforme</h3>
+      <table>
+        <thead><tr><th>Interface</th><th>URL</th></tr></thead>
+        <tbody>
+          <tr><td>Connexion</td><td><code class="inline">http://localhost:8000/app/login.html</code></td></tr>
+          <tr><td>Console opérateur</td><td><code class="inline">http://localhost:8000/app/console.html</code></td></tr>
+          <tr><td>Portail de périmètre</td><td><code class="inline">http://localhost:8000/app/portail.html</code></td></tr>
+          <tr><td>API interactive</td><td><code class="inline">http://localhost:8000/docs</code></td></tr>
+          <tr><td>Wazuh Dashboard</td><td><code class="inline">https://localhost:5601</code></td></tr>
+        </tbody>
+      </table>
 
-    <p>Le stockage repose sur deux briques : TimescaleDB (PostgreSQL 16 + extension séries temporelles) pour le relationnel et l'audit, et Wazuh Indexer (OpenSearch) pour le stockage chaud SIEM. L'isolation entre clients est assurée par Row-Level Security PostgreSQL, avec un rôle <code class="inline">nexus_app</code> filtré et un rôle <code class="inline">nexus_analyst</code> BYPASSRLS pour la supervision cross-tenant.</p>
+      <h3>Comptes de démonstration</h3>
+      <p>Le jeu de démonstration crée trois comptes représentatifs, mot de passe <code class="inline">admin</code> :</p>
+      <table>
+        <thead><tr><th>Adresse</th><th>Rôle</th><th>Interface d'atterrissage</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">admin@nexussoc.cm</code></td><td>admin_plateforme</td><td>console.html</td></tr>
+          <tr><td><code class="inline">soc@nexussoc.cm</code></td><td>analyste_soc</td><td>console.html</td></tr>
+          <tr><td><code class="inline">resp.sigipes@cenadi.cm</code></td><td>dsi_client</td><td>portail.html</td></tr>
+        </tbody>
+      </table>
+      <p>Périmètres de démonstration : <strong>SIGIPES</strong> et <strong>ANTILOPE</strong>
+        (application_metier, critique), <strong>Réseau/LAN CENADI</strong> (reseau, sensible).</p>
+    </section>
 
-    <p>Le diagramme d'architecture complet est disponible dans <code class="inline">00_Documents/Architecture_NEXUS_SOC.drawio</code>.</p>
+    <!-- ═══ 2 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="architecture" data-n="2" data-label="Architecture du socle">
+      <div class="doc-kicker">Section 2</div>
+      <h2>Architecture du socle</h2>
+      <p>Sept composants travaillent ensemble : un agent endpoint léger en Go, une passerelle
+        d'ingestion FastAPI, un pipeline temps réel via Kafka, deux modèles d'IA, un moteur SOAR
+        avec garde-fous, un module de restitution bilingue, et la console opérateur.</p>
 
-    <!-- ============================================================== -->
-    <h2 id="accounts">Comptes &amp; rôles</h2>
-    <p>Le seed de démonstration crée trois comptes représentatifs (mot de passe : <code class="inline">admin</code>) :</p>
-    <table>
-      <thead><tr><th>E-mail</th><th>Rôle</th><th>Atterrissage</th></tr></thead>
-      <tbody>
-        <tr><td><code class="inline">admin@nexussoc.cm</code></td><td>admin_plateforme</td><td>Console (admin + SOC)</td></tr>
-        <tr><td><code class="inline">soc@nexussoc.cm</code></td><td>analyste_soc</td><td>Console (file d'alertes + SOAR)</td></tr>
-        <tr><td><code class="inline">resp.sigipes@cenadi.cm</code></td><td>dsi_client</td><td>Portail (périmètre SIGIPES)</td></tr>
-      </tbody>
-    </table>
+      <div class="code"><span class="cmt"># Chaîne de traitement, de la collecte à la restitution</span>
+Agent Go (~5 Mo, egress-only, HMAC-SHA256)
+  → POST /ingest (FastAPI)
+    → Kafka KRaft (nexus.telemetry)
+      → Normalisation + corrélation MITRE ATT&amp;CK (8 règles)
+      → Modèles IA : M1 Isolation Forest réseau · M2 UEBA fraude interne
+        → nexus.alerts
+          → SOAR (4 playbooks, validation humaine sur impact fort)
+            → Portail + notifications + rapport HTML</div>
 
-    <!-- ============================================================== -->
-    <h2 id="install-server">Installation du serveur</h2>
-    <p>Le point d'entrée unique est <code class="inline">run.py</code>. Il charge le service de scoring (Lot 1), monte les routeurs <code class="inline">/auth/*</code>, <code class="inline">/admin/*</code>, <code class="inline">/analyst/*</code>, <code class="inline">/portal/*</code> et <code class="inline">/provision/*</code>, et sert le frontend sur <code class="inline">/app/</code> via StaticFiles.</p>
+      <p>Le stockage repose sur deux briques : <strong>TimescaleDB</strong> (PostgreSQL 16 avec
+        extension séries temporelles) pour le relationnel, les alertes et l'audit ;
+        <strong>Wazuh Indexer</strong> (OpenSearch) pour le stockage chaud SIEM.</p>
 
-    <h3><span class="num">a</span> Variables d'environnement minimales</h3>
-    <div class="code">
-DB_DSN=<span class="str">"postgresql://nexus:change_me@localhost:5432/nexus_soc"</span>
+      <h3>Cloisonnement des périmètres</h3>
+      <p>Une seule instance héberge tous les périmètres supervisés. L'isolation est assurée par
+        <strong>Row-Level Security</strong> PostgreSQL : chaque requête positionne
+        <code class="inline">app.current_tenant</code> avant d'interroger les tables.</p>
+      <p>Deux rôles de base distincts : <code class="inline">nexus_app</code> (soumis à la RLS, vue
+        d'un seul périmètre) et <code class="inline">nexus_analyst</code> (BYPASSRLS, vue
+        cross-périmètre pour l'équipe SOC). Masquer un bouton dans l'interface est du confort ;
+        l'isolation réelle est appliquée en base.</p>
+
+      <h3>Modèle de données</h3>
+      <table>
+        <thead><tr><th>Table</th><th>Contenu</th><th>Valeurs contraintes</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">tenants</code></td><td>Périmètres supervisés</td>
+              <td>type : application_metier · reseau · infrastructure · poste_utilisateur<br>
+                  criticite : standard · sensible · critique</td></tr>
+          <tr><td><code class="inline">alerts</code></td><td>Incidents levés</td>
+              <td>statut : ouverte · en_cours · resolue · faux_positif</td></tr>
+          <tr><td><code class="inline">agents</code></td><td>Parc surveillé</td>
+              <td>statut : actif · isole · hors_ligne — os : windows · linux</td></tr>
+          <tr><td><code class="inline">soar_audit</code></td><td>Journal des actions SOAR</td>
+              <td>impact : info · faible · moyen · fort — execution : non_executee · manuelle · automatique · annulee</td></tr>
+          <tr><td><code class="inline">notifications</code></td><td>Notifications et rapports</td>
+              <td>severity : info · warning · critical</td></tr>
+          <tr><td><code class="inline">metrics</code></td><td>Hypertable de séries temporelles</td>
+              <td>cpu · score_risque · octets_sortants</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Variables d'environnement essentielles</h3>
+      <div class="code"><button class="copy-btn">copier</button>DB_DSN=<span class="str">"postgresql://nexus:change_me@localhost:5432/nexus_soc"</span>
 JWT_SECRET=<span class="str">"CHANGE_ME_IN_PRODUCTION_USE_32_RANDOM_BYTES"</span>
 PSEUDO_SECRET=<span class="str">"CHANGE_ME_PSEUDO_SECRET"</span>
 RISK_THRESHOLD=<span class="num">70</span>
 INGEST_LIMIT_REQ=<span class="num">30</span>
-NEXUS_CORS_ORIGINS=<span class="str">"https://soc.votre-domaine.cm"</span>   <span class="cmt"># en production</span></div>
+CORR_WINDOW_MIN=<span class="num">30</span>
+NEXUS_CORS_ORIGINS=<span class="str">"https://soc.cenadi.cm"</span>   <span class="cmt"># en production</span></div>
 
-    <h3><span class="num">b</span> Dépendances Python indispensables</h3>
-    <table>
-      <thead><tr><th>Paquet</th><th>Pourquoi</th></tr></thead>
-      <tbody>
-        <tr><td><code class="inline">fastapi</code>, <code class="inline">uvicorn</code></td><td>Cœur du serveur</td></tr>
-        <tr><td><code class="inline">psycopg2-binary</code></td><td>Auth, scoring, admin (synchrone)</td></tr>
-        <tr><td><code class="inline">python-multipart</code></td><td>Endpoints provisioning (Form data)</td></tr>
-        <tr><td><code class="inline">email-validator</code></td><td>Validation EmailStr (Pydantic)</td></tr>
-        <tr><td><code class="inline">numpy</code>, <code class="inline">joblib</code></td><td>Import des modèles IA (chargement <code class="inline">.joblib</code>)</td></tr>
-        <tr><td><code class="inline">pytest</code>, <code class="inline">httpx</code></td><td>Suite de tests API</td></tr>
-      </tbody>
-    </table>
+      <div class="callout warn">
+        <div class="head">Piège connu</div>
+        <p>Ne jamais placer de commentaire en fin de ligne dans le fichier <code class="inline">.env</code> :
+          sous systemd, la valeur est lue commentaire compris et l'authentification échoue en 404.
+          Les commentaires doivent occuper leur propre ligne.</p>
+      </div>
+    </section>
 
-    <!-- ============================================================== -->
-    <h2 id="install-agents">Installation des agents endpoint</h2>
-    <p>L'agent est un binaire Go d'environ <strong>5 Mo</strong>, écrit en pur <code class="inline">stdlib</code> (aucune dépendance externe), egress-only HTTPS, avec signature HMAC-SHA256 des lots et store-and-forward local. Il fonctionne derrière n'importe quel pare-feu.</p>
+    <!-- ═══ 3 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="enroler" data-n="3" data-label="Enrôler un agent">
+      <div class="doc-kicker">Section 3</div>
+      <h2>Enrôler un agent</h2>
+      <p>L'agent est un binaire Go d'environ <strong>5 Mo</strong>, écrit en pur
+        <code class="inline">stdlib</code>. Il est <strong>egress-only</strong> en HTTPS : aucun port
+        entrant, il fonctionne derrière n'importe quel pare-feu. Chaque lot est signé en
+        HMAC-SHA256 et conservé localement si le serveur est injoignable.</p>
 
-    <h3><span class="num">a</span> Compiler l'agent</h3>
-    <div class="code">
-<button class="copy-btn" onclick="copyCode(this)">Copier</button><span class="cmt"># Linux amd64 (~5,0 Mo)</span>
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags=<span class="str">"-s -w"</span> -o nexusagent .
+      <p>L'enrôlement se pilote depuis la console : <em>SOC Analyst → Enrôlement d'agent</em>.
+        Trois étapes — choisir le périmètre, générer le jeton, choisir la voie de déploiement selon
+        le contexte réseau du poste cible.</p>
 
-<span class="cmt"># Windows amd64 (~5,3 Mo)</span>
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags=<span class="str">"-s -w"</span> -o nexusagent.exe .</div>
+      <table>
+        <thead><tr><th>Voie</th><th>Quand l'utiliser</th><th>Endpoint</th></tr></thead>
+        <tbody>
+          <tr><td>Commande shell</td><td>Le poste atteint le serveur sur le réseau interne</td><td><code class="inline">GET /provision/oneliner</code></td></tr>
+          <tr><td>QR code</td><td>Poste isolé du réseau d'administration, terminal mobile</td><td><code class="inline">GET /provision/qr/{id}</code></td></tr>
+          <tr><td>Archive .zip</td><td>Segment coupé d'Internet, transfert par clé USB</td><td><code class="inline">GET /provision/offline-pack/{id}</code></td></tr>
+          <tr><td>Import CSV</td><td>Enrôlement d'un parc entier en une opération</td><td><code class="inline">POST /provision/bulk</code></td></tr>
+        </tbody>
+      </table>
 
-    <h3><span class="num">b</span> Configurer (config.json sur le poste)</h3>
-    <div class="code">
-{
-  <span class="kw">"server_url"</span>:   <span class="str">"https://soc.votre-domaine.cm/ingest"</span>,
+      <h3>Commande à exécuter sur le poste</h3>
+      <div class="code"><button class="copy-btn">copier</button><span class="cmt"># Linux</span>
+curl -fsSL <span class="str">"https://soc.cenadi.cm/provision/oneliner?token=nexus_xxx&amp;hostname=POSTE-RH-12"</span> | sudo sh
+
+<span class="cmt"># Windows (PowerShell en administrateur)</span>
+Set-ExecutionPolicy Bypass -Scope Process -Force
+irm <span class="str">"https://soc.cenadi.cm/provision/oneliner?token=nexus_xxx&amp;hostname=POSTE-RH-12&amp;os=windows"</span> | iex</div>
+
+      <h3>Import CSV en masse</h3>
+      <p>Le fichier attend un en-tête et les colonnes <code class="inline">hostname,os,description</code>.
+        La console valide chaque ligne côté client avant tout envoi : doublons, OS inconnu et hôte vide
+        sont signalés, et <strong>aucune ligne n'est transmise</strong> tant que le parc n'est pas confirmé.
+        Après envoi, les jetons sont exportables en CSV — ils ne seront jamais réaffichés.</p>
+
+      <div class="code">hostname,os,description
+POSTE-RH-12,windows,Bureau ressources humaines
+POSTE-RH-13,windows,Bureau ressources humaines
+SRV-PAIE-04,linux,Serveur de traitement de la solde</div>
+
+      <h3>Configuration déposée sur le poste</h3>
+      <div class="code">{
+  <span class="kw">"server_url"</span>:   <span class="str">"https://soc.cenadi.cm/ingest"</span>,
   <span class="kw">"enroll_token"</span>: <span class="str">"nexus_xxx"</span>,
   <span class="kw">"hmac_key"</span>:     <span class="str">"…"</span>,
-  <span class="kw">"agent_id"</span>:     <span class="str">"agent-poste-001"</span>,
-  <span class="kw">"tenant_id"</span>:    <span class="str">"&lt;UUID&gt;"</span>,
+  <span class="kw">"agent_id"</span>:     <span class="str">"…"</span>,
+  <span class="kw">"tenant_id"</span>:    <span class="str">"&lt;UUID du périmètre&gt;"</span>,
   <span class="kw">"interval_sec"</span>: <span class="num">30</span>,
   <span class="kw">"watch_dirs"</span>:   [<span class="str">"/home"</span>, <span class="str">"/tmp"</span>, <span class="str">"/var/log"</span>],
   <span class="kw">"queue_dir"</span>:    <span class="str">"./queue"</span>,
   <span class="kw">"queue_max_mb"</span>: <span class="num">50</span>
 }</div>
 
-    <!-- ============================================================== -->
-    <h2 id="agent-methods">Méthodes de déploiement des agents</h2>
-    <p>Six méthodes selon votre contexte. Toutes génèrent des tokens à <strong>cycle de vie configurable</strong> (expiration, usage unique, binding hostname).</p>
-
-    <div class="deploy-grid">
-      <div class="deploy-card"><div class="icon">⚡</div><h4>One-liner curl|bash</h4><p>Une seule commande copiée-collée sur le poste. Idéal pour quelques agents.</p><a href="#m-oneliner">Voir →</a></div>
-      <div class="deploy-card"><div class="icon">🪟</div><h4>One-liner PowerShell</h4><p>Équivalent Windows via <code class="inline">irm | iex</code> en PowerShell admin.</p><a href="#m-oneliner">Voir →</a></div>
-      <div class="deploy-card"><div class="icon">📋</div><h4>CSV bulk</h4><p>Importez un CSV de hostnames, recevez un token par ligne dans un récap exportable.</p><a href="#m-bulk">Voir →</a></div>
-      <div class="deploy-card"><div class="icon">📦</div><h4>Pack offline (.zip)</h4><p>Binaire + config + script d'installation, pour postes sans accès internet.</p><a href="#m-offline">Voir →</a></div>
-      <div class="deploy-card"><div class="icon">🔳</div><h4>QR Code</h4><p>QR scannable depuis le poste — utile pour le terrain (kiosques, ateliers).</p><a href="#m-qr">Voir →</a></div>
-      <div class="deploy-card"><div class="icon">🎼</div><h4>Ansible playbook</h4><p>Déploiement de masse Linux (50–500 postes) via un playbook fourni.</p><a href="#m-ansible">Voir →</a></div>
-    </div>
-
-    <h3 id="m-oneliner"><span class="num">1</span> One-liner</h3>
-    <div class="code">
-<span class="cmt"># Linux</span>
-curl -fsSL <span class="str">"https://soc.votre-domaine.cm/provision/oneliner?token=nexus_xxx&amp;hostname=POSTE-01"</span> | bash
-
-<span class="cmt"># Windows (PowerShell admin)</span>
-Set-ExecutionPolicy Bypass -Scope Process -Force
-irm <span class="str">"https://soc.votre-domaine.cm/provision/oneliner?token=nexus_xxx&amp;hostname=POSTE-01&amp;os=windows"</span> | iex</div>
-
-    <h3 id="m-bulk"><span class="num">2</span> CSV bulk</h3>
-    <p>Format attendu : une ligne par poste, colonnes <code class="inline">hostname,os,description</code>. Envoyez le contenu à <code class="inline">POST /provision/bulk</code>, recevez un CSV de tokens à distribuer.</p>
-
-    <h3 id="m-offline"><span class="num">3</span> Pack offline</h3>
-    <p>Téléchargez <code class="inline">GET /provision/offline-pack/{agent_id}</code> qui contient le binaire (Linux et Windows), un <code class="inline">config.json</code> pré-rempli, et les scripts <code class="inline">install_linux.sh</code> / <code class="inline">install_windows.ps1</code>. Copiez-le sur clé USB, transférez sur le poste, lancez l'installeur.</p>
-
-    <h3 id="m-qr"><span class="num">4</span> QR code</h3>
-    <p>L'endpoint <code class="inline">GET /provision/qr/{agent_id}</code> renvoie un PNG en base64. Scanné, il donne la commande <code class="inline">curl | bash</code> complète sur le terminal du poste.</p>
-
-    <h3 id="m-ansible"><span class="num">5</span> Ansible</h3>
-    <div class="code">
-ansible-playbook -i inventaire.ini \
+      <h3>Déploiement de masse par Ansible</h3>
+      <div class="code"><button class="copy-btn">copier</button>ansible-playbook -i inventaire.ini \
   Lot7_Console_Fournisseur/install_templates/ansible_nexus_agent.yml \
-  -e <span class="str">"nexus_server=https://soc.votre-domaine.cm"</span> \
+  -e <span class="str">"nexus_server=https://soc.cenadi.cm"</span> \
   -e <span class="str">"nexus_token=nexus_xxx"</span> \
   -e <span class="str">"nexus_tenant_id=&lt;UUID&gt;"</span></div>
 
-    <!-- ============================================================== -->
-    <h2 id="deployment">Déploiements alternatifs (serveur)</h2>
-    <p>Modes de déploiement de la plateforme, du plus simple au plus contrôlé. En exploitation CENADI, le mode <strong>souverain (OpenTofu)</strong> sur serveur interne est la cible ; les autres servent au développement et à la démonstration.</p>
+      <div class="callout danger">
+        <div class="head">Cycle de vie des secrets</div>
+        <p>Le jeton d'enrôlement et la clé HMAC ne sont affichés <strong>qu'une seule fois</strong>.
+          En cas de perte, utilisez la rotation de clé (<code class="inline">POST /provision/rotate-hmac/{id}</code>) :
+          elle invalide immédiatement la clé courante, l'agent cessera d'émettre tant qu'il n'aura pas
+          été reconfiguré. Prévoyez un accès au poste avant de lancer une rotation.</p>
+      </div>
+    </section>
 
-    <table>
-      <thead><tr><th>Mode</th><th>Usage</th><th>Effort</th><th>Souveraineté</th></tr></thead>
-      <tbody>
-        <tr><td>Docker Compose</td><td>Démo, PoC, poste de développement</td><td>★☆☆</td><td>★★★</td></tr>
-        <tr><td>Machine virtuelle</td><td>Environnement d'intégration</td><td>★★☆</td><td>★★★</td></tr>
-        <tr><td>Souverain (OpenTofu)</td><td>Production CENADI (serveur interne)</td><td>★★★</td><td>★★★</td></tr>
-        <tr><td>Auto-hébergé bare-metal</td><td>Datacenter CENADI</td><td>★★★</td><td>★★★</td></tr>
-      </tbody>
-    </table>
+    <!-- ═══ 4 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="alerte" data-n="4" data-label="Traiter une alerte">
+      <div class="doc-kicker">Section 4</div>
+      <h2>Traiter une alerte</h2>
+      <p>La file d'alertes est le poste de travail quotidien de l'analyste. Elle est ouverte sur
+        <em>SOC Analyst → Alertes</em> : la file à gauche, le détail à droite — vous ne perdez
+        jamais votre file en ouvrant une alerte.</p>
 
-    <h3 id="deploy-docker"><span class="num">1</span> Docker Compose (par défaut)</h3>
-    <p>Le mode le plus simple. Le <code class="inline">docker-compose.yml</code> du Lot 0 démarre l'intégralité de la pile : Kafka KRaft, TimescaleDB, Wazuh Indexer + Manager + Dashboard, scoring service. Toutes les <strong>healthchecks</strong> sont configurées, le démarrage est attendu via <code class="inline">--wait</code>.</p>
-    <div class="code">
-sudo sysctl -w vm.max_map_count=<span class="num">262144</span>
-cd Lot0_Socle &amp;&amp; unzip nexus-soc-socle.zip &amp;&amp; cd nexus-soc-socle
-cp .env.example .env <span class="cmt"># adapter les mots de passe</span>
-docker compose up -d --wait
-docker compose ps
-curl http://localhost:8000/health</div>
-    <div class="callout warn"><div class="callout-head">RAM</div><p>La pile complète demande <strong>8 Go</strong> minimum (Wazuh Indexer est l'élément le plus gourmand). Sur 4 Go, commentez le service <code class="inline">wazuh.dashboard</code> et utilisez seulement l'API.</p></div>
+      <h3>Ce que porte une alerte</h3>
+      <table>
+        <thead><tr><th>Champ</th><th>Ce qu'il dit</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">risque</code></td><td>Score 0–100 attribué par le modèle. Seuil d'alerte par défaut : 70.</td></tr>
+          <tr><td><code class="inline">raisons</code></td><td>Liste des motifs renvoyés par le modèle — c'est l'explicabilité, affichée telle quelle.</td></tr>
+          <tr><td><code class="inline">mitre</code></td><td>Techniques ATT&amp;CK corrélées, ordonnées par phase dans le détail.</td></tr>
+          <tr><td><code class="inline">source_modele</code></td><td>Modèle 1 (réseau) ou Modèle 2 (UEBA fraude interne).</td></tr>
+          <tr><td><code class="inline">entite</code></td><td>Hôte ou compte concerné.</td></tr>
+        </tbody>
+      </table>
 
-    <h3 id="deploy-vm"><span class="num">2</span> Machine virtuelle (Ubuntu / Debian)</h3>
-    <p>Pour une organisation préférant une VM dédiée plutôt que des conteneurs. Recommandé : Ubuntu 22.04 LTS, 8 Go RAM, 50 Go disque. La séquence est identique à Docker Compose, plus la configuration d'un service <code class="inline">systemd</code> pour redémarrer automatiquement la pile.</p>
-    <ul class="bullets">
-      <li>Installez Docker selon la procédure officielle.</li>
-      <li>Clonez le dépôt dans <code class="inline">/opt/nexus-soc</code>.</li>
-      <li>Créez une unité <code class="inline">/etc/systemd/system/nexus-soc.service</code> qui lance <code class="inline">docker compose up</code> au boot.</li>
-      <li>Configurez un reverse proxy (Nginx / Caddy) en frontal pour HTTPS et le routage <code class="inline">/app</code> vers le frontend.</li>
-    </ul>
+      <h3>Échelle de risque</h3>
+      <table>
+        <thead><tr><th>Score</th><th>Lecture</th><th>Délai attendu</th></tr></thead>
+        <tbody>
+          <tr><td>≥ 80</td><td>Critique</td><td>Action immédiate</td></tr>
+          <tr><td>60 – 79</td><td>Élevé</td><td>À traiter dans la journée</td></tr>
+          <tr><td>40 – 59</td><td>Moyen</td><td>À qualifier</td></tr>
+          <tr><td>&lt; 40</td><td>Faible</td><td>Surveillance</td></tr>
+        </tbody>
+      </table>
 
-    <h3 id="deploy-cloud"><span class="num">3</span> Cloud privé (AWS/Azure/GCP en VPC dédié)</h3>
-    <p>Pour un déploiement à plus grande échelle, restant sous votre contrôle, dans un VPC isolé. Architecture cible :</p>
-    <ul class="bullets">
-      <li><strong>Calcul</strong> : Kubernetes managé (EKS, AKS, GKE) avec auto-scaling.</li>
-      <li><strong>Base</strong> : PostgreSQL managé (RDS, Cloud SQL) avec extension <code class="inline">timescaledb</code> ou installation manuelle.</li>
-      <li><strong>Pipeline</strong> : Kafka managé (MSK, Confluent Cloud, Event Hub) ou auto-géré sur Kubernetes.</li>
-      <li><strong>Stockage objet</strong> : S3/Blob pour les sauvegardes et les modèles IA.</li>
-      <li><strong>Réseau</strong> : VPC privé, endpoints VPC, pas d'IP publique pour la base.</li>
-    </ul>
-    <div class="callout info"><div class="callout-head">Conformité</div><p>Pour un usage au Cameroun, privilégiez les régions les plus proches géographiquement (AWS Cape Town, Azure Johannesburg) en attendant une présence souveraine. Les administrations publiques doivent rester sur le mode souverain ci-dessous.</p></div>
+      <h3>Règles de corrélation</h3>
+      <p>Le moteur corrèle les événements sur une fenêtre glissante de <strong>30 minutes</strong>
+        (<code class="inline">CORR_WINDOW_MIN</code>) et couvre huit techniques :</p>
+      <table>
+        <thead><tr><th>Technique</th><th>Ce qu'elle détecte</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">T1059</code></td><td>Exécution de commandes ou de scripts, processus lancé depuis /tmp</td></tr>
+          <tr><td><code class="inline">T1071</code></td><td>Connexion vers un port de commande connu (4444, 6667, 1337…)</td></tr>
+          <tr><td><code class="inline">T1005</code></td><td>Accès à des fichiers sensibles (shadow, passwd, dossiers de solde)</td></tr>
+          <tr><td><code class="inline">T1204</code></td><td>Fichier exécutable ouvert depuis le répertoire de téléchargement</td></tr>
+          <tr><td><code class="inline">T1486</code></td><td>Plus de 20 fichiers modifiés en moins de 5 minutes — rançongiciel</td></tr>
+          <tr><td><code class="inline">T1027</code></td><td>Obfuscation : base64 inline, double extension, appel iex()</td></tr>
+          <tr><td><code class="inline">T1136</code></td><td>Création de comptes, notamment en masse (plus de 5 en 10 minutes)</td></tr>
+          <tr><td><code class="inline">T1083</code></td><td>Énumération de répertoires système et de la base de registre</td></tr>
+        </tbody>
+      </table>
+      <p>Un incident est levé si <strong>au moins 3 tactiques distinctes</strong> sont observées dans
+        la fenêtre, ou sur les combinaisons Execution + C2, Impact seul, ou
+        Defense Evasion + Persistence.</p>
 
-    <h3 id="deploy-sovereign"><span class="num">4</span> Déploiement souverain (OpenTofu)</h3>
-    <p>C'est le mode <strong>recommandé pour les administrations publiques camerounaises</strong>. La pile est déployée par un module OpenTofu (<code class="inline">deploy/opentofu/</code>) directement sur un serveur fourni par l'institution. Aucune donnée ne quitte le site.</p>
-    <ol class="steps">
-      <li>L'institution provisionne un serveur physique ou une VM (Ubuntu 22.04, 8 Go RAM minimum) avec accès SSH.</li>
-      <li>Vous renseignez <code class="inline">terraform.tfvars</code> : IP serveur, clé SSH, nom de l'institution, domaine.</li>
-      <li><code class="inline">tofu apply</code> exécute 7 étapes en SSH : prérequis Docker, upload configs et sources, certificats Wazuh, démarrage de la pile, vérification de santé.</li>
-      <li>Les secrets (PostgreSQL, JWT, Wazuh admin) sont auto-générés et accessibles via <code class="inline">tofu output</code>.</li>
-      <li>Un cron de sauvegarde quotidienne (02h00) est installé automatiquement.</li>
-    </ol>
-    <div class="code">
-cd deploy/opentofu/
+      <h3>Clore une alerte</h3>
+      <ul>
+        <li><strong>Approuver l'action SOAR</strong> proposée si l'incident est confirmé.</li>
+        <li><strong>Refuser</strong> en motivant : le motif est journalisé dans <code class="inline">soar_audit</code>.</li>
+        <li><strong>Marquer faux positif</strong> : l'alerte sort de la file et alimente le taux de
+          faux positifs utilisé par le suivi de dérive des modèles (section 6).</li>
+      </ul>
+
+      <h3>Produire une chaîne d'attaque de démonstration</h3>
+      <p>Le collecteur sait émettre une séquence d'événements bruts reproduisant un scénario
+        d'exfiltration complet. Ce n'est pas une alerte fabriquée en base : les événements passent
+        par <code class="inline">/ingest</code>, signés, et c'est le moteur de corrélation qui
+        reconstitue la chaîne.</p>
+      <div class="code"><button class="copy-btn">copier</button>sudo -E python3 /opt/nexus-agent/nexus_collector.py --simulate chaine</div>
+      <p>L'incident apparaît dans la file d'alertes avec son déroulé horodaté, la preuve de chaque
+        étape et la décomposition de son score. Les deux autres simulations
+        (<code class="inline">--simulate exfil</code>, <code class="inline">--simulate portscan</code>)
+        alimentent les modèles d'anomalie et ne produisent donc pas de chaîne.</p>
+
+      <div class="callout info">
+        <div class="head">Raccourcis clavier</div>
+        <p>Dans la console : <code class="inline">d</code> tableau de bord, <code class="inline">a</code> alertes,
+          <code class="inline">v</code> approbation SOAR, <code class="inline">p</code> périmètres,
+          <code class="inline">g</code> agents, <code class="inline">s</code> santé,
+          <code class="inline">m</code> supervision, <code class="inline">e</code> enrôlement.</p>
+      </div>
+    </section>
+
+    <!-- ═══ 5 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="soar" data-n="5" data-label="Playbooks SOAR">
+      <div class="doc-kicker">Section 5</div>
+      <h2>Playbooks SOAR et garde-fous</h2>
+      <p>Quatre playbooks couvrent les types d'incident produits par le pipeline. Chaque action
+        porte un niveau d'impact, et l'impact <strong>fort</strong> est le seul à ouvrir une demande
+        de validation humaine.</p>
+
+      <table>
+        <thead><tr><th>Type d'incident</th><th>Enchaînement</th></tr></thead>
+        <tbody>
+          <tr><td>Fraude interne</td><td>journal d'investigation → notification → gel de compte → conservation des journaux</td></tr>
+          <tr><td>Exfiltration</td><td>journal d'investigation → gel de compte → blocage IP → notification</td></tr>
+          <tr><td>Rançongiciel</td><td>capture mémoire → isolation d'hôte → blocage IP → notification</td></tr>
+          <tr><td>Anomalie réseau / C2</td><td>journal d'investigation → blocage IP → notification</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Niveaux d'impact et réversibilité</h3>
+      <table>
+        <thead><tr><th>Impact</th><th>Actions</th><th>Validation</th><th>Réversible</th></tr></thead>
+        <tbody>
+          <tr><td>info / faible</td><td>journal d'investigation, conservation des journaux, notifications</td><td>automatique</td><td>sans objet</td></tr>
+          <tr><td>moyen</td><td>capture mémoire, blocage IP, réinitialisation de mot de passe</td><td>automatique si risque ≥ 70</td><td>blocage IP oui</td></tr>
+          <tr><td><strong>fort</strong></td><td>gel de compte, isolation d'hôte</td><td><strong>humaine, toujours</strong></td><td>oui, depuis le journal</td></tr>
+        </tbody>
+      </table>
+
+      <p>L'interface annonce l'impact et la réversibilité <strong>avant</strong> la confirmation :
+        une isolation d'hôte se défait, une réinitialisation de mot de passe non.</p>
+
+      <h3>Modes d'automatisation</h3>
+      <ul>
+        <li><strong>Observe</strong> (<code class="inline">dry_run=True</code>) : toutes les actions sont proposées, aucune n'est exécutée.</li>
+        <li><strong>Semi-auto</strong> (défaut en exploitation) : impacts faible et moyen automatiques si risque ≥ 70, impact fort en attente de validation.</li>
+        <li><strong>Auto complet</strong> : toutes les actions s'exécutent. Non recommandé.</li>
+      </ul>
+
+      <h3>Journal d'audit</h3>
+      <p>Toute action proposée, exécutée, refusée ou annulée est écrite dans
+        <code class="inline">soar_audit</code> et consultable dans la console
+        (<em>Supervision</em> ou <em>Approbation SOAR</em>), filtrable par périmètre, acteur et impact.
+        Le journal répond à la question « qui a gelé ce compte, quand, sur quelle décision ».</p>
+
+      <div class="callout danger">
+        <div class="head">À raccorder avant exploitation réelle</div>
+        <p>Les connecteurs SOAR — gel de compte AD/LDAP, isolation d'hôte, blocage IP périmétrique —
+          sont <strong>simulés</strong> dans le démonstrateur. Ils doivent être raccordés aux annuaires
+          et pare-feu réels du CENADI avant toute mise en exploitation.</p>
+      </div>
+    </section>
+
+    <!-- ═══ 6 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="supervision" data-n="6" data-label="Supervision et dérive">
+      <div class="doc-kicker">Section 6</div>
+      <h2>Supervision et dérive des modèles</h2>
+      <p>La section <em>Supervision</em> de la console réunit trois lectures : les séries mesurées
+        du socle, l'état de dérive des modèles, et le journal d'audit SOAR.</p>
+
+      <h3>Séries temporelles</h3>
+      <p>Les graphiques sont tracés en SVG, sans bibliothèque, depuis l'hypertable
+        <code class="inline">metrics</code> agrégée par minute. Métriques suivies :
+        <code class="inline">cpu</code>, <code class="inline">score_risque</code>,
+        <code class="inline">octets_sortants</code>. Fenêtres : 1 h, 6 h, 24 h, 7 j.</p>
+
+      <div class="callout warn">
+        <div class="head">Une absence de mesure ne se dessine pas comme une mesure</div>
+        <p>L'abscisse est proportionnelle au <strong>temps</strong>, pas au rang du point. Quand la
+          collecte s'interrompt, la courbe se rompt, la zone est grisée sur toute la durée réelle de
+          la coupure, et leur nombre est annoncé sous le graphique. Une plage vide signifie
+          « rien n'a été mesuré ici » — jamais « la valeur est restée stable ».</p>
+        <p>Même règle sur le score de sécurité du portail : un jour sans télémétrie n'a pas de score,
+          il interrompt la courbe. Un jour sans alerte n'est un 100 que si la plateforme collectait
+          effectivement ce jour-là.</p>
+      </div>
+      <div class="code">GET /admin/metrics?hours=24</div>
+
+      <h3>Dérive des modèles</h3>
+      <p>Un modèle entraîné sur des données passées se dégrade quand la réalité change. Le suivi
+        mesure cet écart sur deux fenêtres consécutives de même durée.</p>
+      <table>
+        <thead><tr><th>Indicateur</th><th>Ce qu'il mesure</th><th>Seuils</th></tr></thead>
+        <tbody>
+          <tr><td>PSI</td><td>Écart entre la distribution de référence et la distribution courante</td>
+              <td>&gt; 0,10 surveillance · &gt; 0,25 ré-entraînement</td></tr>
+          <tr><td>Glissement σ</td><td>Déplacement de la moyenne des scores, en écarts-type</td><td>&gt; 2σ alarme</td></tr>
+          <tr><td>Taux de faux positifs</td><td>Part des alertes marquées faux positif par les analystes</td><td>&gt; 10 % alarme</td></tr>
+          <tr><td>Taux d'alertes</td><td>Alertes rapportées au volume d'événements</td><td>trop bas : modèle permissif</td></tr>
+        </tbody>
+      </table>
+      <div class="code">GET /monitor/drift?days=7   # fenêtre réglable : 7, 14 ou 30 jours</div>
+
+      <div class="callout warn">
+        <div class="head">Absence n'est pas santé</div>
+        <p>Si le module de monitoring n'est pas disponible sur le déploiement, la console affiche
+          explicitement « calcul indisponible ». Ne lisez jamais cette absence comme « modèles sains » :
+          la dérive n'est simplement pas mesurée.</p>
+      </div>
+
+      <h3>Lire « non mesurable » et « indicatif »</h3>
+      <p>Le PSI a besoin des <strong>deux</strong> fenêtres. Un modèle qui n'a produit aucune alerte
+        sur l'une des deux périodes est donc <em>non mesurable</em> — ce n'est pas une panne, et ce
+        n'est pas un verdict de bonne santé. La console affiche alors le nombre d'alertes de chaque
+        côté pour que le manque se voie. Un historique irrégulier peut être non mesurable à 7 jours et
+        parfaitement mesurable à 14 : c'est à cela que sert le sélecteur de fenêtre du panneau.</p>
+      <p>À l'inverse, un PSI calculé sur une poignée d'alertes est arithmétiquement juste et
+        statistiquement muet : le découpage en déciles perd son sens. En dessous de 30 observations du
+        côté le moins fourni, la valeur reste affichée mais l'étiquette passe à <em>indicatif</em>.
+        Elle ne justifie pas à elle seule un ré-entraînement.</p>
+
+      <h3>Rapport d'incident — langue et intégrité</h3>
+      <p>Le rapport suit la langue du portail. La version française est celle figée en base au
+        moment de l'incident et fait foi ; la version anglaise est rendue à la demande depuis les
+        mêmes données, jamais traduite depuis le HTML.</p>
+      <p>Chaque rapport porte une empreinte SHA-256 en pied de page. Elle ne peut pas porter sur le
+        document qui la contient : elle est calculée sur le document privé de son bloc d'intégrité,
+        dont chaque ligne porte le marqueur <code class="inline">NEXUS-INTEGRITY</code>. N'importe
+        quel destinataire la reproduit hors ligne, avec des outils standards :</p>
+      <div class="code">grep -v NEXUS-INTEGRITY rapport-nexussoc-a7f3c91d.html | sha256sum</div>
+      <p>S'y ajoute un scellé HMAC-SHA256 sur les mêmes octets. Il est vérifiable par le SOC qui
+        détient le secret de plateforme — <strong>pas par un tiers</strong>. Une signature Ed25519
+        serait publiquement vérifiable, mais aucune clé asymétrique n'existe dans le déploiement :
+        l'annoncer reviendrait à promettre une garantie que la plateforme n'apporte pas.</p>
+
+      <h3>Santé du socle</h3>
+      <p>La section <em>Santé système</em> interroge <code class="inline">/health/detailed</code>
+        toutes les 30 secondes et rend l'état service par service : scoring, Kafka, TimescaleDB,
+        indexeur Wazuh. Un service dégradé ne signifie pas un socle arrêté — la page dit lequel,
+        et ce qui reste opérationnel.</p>
+    </section>
+
+    <!-- ═══ 7 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="sauvegarde" data-n="7" data-label="Sauvegarde et restauration">
+      <div class="doc-kicker">Section 7</div>
+      <h2>Sauvegarde et restauration</h2>
+      <p>Deux scripts du Lot 0 encadrent le cycle : <code class="inline">backup.sh</code> et
+        <code class="inline">restore.sh</code>. Le déploiement souverain installe automatiquement
+        une tâche cron quotidienne à 02 h 00.</p>
+
+      <div class="code"><button class="copy-btn">copier</button><span class="cmt"># Sauvegarde manuelle</span>
+BACKUP_DEST=/opt/nexus-backups KEEP_DAYS=<span class="num">14</span> ./Lot0_Socle/backup.sh
+
+<span class="cmt"># Restauration depuis une archive datée</span>
+./Lot0_Socle/restore.sh /opt/nexus-backups/nexus-2026-08-11.tar.gz
+
+<span class="cmt"># Vérifier la tâche planifiée</span>
+crontab -l | grep nexus</div>
+
+      <h3>Ce qui doit être sauvegardé</h3>
+      <table>
+        <thead><tr><th>Élément</th><th>Pourquoi</th><th>Reconstructible ?</th></tr></thead>
+        <tbody>
+          <tr><td>Base TimescaleDB</td><td>Périmètres, comptes, alertes, journal d'audit</td><td>Non</td></tr>
+          <tr><td>Modèles <code class="inline">.joblib</code></td><td>M1 réseau et M2 UEBA entraînés</td><td>Oui, par ré-entraînement</td></tr>
+          <tr><td>Fichier <code class="inline">.env</code></td><td>Secrets JWT, pseudonymisation, base</td><td>Non — leur perte invalide tous les jetons</td></tr>
+          <tr><td>Index Wazuh</td><td>Stockage chaud SIEM</td><td>Partiellement, via réindexation</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <div class="head">Une sauvegarde non testée n'est pas une sauvegarde</div>
+        <p>Exécutez une restauration sur une instance de test au moins une fois par trimestre.
+          Vérifiez ensuite qu'une connexion aboutit et que la file d'alertes se charge.</p>
+      </div>
+    </section>
+
+    <!-- ═══ 8 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="hors-ligne" data-n="8" data-label="Déploiement hors ligne">
+      <div class="doc-kicker">Section 8</div>
+      <h2>Déploiement hors ligne et souverain</h2>
+      <p>Le déploiement cible est souverain et potentiellement coupé d'Internet.
+        <strong>Aucune ressource ne doit être chargée depuis un réseau externe à l'exécution.</strong></p>
+
+      <h3>Ce que cela impose au frontend</h3>
+      <ul>
+        <li>Les trois familles de polices sont auto-hébergées sous <code class="inline">Lot9_Frontend/fonts/</code>
+          en WOFF2 et déclarées en <code class="inline">@font-face</code>. Aucun appel à un service de polices distant.</li>
+        <li>Les icônes sont des SVG en ligne. Aucune bibliothèque d'icônes distante.</li>
+        <li>Les graphiques sont produits en SVG par la page elle-même. Aucune bibliothèque de tracé.</li>
+        <li>La recherche de cette documentation indexe le DOM au chargement. Aucun moteur distant.</li>
+      </ul>
+      <p>Pour régénérer les polices depuis un poste connecté :
+        <code class="inline">python3 Lot9_Frontend/fonts/fetch_fonts.py</code>.</p>
+
+      <h3>Application installable et mode hors ligne</h3>
+      <p>Le frontend est une application web installable. Le service worker met les pages en cache,
+        sert <code class="inline">offline.html</code> quand la navigation échoue, et reçoit les
+        notifications d'alerte critique.</p>
+      <ul>
+        <li><strong>Chrome / Edge</strong> : icône d'installation dans la barre d'adresse.</li>
+        <li><strong>Android</strong> : « Ajouter à l'écran d'accueil ».</li>
+        <li><strong>iOS</strong> : « Sur l'écran d'accueil » depuis Safari.</li>
+      </ul>
+      <div class="callout info">
+        <div class="head">Ajouter une page</div>
+        <p>Toute nouvelle page doit être ajoutée à <code class="inline">PRECACHE_URLS</code> dans
+          <code class="inline">sw.js</code>, et <code class="inline">CACHE_NAME</code> incrémenté —
+          sinon les anciens navigateurs continuent de servir la version précédente.</p>
+      </div>
+
+      <h3>Déploiement souverain par OpenTofu</h3>
+      <p>Mode recommandé en exploitation : la pile est déployée sur un serveur fourni par
+        l'institution, aucune donnée ne quitte le site.</p>
+      <div class="code"><button class="copy-btn">copier</button>cd deploy/opentofu/
 cp terraform.tfvars.example terraform.tfvars
 nano terraform.tfvars   <span class="cmt"># server_host, institution_name, nexus_domain</span>
 tofu init &amp;&amp; tofu plan &amp;&amp; tofu apply
 tofu output -raw postgres_password</div>
+      <p>La séquence exécute sept étapes en SSH : prérequis Docker, envoi des configurations et des
+        sources, certificats Wazuh, démarrage de la pile, vérification de santé. Les secrets
+        (PostgreSQL, JWT, administrateur Wazuh) sont générés automatiquement.</p>
+    </section>
 
-    <h3 id="deploy-selfhosted"><span class="num">5</span> Auto-hébergé bare-metal</h3>
-    <p>Pour un RSSI souhaitant contrôler chaque couche. Identique au mode VM, mais sur du matériel physique dédié, sans hyperviseur. Recommandations :</p>
-    <ul class="bullets">
-      <li>RAID 1 ou 10 pour les volumes critiques (TimescaleDB, Wazuh Indexer).</li>
-      <li>Chiffrement <code class="inline">LUKS</code> des volumes au repos.</li>
-      <li>Sauvegardes externalisées chiffrées (rsync + GPG ou Restic).</li>
-      <li>Réseau d'administration séparé du réseau d'ingestion des agents.</li>
-      <li>HSM ou Vault pour la clé HMAC maîtresse (rotation périodique).</li>
-    </ul>
+    <!-- ═══ 9 ═══════════════════════════════════════════════════════════ -->
+    <section class="section" id="licence" data-n="9" data-label="API, sécurité, licence">
+      <div class="doc-kicker">Section 9</div>
+      <h2>API, sécurité et licence</h2>
 
-    <!-- ============================================================== -->
-    <h2 id="feat-siem">Fonctionnalités · SIEM &amp; corrélation MITRE</h2>
-    <p>Le pipeline normalise la télémétrie brute vers un schéma ECS-like, extrait les features comportementales d'hôte, puis corrèle pour reconstituer des chaînes d'attaque sur 30 minutes glissantes.</p>
-    <p><strong>8 techniques MITRE ATT&amp;CK</strong> couvertes : T1059 (exécution), T1071 (C2), T1005 (collecte), T1204 (user execution), T1486 (ransomware/impact), T1027 (obfuscation), T1136 (création de compte), T1083 (énumération).</p>
-    <p>Un incident est levé si <strong>≥ 3 tactiques distinctes</strong> sont observées dans la fenêtre, ou si <strong>Execution+C2</strong>, ou <strong>Impact</strong>, ou <strong>Defense Evasion + Persistence</strong>.</p>
+      <h3>Surface d'API</h3>
+      <p>La documentation interactive est disponible sur <code class="inline">/docs</code> dès que
+        le serveur tourne.</p>
+      <table>
+        <thead><tr><th>Préfixe</th><th>Rôle</th><th>Authentification</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">/auth/*</code></td><td>Connexion, renouvellement, profil</td><td>anonyme (connexion) puis JWT</td></tr>
+          <tr><td><code class="inline">/admin/*</code></td><td>Périmètres, comptes, agents, métriques</td><td>admin_plateforme</td></tr>
+          <tr><td><code class="inline">/analyst/*</code></td><td>Alertes, SOAR en attente, journal d'audit, tableau de bord</td><td>analyste_soc ou admin</td></tr>
+          <tr><td><code class="inline">/portal/*</code></td><td>Vue filtrée d'un périmètre</td><td>dsi_client, lecteur</td></tr>
+          <tr><td><code class="inline">/provision/*</code></td><td>Jetons, scripts, QR, import CSV, révocation</td><td>admin_plateforme</td></tr>
+          <tr><td><code class="inline">/monitor/drift</code></td><td>Dérive des modèles IA</td><td>analyste_soc ou admin</td></tr>
+          <tr><td><code class="inline">/contact/*</code></td><td>Demande interne de mise sous supervision</td><td>anonyme</td></tr>
+          <tr><td><code class="inline">/ingest</code></td><td>Passerelle des agents</td><td>Bearer agent + HMAC</td></tr>
+          <tr><td><code class="inline">/health</code></td><td>État des services</td><td>anonyme</td></tr>
+        </tbody>
+      </table>
 
-    <h2 id="feat-ai">Fonctionnalités · Modèles IA</h2>
-    <table>
-      <thead><tr><th>Modèle</th><th>Cible</th><th>Métriques</th></tr></thead>
-      <tbody>
-        <tr><td><strong>M1 — Réseau</strong></td><td>DDoS, PortScan, Bot/C2 (CICIDS2017)</td><td>ROC-AUC 0.987 (IF) / 0.991 (AE)</td></tr>
-        <tr><td><strong>M2 — UEBA fraude</strong></td><td>Faux mandatements, fantômes, exfil (SIGIPES)</td><td>ROC-AUC 0.969 · FPR 4 %</td></tr>
-        <tr><td><strong>Drift monitor</strong></td><td>Dérive en production</td><td>PSI &gt; 0.10 / &gt; 0.25</td></tr>
-      </tbody>
-    </table>
-    <p>Chaque alerte du Modèle 2 est accompagnée du <strong>top-3 des features les plus déviantes</strong> en écarts-type (σ), avec libellés en clair (« volume de données exportées anormalement élevé : 13.1σ »).</p>
+      <h3>Sécurité</h3>
+      <ul>
+        <li><strong>JWT HS256</strong> maison : jeton d'accès 15 minutes, renouvellement 7 jours, rafraîchissement automatique sur 401 côté client.</li>
+        <li><strong>HMAC-SHA256</strong> sur chaque lot ingéré, jeton Bearer vérifié contre son empreinte en base — le secret en clair n'est jamais stocké.</li>
+        <li><strong>Limitation de débit</strong> : 100 req/min global, 30 req/min sur <code class="inline">/ingest</code>.</li>
+        <li><strong>Pseudonymisation</strong> stable des données personnelles par HMAC ; la correspondance inverse est réservée à l'administrateur pour enquête.</li>
+        <li><strong>CORS</strong> restreint par <code class="inline">NEXUS_CORS_ORIGINS</code> ; jamais de joker avec identifiants.</li>
+        <li><strong>Rotation et révocation</strong> par agent ou par périmètre entier en cas d'urgence.</li>
+      </ul>
 
-    <h2 id="feat-soar">Fonctionnalités · SOAR &amp; garde-fous</h2>
-    <p>Quatre playbooks intégrés : fraude interne, exfiltration, ransomware, anomalie réseau/C2. Chaque action a un niveau d'impact (LOW / MEDIUM / HIGH).</p>
-    <ul class="bullets">
-      <li><strong>Mode Observe</strong> (<code class="inline">dry_run=True</code>) : aucune action exécutée, tout est journalisé.</li>
-      <li><strong>Mode Semi-auto</strong> (défaut prod) : LOW + MEDIUM automatiques si risque ≥ 70 ; HIGH (gel de compte, isolation d'hôte) attend la <strong>validation humaine</strong>.</li>
-      <li><strong>Mode Auto complet</strong> : toutes actions automatisées — non recommandé par défaut.</li>
-    </ul>
+      <h3>Questions fréquentes</h3>
+      <h4>Le serveur a moins de 8 Go de RAM, est-ce jouable ?</h4>
+      <p>Oui. Désactivez le service <code class="inline">wazuh.dashboard</code> et baissez
+        <code class="inline">OPENSEARCH_JAVA_OPTS</code>. Vous conservez l'API et les interfaces,
+        vous perdez l'exploration SIEM graphique.</p>
 
-    <h2 id="feat-llm">Fonctionnalités · LLM Analyst bilingue</h2>
-    <p>Chaque incident est expliqué en langage clair (3–5 phrases factuelles) dans la langue choisie : <strong>FR</strong> ou <strong>EN</strong>. Deux modes :</p>
-    <ul class="bullets">
-      <li><strong>Template</strong> (défaut) : explication déterministe, sans hallucination, sans LLM.</li>
-      <li><strong>LLM</strong> (optionnel) : Mistral 7B ou Llama via API compatible OpenAI (Ollama / vLLM, variable <code class="inline">OLLAMA_BASE_URL</code>).</li>
-    </ul>
+      <h4>Que se passe-t-il si le serveur tombe quelques heures ?</h4>
+      <p>Les agents continuent de collecter. Les lots sont mis en file locale persistante, bornée par
+        <code class="inline">queue_max_mb</code>, et rejoués à la reprise. Aucune perte tant que la
+        file n'est pas saturée.</p>
 
-    <h2 id="feat-multitenant">Fonctionnalités · Multi-tenant (RLS PostgreSQL)</h2>
-    <p>Une seule instance héberge tous les périmètres. L'isolation est assurée par <strong>Row-Level Security</strong> PostgreSQL : chaque requête API positionne <code class="inline">app.current_tenant</code> avant d'exécuter ses requêtes.</p>
-    <p>Deux rôles : <code class="inline">nexus_app</code> (soumis à la RLS, vue d'un seul périmètre) et <code class="inline">nexus_analyst</code> (BYPASSRLS, vue cross-périmètre pour le SOC du CENADI). L'isolation est <strong>vérifiée par 8 assertions</strong> sur PostgreSQL réel.</p>
+      <h4>Peut-on remplacer un modèle par le sien ?</h4>
+      <p>Oui, tout modèle scikit-learn enregistré en <code class="inline">.joblib</code> avec la
+        structure attendue (<code class="inline">model</code>, <code class="inline">scaler</code>,
+        <code class="inline">features</code>, <code class="inline">threshold</code>,
+        <code class="inline">risk_cfg</code>) est accepté.</p>
 
-    <h2 id="feat-pwa">Fonctionnalités · Portail PWA</h2>
-    <p>Le frontend (Lot 9) est une <strong>Progressive Web App</strong> installable. Le service worker met en cache les pages, sert les ressources en mode hors ligne, et reçoit les notifications push pour les alertes critiques.</p>
-    <ul class="bullets">
-      <li><strong>Chrome / Edge</strong> : icône « Installer » dans la barre d'adresse.</li>
-      <li><strong>Android</strong> : « Ajouter à l'écran d'accueil » — l'app se lance en mode standalone sans barre navigateur.</li>
-      <li><strong>iOS</strong> : « Sur l'écran d'accueil » depuis Safari.</li>
-    </ul>
+      <h4>Comment mettre un nouveau système sous supervision ?</h4>
+      <p>Par le formulaire interne : <a href="contact.html">demande à l'équipe SOC</a>. La demande est
+        référencée, qualifiée, puis le périmètre est créé et les agents enrôlés.</p>
 
-    <!-- ============================================================== -->
-    <h2 id="api">API REST</h2>
-    <p>La documentation interactive OpenAPI est disponible à <code class="inline">/docs</code> et <code class="inline">/redoc</code> dès que le serveur tourne.</p>
-    <table>
-      <thead><tr><th>Préfixe</th><th>Rôle</th><th>Auth requise</th></tr></thead>
-      <tbody>
-        <tr><td><code class="inline">/auth/*</code></td><td>Login, refresh, profil</td><td>Anonyme (login) / JWT</td></tr>
-        <tr><td><code class="inline">/admin/*</code></td><td>Périmètres, users, agents, santé</td><td>admin_plateforme</td></tr>
-        <tr><td><code class="inline">/analyst/*</code></td><td>Alertes cross-périmètre, SOAR pending, dashboard</td><td>analyste_soc / admin</td></tr>
-        <tr><td><code class="inline">/portal/*</code></td><td>Vue filtrée du périmètre (responsable)</td><td>dsi_client</td></tr>
-        <tr><td><code class="inline">/provision/*</code></td><td>Tokens, scripts, QR, bulk CSV, révocation</td><td>admin</td></tr>
-        <tr><td><code class="inline">/score/*</code></td><td>Scoring synchrone M1 / M2 (intégration)</td><td>—</td></tr>
-        <tr><td><code class="inline">/ingest</code></td><td>Passerelle agents (HMAC + Bearer + rate limit)</td><td>HMAC + Bearer agent</td></tr>
-        <tr><td><code class="inline">/health</code>, <code class="inline">/health/detailed</code></td><td>État des services</td><td>Anonyme</td></tr>
-      </tbody>
-    </table>
+      <h3>Licence et code source</h3>
+      <p>NEXUS SOC est publié sous <strong>GPL-3.0-or-later</strong>. Le CENADI possède le code,
+        l'audite, le modifie et l'héberge sur son infrastructure : c'est le sens du projet.
+        Les licences des composants tiers sont listées dans
+        <code class="inline">THIRD_PARTY_LICENSES.md</code>. Les polices Fraunces, Manrope et
+        JetBrains Mono sont distribuées sous SIL Open Font License 1.1.</p>
+    </section>
 
-    <!-- ============================================================== -->
-    <h2 id="security">Sécurité</h2>
-    <ul class="bullets">
-      <li><strong>JWT HS256</strong> maison (auth_middleware), access 15 min + refresh 7 j, auto-refresh sur 401 côté client.</li>
-      <li><strong>Validation HMAC-SHA256</strong> sur chaque lot ingéré, Bearer token vérifié contre le hash en base.</li>
-      <li><strong>Rate limiting</strong> : 100 req/min global, 30 req/min sur <code class="inline">/ingest</code> (HTTP 429 + <code class="inline">Retry-After</code>).</li>
-      <li><strong>Pseudonymisation</strong> stable des PII (e-mails, IPs, agent_ids) via HMAC ; mapping pseudonyme → original réservé à l'admin pour enquête légale.</li>
-      <li><strong>CORS</strong> configurable via <code class="inline">NEXUS_CORS_ORIGINS</code> ; jamais de wildcard avec credentials.</li>
-      <li><strong>Rotation HMAC</strong> par agent (<code class="inline">POST /provision/rotate-hmac/{agent_id}</code>) et <strong>révocation d'urgence</strong> par tenant (<code class="inline">/provision/revoke-tenant/{tenant_id}</code>).</li>
-    </ul>
-    <div class="callout danger">
-      <div class="callout-head">À durcir en production</div>
-      <p>Les connecteurs SOAR (gel de compte AD/LDAP, isolation d'hôte, blocage IP périmétrique) sont <strong>simulés</strong> dans le démonstrateur — à raccorder aux annuaires et pare-feu réels du CENADI avant exploitation.</p>
+    <div class="pager">
+      <button id="prev">← section précédente</button>
+      <button id="next" class="next">section suivante →</button>
     </div>
 
-    <!-- ============================================================== -->
-    <h2 id="faq">FAQ</h2>
-
-    <h3>Mon serveur a moins de 8 Go de RAM, est-ce possible ?</h3>
-    <p>Oui. Commentez le service <code class="inline">wazuh.dashboard</code> et baissez <code class="inline">OPENSEARCH_JAVA_OPTS</code> à <code class="inline">-Xms256m -Xmx256m</code> dans <code class="inline">docker-compose.yml</code>. Vous gardez l'API REST et le portail mais perdez l'interface SIEM graphique de Wazuh.</p>
-
-    <h3>Les agents fonctionnent-ils derrière un pare-feu strict ?</h3>
-    <p>Oui — l'agent est <strong>egress-only</strong> en HTTPS sur le port 443 (configurable). Aucun port entrant requis. Le store-and-forward local conserve les lots si le serveur est momentanément injoignable.</p>
-
-    <h3>Que se passe-t-il si le serveur tombe quelques heures ?</h3>
-    <p>Les agents continuent à collecter localement. Les lots sont mis en file persistante (taille bornée par <code class="inline">queue_max_mb</code>) et rejoués automatiquement à la reprise. Aucune perte d'événements tant que la file n'est pas saturée.</p>
-
-    <h3>Puis-je remplacer le modèle UEBA par le mien ?</h3>
-    <p>Oui. Tout modèle scikit-learn sauvé en <code class="inline">.joblib</code> avec la structure attendue (<code class="inline">model</code>, <code class="inline">scaler</code>, <code class="inline">features</code>, <code class="inline">threshold</code>, <code class="inline">risk_cfg</code>) est compatible. Déposez-le dans <code class="inline">models/model2_isoforest.joblib</code> et redémarrez le scoring service.</p>
-
-    <h3>Le mode LLM est-il indispensable ?</h3>
-    <p>Non. Le mode <strong>template</strong> par défaut produit des explications déterministes en français et en anglais, sans risque d'hallucination. Le mode LLM est une amélioration optionnelle pour les explications longues.</p>
-
-    <h3>Comment intégrer SIGIPES / SYDONIA ?</h3>
-    <p>Dans le mode souverain OpenTofu, l'intégration est faite manuellement par l'équipe SOC du CENADI pendant le raccordement du périmètre. Le Modèle 2 UEBA est calibré sur les patterns d'audit observés. <a href="contact.html">Contactez l'équipe SOC →</a></p>
-
-    <div style="margin-top: 80px; padding-top: 32px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
-      <a href="login.html" style="color: var(--text-2); text-decoration: none; font-size: 13px;">← Retour à la connexion</a>
-      <a href="contact.html" style="color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600;">Contacter l'équipe SOC du CENADI →</a>
-    </div>
-
-  </main>
+  </article>
 </div>
 
 <script>
 'use strict';
 
-// Active section dans la sidebar (scrollspy)
-const links = document.querySelectorAll('aside a[href^="#"]');
-const sections = Array.from(links).map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
-function updateActive() {
-  const y = window.scrollY + 100;
-  let current = sections[0];
-  for (const s of sections) { if (s.offsetTop <= y) current = s; }
-  if (!current) return;
-  links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current.id));
-}
-window.addEventListener('scroll', updateActive, { passive: true });
-updateActive();
+const $ = id => document.getElementById(id);
+const sections = [...document.querySelectorAll('.section')];
+const tocLinks = [...document.querySelectorAll('.toc a')];
 
-// Copy code blocks
-function copyCode(btn) {
-  const code = btn.parentElement.innerText.replace(/^Copier\n?/, '');
-  navigator.clipboard.writeText(code).then(() => {
-    const orig = btn.textContent;
-    btn.textContent = '✓ Copié';
-    btn.style.color = 'var(--teal)';
-    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1400);
+/* ─── Navigation par section ──────────────────────────────────────────────
+   Une seule section affichée à la fois : la doc est longue et la lecture
+   se fait section par section. L'impression, elle, déplie tout (@media print). */
+function show(id, push) {
+  const i = sections.findIndex(s => s.id === id);
+  const target = i >= 0 ? sections[i] : sections[0];
+  sections.forEach(s => s.classList.toggle('active', s === target));
+  tocLinks.forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === '#' + target.id)));
+  const k = sections.indexOf(target);
+  $('prev').disabled = k === 0;
+  $('next').disabled = k === sections.length - 1;
+  $('prev').textContent = k > 0 ? `← ${sections[k - 1].dataset.label}` : '← début';
+  $('next').textContent = k < sections.length - 1 ? `${sections[k + 1].dataset.label} →` : 'fin';
+  if (push) history.replaceState(null, '', '#' + target.id);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+tocLinks.forEach(a => a.addEventListener('click', ev => {
+  ev.preventDefault();
+  show(a.getAttribute('href').slice(1), true);
+}));
+$('prev').addEventListener('click', () => {
+  const k = sections.findIndex(s => s.classList.contains('active'));
+  if (k > 0) show(sections[k - 1].id, true);
+});
+$('next').addEventListener('click', () => {
+  const k = sections.findIndex(s => s.classList.contains('active'));
+  if (k < sections.length - 1) show(sections[k + 1].id, true);
+});
+window.addEventListener('hashchange', () => show(location.hash.slice(1), false));
+
+/* ─── Boutons de copie ──────────────────────────────────────────────────── */
+document.querySelectorAll('.code').forEach(block => {
+  let btn = block.querySelector('.copy-btn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'copier';
+    block.prepend(btn);
+  }
+  btn.addEventListener('click', async () => {
+    const text = [...block.childNodes]
+      .filter(n => n !== btn)
+      .map(n => n.textContent).join('').trim();
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = 'copié ✓';
+    } catch {
+      // Contexte non sécurisé : repli sur la sélection
+      const r = document.createRange(); r.selectNodeContents(block);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      btn.textContent = 'sélectionné';
+    }
+    setTimeout(() => { btn.textContent = 'copier'; }, 1800);
   });
+});
+
+/* ─── Recherche locale ────────────────────────────────────────────────────
+   Index construit au chargement à partir du DOM : titres et paragraphes de
+   chaque section. Rien n'est envoyé, rien n'est chargé. */
+/* Recherche insensible aux accents : « déploiement » doit répondre à « deploiement ».
+   Substitution caractère par caractère plutôt que NFD : la normalisation Unicode
+   décompose « é » en deux points de code et décale toutes les positions suivantes,
+   ce qui casserait le report des index sur le texte d'origine pour le surlignage.
+   Ici la longueur est strictement préservée.
+   Déclaré AVANT la construction de l'index, qui appelle normalize() sur chaque
+   entrée : un const n'est pas remonté comme une déclaration de fonction. */
+const ACCENTS = { 'à':'a','â':'a','ä':'a','á':'a','ã':'a','å':'a',
+                  'ç':'c','è':'e','é':'e','ê':'e','ë':'e',
+                  'î':'i','ï':'i','í':'i','ì':'i',
+                  'ô':'o','ö':'o','ó':'o','ò':'o','õ':'o',
+                  'ù':'u','û':'u','ü':'u','ú':'u','ÿ':'y','ñ':'n' };
+function normalize(s) {
+  return s.toLowerCase().replace(/[àâäáãåçèéêëîïíìôöóòõùûüúÿñ]/g, c => ACCENTS[c]);
 }
 
-// PWA
+const INDEX = [];
+sections.forEach(sec => {
+  sec.querySelectorAll('h2, h3, h4, p, li, td').forEach(el => {
+    const text = el.textContent.replace(/\s+/g, ' ').trim();
+    if (text.length < 12) return;
+    INDEX.push({
+      section: sec.id,
+      label: sec.dataset.label,
+      heading: el.closest('.section').querySelector('h2').textContent,
+      title: /^H[234]$/.test(el.tagName) ? text : (el.previousElementSibling && /^H[234]$/.test(el.previousElementSibling.tagName)
+        ? el.previousElementSibling.textContent : sec.dataset.label),
+      text,
+      norm: normalize(text),
+    });
+  });
+});
+
+function search(q) {
+  const terms = normalize(q).split(/\s+/).filter(t => t.length > 1);
+  if (!terms.length) return [];
+  return INDEX
+    .map(e => {
+      let score = 0;
+      for (const t of terms) {
+        const i = e.norm.indexOf(t);
+        if (i < 0) return null;
+        score += 10 - Math.min(9, i / 20);          // plus le terme est tôt, mieux c'est
+        if (normalize(e.title).includes(t)) score += 8;
+      }
+      return { ...e, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+}
+
+function highlight(text, q) {
+  const terms = normalize(q).split(/\s+/).filter(t => t.length > 1);
+  const norm = normalize(text);
+  let first = text.length;
+  for (const t of terms) { const i = norm.indexOf(t); if (i >= 0) first = Math.min(first, i); }
+  const start = Math.max(0, first - 40);
+  let snippet = (start > 0 ? '…' : '') + text.slice(start, start + 160) + (text.length > start + 160 ? '…' : '');
+  const escd = snippet.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
+  // Surlignage insensible aux accents : on repère les positions sur la forme normalisée
+  const normSnip = normalize(escd);
+  const marks = [];
+  for (const t of terms) {
+    let i = normSnip.indexOf(t);
+    while (i >= 0) { marks.push([i, i + t.length]); i = normSnip.indexOf(t, i + t.length); }
+  }
+  if (!marks.length) return escd;
+  marks.sort((a, b) => a[0] - b[0]);
+  let out = '', cursor = 0;
+  for (const [s, e] of marks) {
+    if (s < cursor) continue;
+    out += escd.slice(cursor, s) + '<mark>' + escd.slice(s, e) + '</mark>';
+    cursor = e;
+  }
+  return out + escd.slice(cursor);
+}
+
+const box = $('results');
+let debounce;
+
+$('search').addEventListener('input', ev => {
+  clearTimeout(debounce);
+  const q = ev.target.value.trim();
+  debounce = setTimeout(() => {
+    if (q.length < 2) { box.hidden = true; box.innerHTML = ''; return; }
+    const hits = search(q);
+    box.hidden = false;
+    box.innerHTML = hits.length
+      ? hits.map(h => `<button class="result" data-sec="${h.section}" role="option">
+           <span class="s">${h.label}</span>
+           <div class="t">${h.title.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]))}</div>
+           <div class="c">${highlight(h.text, q)}</div>
+         </button>`).join('')
+      : `<div class="no-result">Aucun passage ne contient « ${q.replace(/[&<>]/g, '')} ».</div>`;
+    box.querySelectorAll('.result').forEach(b => b.addEventListener('click', () => {
+      show(b.dataset.sec, true);
+      box.hidden = true;
+      $('search').value = '';
+    }));
+  }, 140);
+});
+
+$('search').addEventListener('keydown', ev => {
+  if (ev.key === 'Escape') { box.hidden = true; $('search').blur(); }
+  if (ev.key === 'ArrowDown') { ev.preventDefault(); box.querySelector('.result')?.focus(); }
+});
+document.addEventListener('click', ev => {
+  if (!ev.target.closest('.search-wrap')) box.hidden = true;
+});
+document.addEventListener('keydown', ev => {
+  if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'k') {
+    ev.preventDefault(); $('search').focus(); $('search').select();
+  }
+});
+
+/* ─── Démarrage ─────────────────────────────────────────────────────────── */
+show(location.hash.slice(1) || sections[0].id, false);
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>

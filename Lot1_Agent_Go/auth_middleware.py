@@ -177,5 +177,24 @@ def refresh_token(body: RefreshRequest):
     return {"access_token": access, "token_type": "bearer", "expires_in": ACCESS_TOKEN_TTL}
 
 @auth_router.get("/me", summary="Informations sur l'utilisateur connecté")
-def me(user: dict = Depends(get_current_user)):
-    return {k: v for k, v in user.items() if k not in ("iat", "exp", "kind")}
+def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
+    """Claims du JWT, enrichies du périmètre supervisé rattaché à l'utilisateur.
+
+    Le JWT ne porte que `tenant_id` : le portail a besoin du nom lisible et de
+    la criticité pour titrer ses écrans sans faire un appel /admin réservé aux
+    rôles plateforme.
+    """
+    out = {k: v for k, v in user.items() if k not in ("iat", "exp", "kind")}
+    tid = user.get("tenant_id")
+    if tid:
+        try:
+            with db.cursor() as cur:
+                cur.execute("SELECT nom, type, criticite FROM tenants WHERE id = %s::uuid", (tid,))
+                row = cur.fetchone()
+            if row:
+                out["tenant_nom"]       = row["nom"]
+                out["tenant_type"]      = row["type"]
+                out["tenant_criticite"] = row["criticite"]
+        except Exception:
+            pass  # dégradé : le portail retombe sur un libellé neutre
+    return out

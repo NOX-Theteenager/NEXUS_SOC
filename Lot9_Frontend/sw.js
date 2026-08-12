@@ -6,10 +6,15 @@
  *   - Offline fallback pour les pages HTML
  */
 
-const CACHE_NAME    = 'nexus-soc-v3';
+// v5 : offline.html liste désormais les pages réellement présentes en cache.
+// Cette page n'est servie QUE depuis le cache — sans bump de version, l'ancienne
+// copie précachée continuerait d'être affichée indéfiniment.
+const CACHE_NAME    = 'nexus-soc-v5';
 const OFFLINE_URL   = '/app/offline.html';
 
-// Assets à précacher au premier chargement
+// Assets à précacher au premier chargement.
+// Les polices en font partie : sans elles, une page servie depuis le cache en
+// réseau fermé retombe sur les polices système et perd son identité visuelle.
 const PRECACHE_URLS = [
   '/app/',
   '/app/login.html',
@@ -22,16 +27,37 @@ const PRECACHE_URLS = [
   '/app/manifest.json',
   '/app/icons/icon-192.png',
   '/app/icons/icon-512.png',
+  '/app/fonts/fonts.css',
+  '/app/fonts/fraunces-latin-normal.woff2',
+  '/app/fonts/fraunces-latin-italic.woff2',
+  '/app/fonts/fraunces-latin-ext-normal.woff2',
+  '/app/fonts/fraunces-latin-ext-italic.woff2',
+  '/app/fonts/manrope-latin-normal.woff2',
+  '/app/fonts/manrope-latin-ext-normal.woff2',
+  '/app/fonts/jetbrains-latin-normal.woff2',
+  '/app/fonts/jetbrains-latin-ext-normal.woff2',
 ];
 
 // Préfixes d'URL qui vont vers le réseau (pas de cache)
 const API_PREFIXES = ['/auth', '/admin', '/analyst', '/plg', '/health', '/score', '/provision', '/ingest', '/monitor'];
 
+// Sans elle, le mode hors ligne n'a plus de repli du tout : c'est la seule
+// ressource dont l'absence doit faire échouer l'installation.
+const CRITICAL_URL = OFFLINE_URL;
+
 // ─── Installation ──────────────────────────────────────────────────────────
+// addAll() est atomique : un seul 404 (une police renommée, une page retirée)
+// ferait échouer tout le précache et priverait la plateforme de son mode hors
+// ligne. On met donc en cache ressource par ressource et on tolère les échecs,
+// sauf sur la page de repli.
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(async cache => {
+      await cache.add(CRITICAL_URL);
+      await Promise.all(PRECACHE_URLS.map(url =>
+        cache.add(url).catch(err =>
+          console.warn('[sw] précache ignoré :', url, err && err.message))));
+    }).then(() => self.skipWaiting())
   );
 });
 

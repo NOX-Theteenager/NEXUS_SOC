@@ -40,6 +40,31 @@ TEMPLATES_DIR = Path(__file__).parent / "install_templates"
 
 router = APIRouter(prefix="/provision", tags=["Provisioning & Enrôlement"])
 
+# ---------------------------------------------------------------------------
+# Clés HMAC dérivées
+# ---------------------------------------------------------------------------
+# Source unique de vérité : la dérivation vit dans le service de scoring, qui
+# est aussi celui qui vérifie les signatures. On l'importe plutôt que de la
+# réimplémenter — deux copies finiraient par diverger et les agents seraient
+# rejetés sans raison visible.
+try:
+    from nexus_scoring import derive_hmac_key  # type: ignore  (alias monté par run.py)
+except Exception:  # pragma: no cover - module de scoring non chargé (tests unitaires)
+    import hmac as _hmac_mod
+
+    _MASTER = os.getenv("NEXUS_HMAC_MASTER") or os.getenv("JWT_SECRET", "")
+
+    def derive_hmac_key(agent_id: str, epoch: int = 0) -> str:
+        """Repli strictement identique à nexus_scoring.derive_hmac_key."""
+        if not _MASTER:
+            raise RuntimeError(
+                "NEXUS_HMAC_MASTER (ou JWT_SECRET) non défini : impossible de dériver "
+                "les clés d'agent."
+            )
+        return _hmac_mod.new(_MASTER.encode(),
+                             f"{agent_id}:{epoch}".encode(),
+                             hashlib.sha256).hexdigest()
+
 
 # ---------------------------------------------------------------------------
 # DB + auth helpers
@@ -110,23 +135,59 @@ class BulkRow(BaseModel):
 @router.post("/token", status_code=201, summary="Générer un token d'enrôlement avec cycle de vie")
 def generate_token(body: TokenRequest, db=Depends(get_db), _=Depends(require_admin)):
     bearer_token = f"nexus_{secrets.token_urlsafe(32)}"
-    hmac_key     = secrets.token_hex(32)
     token_hash   = hashlib.sha256(bearer_token.encode()).hexdigest()
-    hmac_hash    = hashlib.sha256(hmac_key.encode()).hexdigest()
     expires_at   = datetime.now(timezone.utc) + timedelta(hours=body.expires_in_hours)
     binding      = body.hostname if body.bind_hostname else None
 
+    # La clé HMAC dérive de l'identité de l'agent : il faut donc d'abord créer la
+    # ligne pour obtenir son id, puis dériver. On conserve l'empreinte de la clé
+    # pour l'audit, mais c'est la dérivation qui fait foi à la vérification.
+    # Un hôte déjà connu du périmètre voit son jeton RENOUVELÉ, il n'en crée pas
+    # un second. Sans cette clause, un réenrôlement — jeton expiré, réinstallation
+    # de la machine — produisait une ligne de plus : c'est ainsi que le parc s'est
+    # retrouvé avec deux entrées pour SRV-ANTILOPE-01 et SRV-SIGIPES-01. Depuis
+    # que l'unicité (périmètre, hôte) est posée, il échouerait carrément.
+    #
+    # L'époque HMAC est incrémentée : l'ancienne clé cesse de valoir, et un agent
+    # resté en schéma « legacy » bascule en « derived » au passage.
+    #
+    # Un agent ISOLÉ n'est pas renouvelé. Réémettre un jeton lui rendrait
+    # l'ingestion, donc annulerait une décision de confinement par un simple
+    # réenrôlement. Il faut le sortir explicitement de l'isolement d'abord.
     with db.cursor() as cur:
         cur.execute(
             """INSERT INTO agents (tenant_id, hostname, os, statut,
-                                   token_hash, hmac_key_hash,
-                                   token_expires_at, token_one_time, token_binding_host)
-               VALUES (%s, %s, %s, 'hors_ligne', %s, %s, %s, %s, %s)
-               RETURNING id""",
+                                   token_hash, token_expires_at,
+                                   token_one_time, token_binding_host,
+                                   hmac_scheme, hmac_epoch)
+               VALUES (%s, %s, %s, 'hors_ligne', %s, %s, %s, %s, 'derived', 0)
+               ON CONFLICT (tenant_id, hostname) DO UPDATE
+                  SET os                 = EXCLUDED.os,
+                      token_hash         = EXCLUDED.token_hash,
+                      token_expires_at   = EXCLUDED.token_expires_at,
+                      token_one_time     = EXCLUDED.token_one_time,
+                      token_binding_host = EXCLUDED.token_binding_host,
+                      token_used_at      = NULL,
+                      hmac_scheme        = 'derived',
+                      hmac_epoch         = agents.hmac_epoch + 1
+                WHERE agents.statut <> 'isole'
+               RETURNING id, hmac_epoch""",
             (body.tenant_id, body.hostname, body.os,
-             token_hash, hmac_hash, expires_at, body.one_time, binding)
+             token_hash, expires_at, body.one_time, binding)
         )
-        agent_id = str(cur.fetchone()["id"])
+        row = cur.fetchone()
+        if not row:
+            db.rollback()
+            raise HTTPException(
+                409,
+                detail=f"L'agent « {body.hostname} » est isolé. Le réenrôler lui "
+                       f"rendrait l'ingestion et annulerait le confinement. "
+                       f"Le sortir d'isolement avant de réémettre un jeton.")
+        agent_id = str(row["id"])
+        epoch    = int(row["hmac_epoch"])
+        hmac_key = derive_hmac_key(agent_id, epoch)
+        cur.execute("UPDATE agents SET hmac_key_hash = %s WHERE id = %s",
+                    (hashlib.sha256(hmac_key.encode()).hexdigest(), agent_id))
         db.commit()
 
     # Payload QR code : JSON compact pour le scanner
@@ -146,6 +207,7 @@ def generate_token(body: TokenRequest, db=Depends(get_db), _=Depends(require_adm
         "expires_at":    expires_at.isoformat(),
         "expires_in_h":  body.expires_in_hours,
         "one_time":      body.one_time,
+        "hmac_scheme":   "derived",
         "bind_hostname": binding,
         "qr_payload":    qr_payload,
         "warning":       "Ces valeurs ne sont affichées qu'une seule fois.",
@@ -558,22 +620,39 @@ async def bulk_provision(
             os_val = "linux"
 
         bearer_token = f"nexus_{secrets.token_urlsafe(32)}"
-        hmac_key     = secrets.token_hex(32)
         token_hash   = hashlib.sha256(bearer_token.encode()).hexdigest()
-        hmac_hash    = hashlib.sha256(hmac_key.encode()).hexdigest()
 
         try:
             with db.cursor() as cur:
+                # Même règle qu'à l'unité : un hôte déjà connu est renouvelé, pas
+                # dupliqué ; un hôte isolé n'est pas renouvelé du tout.
                 cur.execute(
                     """INSERT INTO agents (tenant_id, hostname, os, statut,
-                                          token_hash, hmac_key_hash,
-                                          token_expires_at, token_one_time, token_binding_host)
-                       VALUES (%s, %s, %s, 'hors_ligne', %s, %s, %s, TRUE, %s)
-                       RETURNING id""",
-                    (tenant_id, hostname, os_val,
-                     token_hash, hmac_hash, expires_at, hostname)
+                                          token_hash, token_expires_at,
+                                          token_one_time, token_binding_host,
+                                          hmac_scheme, hmac_epoch)
+                       VALUES (%s, %s, %s, 'hors_ligne', %s, %s, TRUE, %s, 'derived', 0)
+                       ON CONFLICT (tenant_id, hostname) DO UPDATE
+                          SET os                 = EXCLUDED.os,
+                              token_hash         = EXCLUDED.token_hash,
+                              token_expires_at   = EXCLUDED.token_expires_at,
+                              token_one_time     = EXCLUDED.token_one_time,
+                              token_binding_host = EXCLUDED.token_binding_host,
+                              token_used_at      = NULL,
+                              hmac_scheme        = 'derived',
+                              hmac_epoch         = agents.hmac_epoch + 1
+                        WHERE agents.statut <> 'isole'
+                       RETURNING id, hmac_epoch""",
+                    (tenant_id, hostname, os_val, token_hash, expires_at, hostname)
                 )
-                agent_id = str(cur.fetchone()["id"])
+                ligne = cur.fetchone()
+                if not ligne:
+                    raise ValueError(
+                        "agent isolé — le sortir d'isolement avant de réémettre un jeton")
+                agent_id = str(ligne["id"])
+                hmac_key = derive_hmac_key(agent_id, int(ligne["hmac_epoch"]))
+                cur.execute("UPDATE agents SET hmac_key_hash = %s WHERE id = %s",
+                            (hashlib.sha256(hmac_key.encode()).hexdigest(), agent_id))
                 db.commit()
 
             oneliner_linux = (
@@ -665,25 +744,33 @@ def rotate_hmac(agent_id: str, db=Depends(get_db), _=Depends(require_admin)):
     ou via un endpoint de re-configuration si le canal sécurisé est disponible.
     Retourne la nouvelle clé une seule fois.
     """
-    new_hmac_key  = secrets.token_hex(32)
-    new_hmac_hash = hashlib.sha256(new_hmac_key.encode()).hexdigest()
-
+    # Incrémenter l'époque suffit à invalider la clé courante : la dérivation
+    # inclut l'époque, l'ancienne clé ne produit plus de signature acceptée.
+    # C'est aussi le chemin de migration des agents encore en schéma 'legacy' :
+    # une rotation les bascule en 'derived', donc en signature vérifiée.
     with db.cursor() as cur:
         cur.execute(
-            "UPDATE agents SET hmac_key_hash = %s WHERE id = %s RETURNING hostname, tenant_id",
-            (new_hmac_hash, agent_id)
+            "UPDATE agents SET hmac_epoch = hmac_epoch + 1, hmac_scheme = 'derived' "
+            " WHERE id = %s RETURNING hostname, tenant_id, hmac_epoch",
+            (agent_id,)
         )
         row = cur.fetchone()
         if not row:
             raise HTTPException(404, detail="Agent introuvable")
+        new_hmac_key = derive_hmac_key(agent_id, row["hmac_epoch"])
+        cur.execute("UPDATE agents SET hmac_key_hash = %s WHERE id = %s",
+                    (hashlib.sha256(new_hmac_key.encode()).hexdigest(), agent_id))
         db.commit()
 
     return {
         "agent_id":     agent_id,
         "hostname":     row["hostname"],
+        "hmac_epoch":   row["hmac_epoch"],
+        "hmac_scheme":  "derived",
         "new_hmac_key": new_hmac_key,
-        "warning":      "Nouvelle clé HMAC affichée une seule fois. Mettre à jour config.json sur le poste.",
-        "next_step":    f"Redéployer la configuration : POST /provision/installer/{agent_id}?os=linux",
+        "warning":      "Nouvelle clé HMAC affichée une seule fois. L'agent est rejeté tant que "
+                        "son config.json n'est pas mis à jour.",
+        "next_step":    f"Redéployer la configuration : GET /provision/installer/{agent_id}?os=linux",
     }
 
 

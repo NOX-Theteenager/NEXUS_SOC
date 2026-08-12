@@ -1,69 +1,199 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NEXUS SOC — Hors ligne</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hors ligne — NEXUS SOC</title>
+<meta name="theme-color" content="#0A0F1C">
+<!-- Icône en ligne : sans déclaration, le navigateur réclame /favicon.ico et
+     génère une requête réseau vouée à l'échec sur la seule page censée
+     fonctionner sans réseau. Data-URI = zéro requête. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0F1C'/%3E%3Cpath d='M16 5l9 4v7c0 5.5-3.8 9.4-9 10.8C10.8 25.4 7 21.5 7 16V9l9-4z' fill='none' stroke='%23F5A524' stroke-width='2'/%3E%3C/svg%3E">
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEXUS SOC — Repli hors ligne
+   Servie par le service worker quand la navigation échoue.
+
+   AUTONOMIE TOTALE, VOLONTAIRE : aucune police externe, aucun fonts.css,
+   aucun js/api.js, aucun appel réseau. Cette page doit fonctionner quand tout
+   le reste est coupé — c'est sa seule raison d'être. Ne rien y ajouter qui
+   dépende d'une autre ressource.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg: #0A0F1C; --text: #E2E8F0; --text-3: #64748B;
-  --amber: #F5A524; --display: "Fraunces", Georgia, serif;
-  --body: "Manrope", sans-serif; --mono: "JetBrains Mono", monospace;
+  --bg:#0A0F1C; --bg-2:#0D1424; --surface:#0F1729;
+  --border:#1E293B; --border-2:#334155;
+  --text:#E2E8F0; --text-2:#94A3B8; --text-3:#64748B;
+  --accent:#5EAAFF; --teal:#3DDC97; --amber:#F5A524;
+  --sys:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --sys-mono:ui-monospace,SFMono-Regular,"Courier New",monospace;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 body {
-  font-family: var(--body); background: var(--bg); color: var(--text);
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; text-align: center; padding: 24px;
-  -webkit-font-smoothing: antialiased;
-}
-body::before {
-  content: ""; position: fixed; inset: 0; pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
-  background-size: 36px 36px;
+  min-height:100vh; background:var(--bg); color:var(--text);
+  font-family:var(--sys); font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  display:flex; align-items:center; justify-content:center; padding:28px 20px;
 }
 .card {
-  position: relative; max-width: 400px;
-  background: #0F1729; border: 1px solid #1E293B;
-  border-radius: 20px; padding: 48px 36px;
+  width:min(480px,100%);
+  background:var(--surface); border:1px solid var(--border-2); border-radius:16px;
+  padding:34px 30px; box-shadow:0 24px 80px rgba(0,0,0,.55);
 }
-.logo {
-  font-family: var(--display); font-style: italic;
-  font-weight: 600; font-size: 28px;
-  letter-spacing: -.02em; margin-bottom: 24px;
-}
-.logo em { color: var(--amber); }
-.icon { font-size: 48px; margin-bottom: 16px; opacity: .6; }
-h2 { font-family: var(--display); font-size: 22px; margin-bottom: 10px; }
-p  { color: var(--text-3); font-size: 14px; line-height: 1.65; margin-bottom: 20px; }
+.brand { font-size:24px; font-weight:700; letter-spacing:-.01em; }
+.brand em { font-style:normal; color:var(--amber); }
+.tagline { font-family:var(--sys-mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--text-3); margin-top:4px; }
+.rule { height:1px; background:var(--border); margin:22px 0; }
+
+.state { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.state .dot { width:10px; height:10px; border-radius:50%; background:var(--amber); flex-shrink:0; }
+.state h1 { font-size:17px; font-weight:700; color:var(--amber); }
+body[data-online="true"] .state .dot { background:var(--teal); }
+body[data-online="true"] .state h1 { color:var(--teal); }
+
+p.lede { font-size:13.5px; color:var(--text-2); line-height:1.7; }
+
+.panel { background:var(--bg-2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-top:18px; }
+.panel .k { font-family:var(--sys-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-3); margin-bottom:9px; }
+.row { display:flex; justify-content:space-between; gap:10px; font-family:var(--sys-mono); font-size:12px; padding:3px 0; }
+.row .name { color:var(--teal); }
+.row.warn  .name { color:var(--amber); }
+.row.off   .name { color:var(--text-3); }
+.row .st { color:var(--text-3); }
+
+.actions { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
 .btn {
-  display: inline-block; padding: 10px 24px;
-  background: #5EAAFF; color: #07111F;
-  border: none; border-radius: 9px;
-  font-weight: 700; font-size: 14px;
-  cursor: pointer; text-decoration: none;
+  flex:1; min-width:140px; padding:12px;
+  border-radius:9px; font-size:14px; text-align:center; text-decoration:none;
+  border:1px solid var(--border-2); color:var(--text-2); background:none;
+  cursor:pointer; font-family:inherit; transition:border-color .2s, color .2s;
 }
-.version {
-  font-family: var(--mono); font-size: 10px; color: var(--text-3);
-  letter-spacing: .1em; margin-top: 20px;
-}
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn-primary { background:var(--accent); border-color:var(--accent); color:#07111F; font-weight:700; }
+.btn-primary:hover { filter:brightness(1.08); color:#07111F; }
+
+.foot { font-family:var(--sys-mono); font-size:10.5px; color:var(--text-3); margin-top:18px; line-height:1.7; }
 </style>
 </head>
-<body>
-<div class="card">
-  <div class="logo">NEXUS <em>SOC</em></div>
-  <div class="icon">📡</div>
-  <h2>Connexion perdue</h2>
-  <p>
-    Vous êtes actuellement hors ligne.<br>
-    Vérifiez votre connexion réseau et réessayez.<br>
-    Les dernières données chargées restent accessibles depuis le cache.
+<body data-online="false">
+
+<main class="card">
+  <div class="brand">NEXUS <em>SOC</em></div>
+  <div class="tagline">CENADI · Plateforme souveraine</div>
+  <div class="rule"></div>
+
+  <div class="state">
+    <span class="dot" aria-hidden="true"></span>
+    <h1 id="state-title">Vous êtes hors ligne</h1>
+  </div>
+  <p class="lede" id="state-body">
+    Le serveur NEXUS SOC est injoignable depuis ce poste. Ce n'est pas une panne de la plateforme :
+    les agents continuent de collecter et enverront leur télémétrie dès que le réseau reviendra.
   </p>
-  <button class="btn" onclick="window.location.reload()">Réessayer</button>
-  <div class="version">NEXUS SOC · Mode hors ligne</div>
-</div>
+
+  <div class="panel">
+    <div class="k">Consultable depuis le cache</div>
+    <div id="cache-list">
+      <div class="row off"><span class="name">lecture du cache…</span><span class="st">—</span></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="retry">Réessayer</button>
+    <a class="btn" href="docs.html">Ouvrir la documentation</a>
+  </div>
+
+  <div class="foot" id="foot">Nouvelle tentative automatique dans 15 s.</div>
+</main>
+
+<script>
+'use strict';
+/* Aucune dépendance : ni js/api.js, ni fetch vers l'API.
+   La page se contente d'observer l'état de connectivité du navigateur et de
+   proposer une reprise explicite. */
+
+var titleEl = document.getElementById('state-title');
+var bodyEl  = document.getElementById('state-body');
+var footEl  = document.getElementById('foot');
+var countdown = 15;
+
+function reload() { location.reload(); }
+
+function setOnline(on) {
+  document.body.setAttribute('data-online', on ? 'true' : 'false');
+  if (on) {
+    titleEl.textContent = 'Le réseau est revenu';
+    bodyEl.textContent  = 'La connexion au serveur est de nouveau possible. Rechargez pour retrouver la plateforme à jour.';
+    footEl.textContent  = 'Rechargement automatique…';
+    setTimeout(reload, 1200);
+  }
+}
+
+window.addEventListener('online',  function () { setOnline(true); });
+window.addEventListener('offline', function () { setOnline(false); });
+document.getElementById('retry').addEventListener('click', reload);
+
+setInterval(function () {
+  if (navigator.onLine) { setOnline(true); return; }
+  countdown -= 1;
+  if (countdown <= 0) { reload(); return; }
+  footEl.textContent = 'Nouvelle tentative automatique dans ' + countdown + ' s.';
+}, 1000);
+
+/* ── Pages réellement consultables ────────────────────────────────────────
+   La liste était écrite en dur : elle annonçait « documentation · disponible »
+   même quand docs.html n'avait jamais été mis en cache. On interroge le cache
+   pour ne proposer que ce qui s'ouvrira vraiment.
+
+   L'API Cache est locale : aucune requête réseau, l'autonomie de la page est
+   intacte. Sans elle (navigateur ancien, contexte non sécurisé), on retombe
+   sur une liste non cliquable plutôt que sur des liens morts. */
+var PAGES = [
+  { url:'docs.html',     nom:'documentation',        etat:'disponible',            cls:'' },
+  { url:'contact.html',  nom:"demande à l'équipe SOC", etat:'saisie conservée',    cls:'' },
+  { url:'portail.html',  nom:'portail de périmètre', etat:'dernières données connues', cls:'warn' },
+  { url:'console.html',  nom:'console opérateur',    etat:'actions désactivées',   cls:'off' }
+];
+
+function ligne(p, dispo) {
+  var row = document.createElement('div');
+  row.className = 'row ' + (dispo ? p.cls : 'off');
+  var nom = document.createElement(dispo ? 'a' : 'span');
+  nom.className = 'name';
+  nom.textContent = p.nom;
+  if (dispo) { nom.href = p.url; nom.style.textDecoration = 'underline dotted'; nom.style.textUnderlineOffset = '2px'; }
+  var st = document.createElement('span');
+  st.className = 'st';
+  st.textContent = dispo ? p.etat : 'pas en cache';
+  row.appendChild(nom); row.appendChild(st);
+  return row;
+}
+
+function listerCache() {
+  var hote = document.getElementById('cache-list');
+  function rendre(dispos) {
+    hote.textContent = '';
+    PAGES.forEach(function (p) { hote.appendChild(ligne(p, dispos === null || dispos.indexOf(p.url) !== -1)); });
+    if (dispos !== null && dispos.length === 0) {
+      var v = document.createElement('div');
+      v.className = 'row off';
+      v.innerHTML = '<span class="name">aucune page en cache</span><span class="st">premier accès hors ligne</span>';
+      hote.textContent = '';
+      hote.appendChild(v);
+    }
+  }
+  if (!('caches' in window)) { rendre(null); return; }   // pas d'API : liste inerte
+  Promise.all(PAGES.map(function (p) {
+    return caches.match(p.url, { ignoreSearch:true })
+      .then(function (r) { return r ? p.url : null; })
+      .catch(function () { return null; });
+  })).then(function (res) {
+    rendre(res.filter(function (u) { return u; }));
+  }).catch(function () { rendre(null); });
+}
+
+listerCache();
+if (navigator.onLine) setOnline(true);
+</script>
 </body>
 </html>

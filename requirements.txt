@@ -54,8 +54,11 @@ Pillow>=10.0
 # Génération de PDF des rapports (alternative à HTML)
 # weasyprint>=62.0
 
-# Génération de QR Code côté serveur pour l'enrôlement d'agents
-# qrcode[pil]>=7.4
+# Génération de QR Code côté serveur pour l'enrôlement d'agents.
+# Requis depuis que la console expose l'onglet « QR code » du parcours
+# d'enrôlement (GET /provision/qr). Sans lui l'endpoint répond quand même, mais
+# sans image : la console affiche alors la commande en clair à recopier.
+qrcode[pil]>=7.4
 
 # Observabilité (perspective production)
 # prometheus-fastapi-instrumentator>=7.0

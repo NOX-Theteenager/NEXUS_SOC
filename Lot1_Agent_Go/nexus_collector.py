@@ -242,6 +242,142 @@ def _cmd(args):
         return ""
 
 
+# --------------------------------------------------------------------------- #
+# ÉVÉNEMENTS BRUTS — matière première du moteur de corrélation MITRE
+# --------------------------------------------------------------------------- #
+# Le collecteur n'envoyait que des vecteurs de features : de quoi scorer une
+# anomalie, mais pas de quoi reconstituer une chaîne d'attaque. Le moteur de
+# corrélation, lui, raisonne sur des événements bruts — processus lancés,
+# connexions ouvertes, fichiers touchés — et c'est de là que viennent
+# l'horodatage, la tactique et la preuve de chaque étape.
+#
+# Les trois collectes ci-dessous sont volontairement légères : elles lisent
+# /proc et le système de fichiers, sans dépendance ni privilège particulier.
+MAX_EVENEMENTS_BRUTS = int(os.getenv("NEXUS_MAX_EVENTS_BRUTS", "120"))
+REP_SURVEILLES = [r.strip() for r in os.getenv(
+    "NEXUS_WATCH_DIRS",
+    "/etc,/home,/tmp,/var/log,/srv"
+).split(",") if r.strip()]
+
+
+def _horodatage(ts=None):
+    return datetime.fromtimestamp(ts or time.time()).astimezone().isoformat()
+
+
+def evenements_processus(limite=40):
+    """Processus actifs : nom, exécutable, arguments. Source : /proc."""
+    out = []
+    try:
+        pids = [p for p in os.listdir("/proc") if p.isdigit()]
+    except Exception:
+        return out
+    # Ne pas tronquer la liste avant filtrage : la majorité des entrées de /proc
+    # sont des threads noyau à cmdline vide. Les écarter d'abord, compter ensuite,
+    # sinon on ne remonte qu'une poignée de processus au hasard.
+    for pid in pids:
+        if len(out) >= limite:
+            break
+        try:
+            with open(f"/proc/{pid}/cmdline", "rb") as f:
+                argv = [a for a in f.read().decode("utf-8", "replace").split("\0") if a]
+            if not argv:
+                continue
+            exe = ""
+            try:
+                exe = os.readlink(f"/proc/{pid}/exe")
+            except Exception:
+                exe = argv[0]
+            st = os.stat(f"/proc/{pid}")
+            out.append({
+                "kind": "process",
+                "time": _horodatage(st.st_mtime),
+                "data": {"pid": pid, "name": os.path.basename(argv[0]),
+                         "exe": exe, "args": argv[1:]},
+            })
+        except Exception:
+            continue
+    return out
+
+
+def evenements_connexions(limite=40):
+    """Connexions TCP établies, converties depuis /proc/net/tcp."""
+    out = []
+
+    def _adresse(hexa):
+        try:
+            ip_h, port_h = hexa.split(":")
+            octets = [int(ip_h[i:i + 2], 16) for i in range(0, 8, 2)][::-1]
+            return f"{'.'.join(map(str, octets))}:{int(port_h, 16)}"
+        except Exception:
+            return hexa
+
+    for chemin in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            with open(chemin) as f:
+                for ligne in f.readlines()[1:]:
+                    if len(out) >= limite:
+                        break
+                    ch = ligne.split()
+                    if len(ch) < 4 or ch[3] != "01":      # 01 = ESTABLISHED
+                        continue
+                    out.append({
+                        "kind": "connection",
+                        "time": _horodatage(),
+                        "data": {"proto": "tcp", "local": _adresse(ch[1]),
+                                 "remote": _adresse(ch[2]), "state": "ESTABLISHED"},
+                    })
+        except Exception:
+            continue
+    return out
+
+
+_empreintes_fichiers: dict = {}
+
+
+def evenements_fichiers(limite=40):
+    """Fichiers modifiés depuis le dernier passage, dans les répertoires surveillés.
+
+    Premier appel : on mémorise l'état sans rien signaler — sinon le démarrage
+    du collecteur produirait une fausse modification massive et déclencherait
+    à tort la règle rançongiciel.
+    """
+    global _empreintes_fichiers
+    premier_passage = not _empreintes_fichiers
+    out, vus = [], {}
+
+    for base in REP_SURVEILLES:
+        if not os.path.isdir(base):
+            continue
+        for racine, dossiers, fichiers in os.walk(base):
+            dossiers[:] = [d for d in dossiers if not d.startswith(".")][:12]
+            for nom in fichiers[:60]:
+                chemin = os.path.join(racine, nom)
+                try:
+                    st = os.stat(chemin)
+                except Exception:
+                    continue
+                vus[chemin] = st.st_mtime
+                if premier_passage or len(out) >= limite:
+                    continue
+                if _empreintes_fichiers.get(chemin) != st.st_mtime:
+                    out.append({
+                        "kind": "file_change",
+                        "time": _horodatage(st.st_mtime),
+                        "data": {"path": chemin, "size": st.st_size},
+                    })
+            if len(vus) > 4000:      # borne de sécurité sur les gros volumes
+                break
+
+    _empreintes_fichiers = vus
+    return out
+
+
+def evenements_bruts():
+    """Lot d'événements bruts pour la corrélation MITRE, borné en volume."""
+    evts = evenements_processus() + evenements_connexions() + evenements_fichiers()
+    return evts[:MAX_EVENEMENTS_BRUTS]
+
+
 def features_comportement():
     """
     Features du Modèle 2 mesurées sur l'hôte.
@@ -341,13 +477,23 @@ def collecter_et_envoyer(conf, verbeux=True):
         "contexte": ctx_cmp,
     })
 
+    # Événements bruts : ils n'alimentent pas les modèles mais le moteur de
+    # corrélation, qui en tire les chaînes d'attaque horodatées.
+    bruts = []
+    try:
+        bruts = evenements_bruts()
+        evenements.extend(bruts)
+    except Exception as e:
+        print(f"  ⚠ collecte des événements bruts incomplète : {e}")
+
     rep = envoyer(conf, evenements)
     if verbeux:
         ts = datetime.now().strftime("%H:%M:%S")
         if "erreur" in rep:
             print(f"[{ts}] ✗ {rep['erreur']} {rep.get('detail','')}")
         else:
-            print(f"[{ts}] ✓ {rep.get('recus',0)} évt envoyés · "
+            print(f"[{ts}] ✓ {rep.get('recus',0)} évt envoyés "
+                  f"(dont {len(bruts)} bruts pour la corrélation) · "
                   f"{rep.get('alertes',0)} alerte(s) · "
                   f"flux réseau observés: {ctx_res.get('flux_observes',0)} · "
                   f"sessions: {ctx_cmp.get('sessions_ouvertes',0)}")
@@ -360,6 +506,60 @@ def collecter_et_envoyer(conf, verbeux=True):
 # (exfiltration de masse, balayage de ports), pas à des nombres aléatoires.
 # --------------------------------------------------------------------------- #
 def simuler_attaque(conf, genre):
+    if genre == "chaine":
+        # Séquence d'événements BRUTS reproduisant un scénario d'exfiltration
+        # complet. Contrairement aux deux autres simulations, qui envoient un
+        # vecteur de features au modèle, celle-ci alimente le moteur de
+        # CORRÉLATION : c'est lui qui reconstitue la chaîne d'attaque horodatée,
+        # avec sa tactique et sa preuve à chaque étape.
+        #
+        # Les événements sont datés dans le passé proche pour tenir dans la
+        # fenêtre de corrélation (CORR_WINDOW_MIN, 30 min par défaut) et
+        # apparaître dans l'ordre à l'écran.
+        from datetime import timedelta as _td
+        maintenant = datetime.now().astimezone()
+        t = lambda minutes: (maintenant - _td(minutes=minutes)).isoformat()
+        hote = conf["hostname"]
+
+        ev = [
+            # T1204 — pièce jointe exécutable ouverte depuis le répertoire de téléchargement
+            {"kind": "file_change", "time": t(11),
+             "data": {"path": f"/home/{os.getenv('USER','agent')}/Downloads/facture_juillet_2026.exe",
+                      "size": 91_000}},
+            # T1027 — script obfusqué lancé depuis un répertoire temporaire
+            {"kind": "process", "time": t(10),
+             "data": {"name": "powershell", "exe": "/tmp/stage_update.sh",
+                      "args": ["-enc", "JABzAD0ATgBlAHcALQBPAGIAagBlAGMAdAAgAEkATwAuAE0AZQBtAG8AcgB5AFMAdAByAGUAYQBt"]}},
+            # T1136 — création d'un compte de persistance
+            {"kind": "process", "time": t(9),
+             "data": {"name": "useradd", "exe": "/usr/sbin/useradd",
+                      "args": ["-m", "-s", "/bin/bash", "svc_backup"]}},
+            # T1005 — collecte dans les dossiers de solde
+            {"kind": "file_change", "time": t(7),
+             "data": {"path": "/srv/sigipes/budget/solde_aout_2026.csv", "size": 4_100_000}},
+            # T1083 — énumération de répertoires système
+            {"kind": "file_change", "time": t(6),
+             "data": {"path": "/etc/shadow", "size": 1_400}},
+            # T1071 — canal de commande vers un port C2 connu
+            {"kind": "connection", "time": t(4),
+             "data": {"proto": "tcp", "local": f"{hote}:49312",
+                      "remote": "185.220.101.45:4444", "state": "ESTABLISHED"}},
+        ]
+        print("⚠ Simulation : CHAÎNE D'ATTAQUE COMPLÈTE "
+              "(6 événements bruts → corrélation MITRE ATT&CK)")
+        rep = envoyer(conf, ev)
+        if "erreur" in rep:
+            print(f"  ✗ {rep['erreur']} {rep.get('detail','')}")
+        else:
+            print(f"  ✓ {rep.get('recus',0)} événements ingérés · "
+                  f"{rep.get('alertes',0)} alerte(s) corrélée(s)")
+            print("  → Console → File d'alertes : l'incident porte son déroulé horodaté, "
+                  "la preuve de chaque étape et la décomposition de son score.")
+            if not rep.get("alertes"):
+                print("  ℹ Aucune alerte : une alerte identique est peut-être déjà ouverte "
+                      "(agrégation anti-doublon, ALERT_DEDUP_MIN).")
+        return
+
     if genre == "exfil":
         # Profil d'exfiltration de la solde : exports massifs, nuit, accès
         # dossiers sensibles, volume anormal (features du Modèle 2 UEBA).
@@ -407,7 +607,7 @@ def main():
     ap.add_argument("--once", action="store_true", help="une seule collecte")
     ap.add_argument("--loop", action="store_true", help="collecte en continu")
     ap.add_argument("--interval", type=int, default=30, help="secondes entre deux collectes")
-    ap.add_argument("--simulate", choices=["exfil", "portscan"],
+    ap.add_argument("--simulate", choices=["exfil", "portscan", "chaine"],
                     help="ENVOI DE TÉLÉMÉTRIE D'ATTAQUE SIMULÉE (démo/test) via le pipeline signé")
     a = ap.parse_args()
 

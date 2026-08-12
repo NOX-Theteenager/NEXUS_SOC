@@ -136,12 +136,14 @@ _try_include(
     os.path.join(PROJECT_ROOT, "Lot1_Agent_Go",              "auth_middleware.py"),
     "auth_router", "Auth /auth/*",
 )
-# admin_api expose TROIS routeurs : `router` (/admin), `analyst_router` (/analyst),
-# `portail_router` (/portal — vue DSI filtrée par tenant JWT)
+# admin_api expose CINQ routeurs : `router` (/admin), `analyst_router` (/analyst),
+# `portail_router` (/portal — vue DSI filtrée par tenant JWT),
+# `monitor_router` (/monitor — dérive des modèles IA),
+# `contact_router` (/contact — demandes internes de mise sous supervision)
 _try_include(
     os.path.join(PROJECT_ROOT, "Lot7_Console_Fournisseur",  "admin_api.py"),
-    ["router", "analyst_router", "portail_router"],
-    "Admin /admin/* + Analyste /analyst/* + Portail /portal/*",
+    ["router", "analyst_router", "portail_router", "monitor_router", "contact_router"],
+    "Admin /admin/* + Analyste /analyst/* + Portail /portal/* + /monitor/* + /contact/*",
 )
 _try_include(
     os.path.join(PROJECT_ROOT, "Lot7_Console_Fournisseur",  "provisioning_api.py"),
