@@ -34,7 +34,9 @@ if [ ! -f /usr/share/keyrings/wazuh.gpg ]; then
 fi
 echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" \
   > /etc/apt/sources.list.d/wazuh.list
-apt-get update -qq
+# --allow-releaseinfo-change : ne pas se bloquer si un AUTRE dépôt déjà présent
+# a changé ses métadonnées (ex. PPA GNS3 « Label » modifié sur l'hôte).
+apt-get update -qq --allow-releaseinfo-change
 
 # 2. Installation (auto-config manager + nom via variables du paquet)
 echo "═══ 2/3 Installation de wazuh-agent ═══"
