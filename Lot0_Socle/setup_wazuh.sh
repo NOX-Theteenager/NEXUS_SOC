@@ -103,6 +103,14 @@ services:
     depends_on: [wazuh.indexer]
     ports: ["1514:1514","1515:1515","55000:55000"]
     ulimits: { memlock: { soft: -1, hard: -1 } }
+    # Ces variables font remplir la sortie filebeat -> indexer (TLS + creds).
+    # Sans elles, filebeat.yml reste en template commenté et AUCUN index
+    # wazuh-alerts-* n'est créé (« No matching indices » dans le dashboard).
+    environment:
+      - INDEXER_URL=https://wazuh.indexer:9200
+      - INDEXER_USERNAME=admin
+      - INDEXER_PASSWORD=admin
+      - FILEBEAT_SSL_VERIFICATION_MODE=full
     volumes:
       - manager_data:/var/ossec
       - ./config/wazuh_indexer_ssl_certs/root-ca.pem:/etc/ssl/root-ca.pem
@@ -184,9 +192,30 @@ docker exec nexus-wazuh-indexer bash -lc '
 echo "== Démarrage manager + dashboard =="
 DC -f "$COMPOSE" up -d wazuh.manager wazuh.dashboard
 
+# Filet de sécurité : si la sortie filebeat est restée en template commenté
+# (SSL désactivé), on la remplit et on relance filebeat. Sans ça, aucun index
+# wazuh-alerts-* n'est créé → « No matching indices » dans le dashboard.
+echo "== Filebeat -> indexer : vérification de la sortie TLS =="
+sleep 15
+if docker exec nexus-wazuh-manager grep -q '^  #ssl.certificate_authorities:' /etc/filebeat/filebeat.yml 2>/dev/null; then
+  echo "   sortie filebeat non configurée → correction"
+  docker exec nexus-wazuh-manager sh -c "sed -i \
+    -e \"s|^  #username:.*|  username: 'admin'|\" \
+    -e \"s|^  #password:.*|  password: 'admin'|\" \
+    -e \"s|^  #ssl.certificate_authorities:.*|  ssl.certificate_authorities: ['/etc/ssl/root-ca.pem']|\" \
+    -e \"s|^  #ssl.certificate:.*|  ssl.certificate: '/etc/ssl/filebeat.pem'|\" \
+    -e \"s|^  #ssl.key:.*|  ssl.key: '/etc/ssl/filebeat.key'|\" \
+    /etc/filebeat/filebeat.yml"
+  docker restart nexus-wazuh-manager >/dev/null 2>&1
+  echo "   ✓ filebeat corrigé et relancé"
+else
+  echo "   ✓ sortie filebeat déjà configurée"
+fi
+
 echo
 echo "== Vérification =="
 sleep 5
 echo -n "  indexer  : "; curl -sk -u admin:admin https://localhost:9200/_cluster/health 2>/dev/null | head -c 120; echo
+echo -n "  alertes  : "; curl -sk -u admin:admin "https://localhost:9200/_cat/indices/wazuh-alerts-*?h=index,docs.count" 2>/dev/null | head -1 || echo "index pas encore créé (attendre ~1 min)"
 echo "  dashboard: https://localhost:5601  (admin / admin) — démarre en ~2 min"
 echo "  NEXUS /health/detailed devrait passer wazuh_indexer -> ok"
