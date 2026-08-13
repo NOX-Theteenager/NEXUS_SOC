@@ -20,6 +20,8 @@
   --border:#1E293B; --border-2:#334155;
   --text:#E2E8F0; --text-2:#94A3B8; --text-3:#64748B; --text-4:#475569;
   --accent:#5EAAFF; --teal:#3DDC97; --amber:#F5A524; --red:#EF4444;
+  /* Tactiques ATT&CK sans équivalent parmi les couleurs de sens */
+  --tac-initial:#E879F9; --tac-warm:#FB923C;
   --display:"Fraunces",Georgia,serif;
   --body:"Manrope",system-ui,-apple-system,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"Courier New",monospace;
@@ -27,6 +29,22 @@
   --sh-float:0 24px 80px rgba(0,0,0,.55);
   --focus:0 0 0 3px rgba(94,170,255,.15);
   --header-h:58px;
+}
+
+/* ── Mode clair ───────────────────────────────────────────────────────────
+   Seuls les neutres changent. Les couleurs de sens gardent leur rôle mais sont
+   assombries : le teal qui se lit sur fond nuit disparaît sur blanc. Le
+   responsable de périmètre consulte souvent ce portail en réunion, projeté —
+   le fond clair y est plus lisible que l'inverse. */
+:root[data-theme="light"] {
+  --bg:#EEF2F7; --bg-2:#E9EFF6; --surface:#FFFFFF; --surface-2:#F4F8FC;
+  --border:#DDE4EE; --border-2:#C4CEDC;
+  --text:#0F1B2D; --text-2:#4A5A6E; --text-3:#5B6A7E; --text-4:#8A99AC;
+  --accent:#1F6FD0; --teal:#0F9D6B; --amber:#B45309; --red:#C62828;
+  --tac-initial:#A21CAF; --tac-warm:#C2410C;
+  --sh-float:0 24px 60px rgba(15,27,45,.18);
+  --focus:0 0 0 3px rgba(31,111,208,.22);
+  color-scheme:light;
 }
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
@@ -366,6 +384,11 @@ main { position:relative; z-index:1; padding:18px 14px 40px; display:flex; flex-
     <button id="lang-en" aria-pressed="false">EN</button>
   </div>
 
+  <button class="icon-btn" id="theme-toggle" aria-label="Basculer le thème clair ou sombre" title="Thème clair / sombre">
+    <svg class="ic" id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+    <svg class="ic" id="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+  </button>
+
   <button class="icon-btn" id="logout" data-i18n-aria="ariaLogout" aria-label="Se déconnecter">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
@@ -386,6 +409,11 @@ main { position:relative; z-index:1; padding:18px 14px 40px; display:flex; flex-
     <button class="link-btn" id="mark-all" data-i18n="markAll">Tout marquer lu</button>
   </div>
   <div class="notif-list" id="notif-list"></div>
+  <div class="notif-head" style="border-top:1px solid var(--border);border-bottom:none">
+    <h2 data-fr="Rapports d'incident" data-en="Incident reports">Rapports d'incident</h2>
+    <span class="note" id="reports-count"></span>
+  </div>
+  <div class="notif-list" id="reports-list" style="max-height:min(38vh,300px)"></div>
 </section>
 
 <main>
@@ -403,10 +431,13 @@ main { position:relative; z-index:1; padding:18px 14px 40px; display:flex; flex-
 
   <div class="state err" id="error-state" hidden>
     <div class="state-mark">!</div>
-    <h3 data-i18n="errTitle">Données momentanément indisponibles</h3>
-    <p data-i18n="errBody">La plateforme fonctionne, mais l'API n'a pas répondu. Vos agents continuent d'envoyer leur télémétrie : rien n'est perdu.</p>
+    <h3 id="error-title">Données momentanément indisponibles</h3>
+    <p id="error-body">La plateforme fonctionne, mais l'API n'a pas répondu. Vos agents continuent d'envoyer leur télémétrie : rien n'est perdu.</p>
     <div class="state-code" id="error-code"></div>
-    <button class="btn btn-primary" id="retry" style="margin-top:16px" data-i18n="retry">Réessayer</button>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center">
+      <button class="btn btn-primary" id="retry" data-i18n="retry">Réessayer</button>
+      <a class="btn" id="error-link" href="console.html" hidden>Ouvrir la console opérateur</a>
+    </div>
   </div>
 
   <div id="content" hidden style="display:flex;flex-direction:column;gap:22px">
@@ -582,10 +613,30 @@ const esc = s => String(s == null ? '' : s)
    Ces valeurs alimentent aussi des attributs SVG (stroke, fill) et des
    compositions rgba() : var(--red) n'y serait pas exploitable. Toute
    modification d'un token de :root doit être répercutée ici. */
-const C = {
-  red:'#EF4444', amber:'#F5A524', accent:'#5EAAFF', teal:'#3DDC97',
-  text:'#E2E8F0', text2:'#94A3B8', muted:'#64748B',
-};
+/* Couleurs lues sur les tokens CSS : elles suivent le thème sans duplication,
+   et restent des hex résolus, donc utilisables dans un attribut SVG. */
+function lireTokens() {
+  const s = getComputedStyle(document.documentElement);
+  const v = (n, secours) => (s.getPropertyValue('--' + n).trim() || secours);
+  return {
+    red:v('red', '#EF4444'), amber:v('amber', '#F5A524'),
+    accent:v('accent', '#5EAAFF'), teal:v('teal', '#3DDC97'),
+    text:v('text', '#E2E8F0'), text2:v('text-2', '#94A3B8'),
+    muted:v('text-3', '#64748B'), border:v('border', '#1E293B'),
+  };
+}
+
+const THEME_KEY = 'nexus_theme';   // partagé avec la console : un seul réglage
+let C;
+function appliquerTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem(THEME_KEY, t);
+  C = lireTokens();
+}
+appliquerTheme(
+  ['light', 'dark'].includes(localStorage.getItem(THEME_KEY))
+    ? localStorage.getItem(THEME_KEY)
+    : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 const RISK = s => s >= 80 ? C.red : s >= 60 ? C.amber : s >= 40 ? C.accent : C.teal;
 
 /* Fond translucide dérivé d'une couleur de texte hexadécimale. */
@@ -625,6 +676,7 @@ function toast(msg, kind) {
 const S = {
   summary:null, alerts:[], agents:[], notifs:[], unread:0,
   scoreHistory:[],          // série journalière du serveur ; null = jour non mesuré
+  reports:[],               // historique complet des rapports du périmètre
   loaded:false, error:null, offline:!navigator.onLine,
   fetchedAt:null, perimName:'—',
 };
@@ -668,15 +720,27 @@ const STATUT_LABEL = {
   en:{ ouverte:'open',   en_cours:'in progress', resolue:'resolved', faux_positif:'false positive' },
 };
 
-/* Tactiques MITRE — nouveaux tokens de couleur, réservés à la chaîne d'attaque. */
+/* Tactiques MITRE — les teintes viennent des tokens CSS, donc suivent le thème.
+   En clair, un rose #E879F9 ou un ambre #F5A524 posés sur blanc deviennent
+   illisibles ; les variantes assombries prennent le relais. */
+const TAC = {
+  initial: () => varCss('--tac-initial', '#E879F9'),
+  exec:    () => C.red,
+  persist: () => C.amber,
+  warm:    () => varCss('--tac-warm', '#FB923C'),
+  c2:      () => C.accent,
+};
+function varCss(nom, secours) {
+  return getComputedStyle(document.documentElement).getPropertyValue(nom).trim() || secours;
+}
 const TACTICS = {
-  T1566:['Initial Access','#E879F9'], T1078:['Initial Access','#E879F9'],
-  T1059:['Execution','#EF4444'], T1204:['Execution','#EF4444'],
-  T1136:['Persistence','#F5A524'], T1053:['Persistence','#F5A524'],
-  T1027:['Defense Evasion','#F5A524'],
-  T1005:['Collection','#FB923C'], T1083:['Discovery','#FB923C'], T1114:['Collection','#FB923C'],
-  T1071:['Command & Control','#5EAAFF'], T1571:['Command & Control','#5EAAFF'], T1090:['Command & Control','#5EAAFF'],
-  T1041:['Exfiltration','#EF4444'], T1048:['Exfiltration','#EF4444'], T1486:['Impact','#EF4444'],
+  T1566:['Initial Access', TAC.initial], T1078:['Initial Access', TAC.initial],
+  T1059:['Execution', TAC.exec], T1204:['Execution', TAC.exec],
+  T1136:['Persistence', TAC.persist], T1053:['Persistence', TAC.persist],
+  T1027:['Defense Evasion', TAC.persist],
+  T1005:['Collection', TAC.warm], T1083:['Discovery', TAC.warm], T1114:['Collection', TAC.warm],
+  T1071:['Command & Control', TAC.c2], T1571:['Command & Control', TAC.c2], T1090:['Command & Control', TAC.c2],
+  T1041:['Exfiltration', TAC.exec], T1048:['Exfiltration', TAC.exec], T1486:['Impact', TAC.exec],
 };
 /* La colonne `mitre` n'est pas normalisée : le moteur de corrélation y écrit
    « T1071 · C2 », parfois « T1059.001 ». On extrait l'identifiant par motif et
@@ -688,7 +752,10 @@ function tactic(raw) {
   const tid = m ? m[0] : s;
   const ref = TACTICS[tid.split('.')[0]];
   const inline = s.replace(TID_RE, '').replace(/^[\s·:,–—-]+/, '').trim();
-  return { tid, tac: inline || (ref ? ref[0] : 'Technique'), col: ref ? ref[1] : '#94A3B8' };
+  // ref[1] est une fonction : la couleur est résolue au rendu, donc après une
+  // éventuelle bascule de thème.
+  return { tid, tac: inline || (ref ? ref[0] : 'Technique'),
+           col: ref ? ref[1]() : C.text2 };
 }
 /* Extraction des identifiants ATT&CK. Deux formats coexistent en base :
    « T1005, T1059, T1071 » (corrélation) et « T1071 · C2 » (scoring, identifiant
@@ -727,7 +794,7 @@ function chainList(c) {
 /* ═══ Chargement ══════════════════════════════════════════════════════════ */
 async function load() {
   try {
-    const [summary, alerts, agents, notifs, hist] = await Promise.all([
+    const [summary, alerts, agents, notifs, hist, reps] = await Promise.all([
       NexusAPI.getPortalSummary(),
       NexusAPI.getPortalAlerts(50),
       NexusAPI.getPortalAgents(),
@@ -736,9 +803,22 @@ async function load() {
       // plutôt qu'une reconstruction locale — c'est cette reconstruction qui
       // fabriquait des jours à 100.
       NexusAPI.getScoreHistory(14).catch(() => null),
+      // Endpoint récent : 404 sur un serveur non redémarré, liste vide alors.
+      NexusAPI.getReportHistory(50).catch(() => null),
     ]);
-    S.summary      = summary || {};
+    /* Session expirée : api.js purge les jetons et renvoie `null` sans rediriger.
+       Sans ce garde-fou, `summary || {}` donnait un objet vide, donc un risque
+       maximum de 0, donc un score de sécurité de 100 affiché à un utilisateur
+       déconnecté. Une absence de réponse n'est pas une absence d'incident. */
+    if (!summary) {
+      S.error = { status: 401, detail: 'Session expirée — jetons invalidés.' };
+      S.loaded = false;
+      render();
+      return;
+    }
+    S.summary      = summary;
     S.scoreHistory = (hist && hist.serie) || [];
+    S.reports      = (reps && reps.items) || [];
     S.alerts    = Array.isArray(alerts) ? alerts : [];
     S.agents    = Array.isArray(agents) ? agents : [];
     S.notifs    = (notifs && notifs.items) || [];
@@ -762,8 +842,45 @@ function render() {
 
   if (!S.loaded && S.error) {
     $('skeleton').hidden = true; $('content').hidden = true; $('error-state').hidden = false;
+
+    /* « Momentanément indisponible » promet que l'attente suffira. C'est faux
+       pour un refus d'accès : un compte plateforme n'aura jamais de périmètre,
+       et le bouton « Réessayer » ne fera que rejouer le même 403. Le serveur
+       renvoie déjà un motif précis — l'écran doit le montrer, pas l'écraser. */
+    const st = S.error.status || 0;
+    const motif = String(S.error.detail || '');
+    const platforme = st === 403 && /tenant|périmètre|plateforme/i.test(motif);
+
+    if (platforme) {
+      $('error-title').textContent = LANG === 'fr'
+        ? "Ce compte n'a pas de périmètre supervisé"
+        : 'This account has no supervised scope';
+      $('error-body').textContent = LANG === 'fr'
+        ? "Le portail affiche les données d'un périmètre : il est destiné à son responsable. "
+          + "Les comptes plateforme — opérateur CENADI, analyste SOC — passent par la console, "
+          + "qui couvre tous les périmètres."
+        : 'The portal shows the data of one scope and is meant for its manager. '
+          + 'Platform accounts — CENADI operator, SOC analyst — use the console, which covers every scope.';
+      $('error-link').hidden = false;
+      $('retry').hidden = true;
+    } else if (st === 401) {
+      $('error-title').textContent = LANG === 'fr' ? 'Session expirée' : 'Session expired';
+      $('error-body').textContent = LANG === 'fr'
+        ? 'Votre session a expiré. Reconnectez-vous pour retrouver vos données.'
+        : 'Your session has expired. Sign in again to retrieve your data.';
+      $('error-link').hidden = false;
+      $('error-link').href = 'login.html';
+      $('error-link').textContent = LANG === 'fr' ? 'Se reconnecter' : 'Sign in again';
+      $('retry').hidden = true;
+    } else {
+      $('error-title').textContent = t('errTitle');
+      $('error-body').textContent  = t('errBody');
+      $('error-link').hidden = true;
+      $('retry').hidden = false;
+    }
+
     $('error-code').textContent =
-      `GET /portal/summary → ${S.error.status || 0} · ${t('lastOk')} —`;
+      `GET /portal/summary → ${st}${motif ? ' · ' + motif.slice(0, 90) : ' · ' + t('lastOk') + ' —'}`;
     return;
   }
   if (!S.loaded) { $('skeleton').hidden = false; $('content').hidden = true; $('error-state').hidden = true; return; }
@@ -781,6 +898,7 @@ function render() {
   renderAlerts(open);
   renderAgents();
   renderNotifs();
+  renderReports();
 }
 
 /* ── Score : 100 − risque max. Tendance reconstruite sur 14 jours à partir
@@ -1102,6 +1220,50 @@ function renderAgents() {
 /* ── Notifications ─────────────────────────────────────────────────────── */
 const SEV_COLOR = { critical:C.red, warning:C.amber, info:C.accent };
 
+/* Historique des rapports du périmètre.
+
+   Les notifications s'effacent au fil de l'eau ; les rapports, eux, servent de
+   pièces jointes à un compte rendu des semaines plus tard. Le portail n'exposait
+   que le dernier lu, ce qui rendait les précédents introuvables alors qu'ils
+   existaient toujours en base. */
+function renderReports() {
+  const list = $('reports-list'), compte = $('reports-count');
+  const items = S.reports || [];
+  compte.textContent = items.length
+    ? `${items.length}${items.length >= 50 ? '+' : ''}`
+    : '';
+  if (!items.length) {
+    list.innerHTML = `<div style="padding:20px 16px;text-align:center;color:var(--text-3);font-size:12.5px">${
+      esc(LANG === 'fr' ? "Aucun rapport produit sur ce périmètre."
+                        : 'No report produced for this scope.')}</div>`;
+    return;
+  }
+  list.innerHTML = items.map(r => {
+    const c = RISK(Number(r.risque) || 0);
+    return `<div class="notif">
+      <span class="sev" style="background:${c}"></span>
+      <div class="notif-top">
+        <span class="title">${esc(r.entite || r.title || '—')}</span>
+        <span class="kind" style="color:${c}">${esc(r.risque != null ? r.risque + '/100' : '—')}</span>
+      </div>
+      <div class="body">${esc(r.type_alerte || '')}</div>
+      <div class="notif-actions">
+        <span class="time">${esc(fmtTime(r.created_at))}</span>
+        <button class="mini-btn accent" data-rep-open="${esc(r.id)}">${esc(t('viewReport'))}</button>
+        <button class="mini-btn" data-rep-dl="${esc(r.id)}">↓ ${esc(t('download'))}</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-rep-open]').forEach(b =>
+    b.addEventListener('click', () => openReport(b.dataset.repOpen)));
+  list.querySelectorAll('[data-rep-dl]').forEach(b =>
+    b.addEventListener('click', async () => {
+      try { await NexusAPI.downloadNotifReport(b.dataset.repDl, null, LANG); }
+      catch { toast(t('reportOpenFail'), 'err'); }
+    }));
+}
+
 function renderNotifs() {
   const count = $('bell-count');
   count.hidden = !S.unread;
@@ -1173,6 +1335,30 @@ $('bell').addEventListener('click', () => {
 
 /* ═══ Modales — piège de focus + fermeture Échap (dette n°9) ══════════════ */
 let closeModal = null;
+
+/* Saisie modale : résout avec le texte saisi, ou null si l'utilisateur renonce.
+   Le portail n'en avait pas — seule la console en disposait. */
+function promptDialog(titre, etiquette, exemple) {
+  return new Promise(resolve => {
+    let repondu = false;
+    const m = modal(esc(titre), `
+      <label style="display:block;font-size:12.5px;color:var(--text-2);margin-bottom:8px">${esc(etiquette)}</label>
+      <textarea id="prompt-champ" rows="3" class="input" style="width:100%;resize:vertical"
+                placeholder="${esc(exemple || '')}"></textarea>`,
+      `<button class="btn" data-annuler>${esc(LANG === 'fr' ? 'Annuler' : 'Cancel')}</button>
+       <button class="btn btn-primary" data-valider>${esc(LANG === 'fr' ? 'Envoyer' : 'Send')}</button>`);
+
+    const champ = m.overlay.querySelector('#prompt-champ');
+    if (champ) champ.focus();
+    const finir = v => { if (repondu) return; repondu = true; resolve(v); m.close(); };
+    m.overlay.querySelector('[data-valider]').addEventListener('click',
+      () => finir(champ ? champ.value.trim() : ''));
+    m.overlay.querySelector('[data-annuler]').addEventListener('click', () => finir(null));
+    // Fermeture par Échap ou par la croix : équivaut à renoncer.
+    m.overlay.querySelectorAll('[data-close]').forEach(b =>
+      b.addEventListener('click', () => finir(null)));
+  });
+}
 
 function modal(title, bodyHTML, footHTML) {
   if (closeModal) closeModal();
@@ -1300,7 +1486,44 @@ function openAlert(id) {
         ${esc(a.source_modele || '—')}<br>
         ${tids.length ? esc(tids.join(', ')) : '—'}
       </div>
-    </div>`, `<button class="btn" data-close>${esc(t('close'))}</button>`);
+    </div>`,
+    /* Le responsable peut DEMANDER l'isolation, jamais l'exécuter : la demande
+       part dans la file SOAR pour arbitrage. Le bouton n'apparaît que sur une
+       alerte critique encore ouverte — le proposer sur un faux positif clos
+       n'aurait aucun sens. Un lecteur ne le voit pas. */
+    `${(Number(a.risque) >= 80 && a.statut === 'ouverte' && NexusAPI.role !== 'lecteur')
+        ? `<button class="btn btn-warn" id="ask-isolation" data-alert-id="${esc(a.id)}">${
+             esc(LANG === 'fr' ? "Demander l'isolation" : 'Request isolation')}</button>`
+        : ''}
+     <button class="btn" data-close>${esc(t('close'))}</button>`);
+
+  const bouton = document.getElementById('ask-isolation');
+  if (bouton) bouton.addEventListener('click', () => demanderIsolation(a));
+}
+
+/* Demande d'isolation — transmise au SOC, pas exécutée.
+   Le libellé le dit avant le clic : promettre une isolation immédiate ferait
+   croire la menace contenue alors que rien n'a encore été décidé. */
+async function demanderIsolation(a) {
+  const motif = await promptDialog(
+    LANG === 'fr' ? "Demander l'isolation de « " + a.entite + " »"
+                  : 'Request isolation of "' + a.entite + '"',
+    LANG === 'fr' ? 'Motif transmis à l’analyste (facultatif)'
+                  : 'Reason passed to the analyst (optional)',
+    LANG === 'fr' ? 'Ex. : activité confirmée anormale par le service métier.'
+                  : 'E.g. abnormal activity confirmed by the business unit.');
+  if (motif === null) return;
+  try {
+    await NexusAPI.requestIsolation(a.id, motif || null);
+    toast(LANG === 'fr'
+      ? "Demande transmise au SOC. Un analyste doit la valider avant exécution."
+      : 'Request sent to the SOC. An analyst must approve it before execution.', 'ok');
+  } catch (err) {
+    toast((err && err.status === 409)
+      ? (LANG === 'fr' ? 'Une demande est déjà en attente sur cette alerte.'
+                       : 'A request is already pending on this alert.')
+      : (LANG === 'fr' ? 'Échec de la demande.' : 'Request failed.'), 'err');
+  }
 }
 
 /* Rapport HTML : document autonome produit côté serveur, affiché en iframe
@@ -1332,6 +1555,21 @@ async function openReport(id) {
 /* ═══ Chrome : langue, déconnexion, réseau ════════════════════════════════ */
 $('lang-fr').addEventListener('click', () => setLang('fr'));
 $('lang-en').addEventListener('click', () => setLang('en'));
+
+/* Bascule de thème. Le re-rendu est nécessaire : score, KPI et sparkline sont
+   colorés en style inline par le JS et ne suivent pas l'attribut sur <html>. */
+function majIconesTheme() {
+  const clair = document.documentElement.getAttribute('data-theme') === 'light';
+  $('ic-moon').hidden = clair;
+  $('ic-sun').hidden  = !clair;
+}
+majIconesTheme();
+$('theme-toggle').addEventListener('click', () => {
+  const clair = document.documentElement.getAttribute('data-theme') === 'light';
+  appliquerTheme(clair ? 'dark' : 'light');
+  majIconesTheme();
+  render();
+});
 $('logout').addEventListener('click', () => NexusAPI.logout());
 $('retry').addEventListener('click', () => { S.error = null; render(); load(); });
 

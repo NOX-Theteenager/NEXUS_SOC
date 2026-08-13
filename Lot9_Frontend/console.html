@@ -43,6 +43,30 @@
   --sidebar-w:220px; --header-h:58px;
 }
 
+/* ── Mode clair ───────────────────────────────────────────────────────────
+   Seuls les tokens NEUTRES changent : fonds, bordures, niveaux de texte. Les
+   couleurs porteuses de sens — rouge du risque, ambre de la dérive, teal du
+   sain — gardent leur teinte, sinon un opérateur habitué à l'un des deux
+   thèmes relirait mal l'autre.
+
+   Les hues sont légèrement assombries en clair : le même #3DDC97 qui se lit
+   bien sur fond nuit devient illisible sur blanc. */
+:root[data-theme="light"] {
+  --bg:#EEF2F7; --bg-2:#E9EFF6; --surface:#FFFFFF; --surface-2:#F4F8FC;
+  --border:#DDE4EE; --border-2:#C4CEDC;
+  --text:#0F1B2D; --text-2:#4A5A6E; --text-3:#5B6A7E; --text-4:#8A99AC;
+  --accent:#1F6FD0; --teal:#0F9D6B; --amber:#B45309; --red:#C62828;
+  --purple:#7C4DBE; --cyan:#0E8C86;
+  --tac-initial:#A21CAF; --tac-exec:#C62828; --tac-persist:#B45309;
+  --tac-evade:#B45309;   --tac-discover:#C2410C; --tac-collect:#C2410C;
+  --tac-c2:#1F6FD0;      --tac-exfil:#C62828;    --tac-impact:#C62828;
+  --sh-float:0 24px 60px rgba(15,27,45,.18);
+  --focus:0 0 0 3px rgba(31,111,208,.22);
+  color-scheme:light;
+}
+:root[data-theme="light"] .sk,
+:root[data-theme="light"] .sk-hint { opacity:.9; }
+
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 html, body { height:100%; }
 body {
@@ -87,7 +111,7 @@ button, input, select, textarea { font-family:inherit; color:inherit; }
 .side-brand .logo em { font-style:inherit; color:var(--amber); }
 .side-brand .sub { font-family:var(--mono); font-size:8.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-3); }
 
-.side-nav { flex:1; padding:12px 8px; display:flex; flex-direction:column; gap:2px; overflow-y:auto; }
+.side-nav { flex:1; min-height:0; padding:12px 8px; display:flex; flex-direction:column; gap:2px; overflow-y:auto; }
 .nav-group { font-family:var(--mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-4); padding:10px 10px 6px; }
 .nav-group + .nav-group { padding-top:14px; }
 .nav-item {
@@ -145,7 +169,13 @@ button, input, select, textarea { font-family:inherit; color:inherit; }
 }
 
 .view { flex:1; min-width:0; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
-.pane { flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:16px; }
+/* min-height:0 est OBLIGATOIRE ici. Sans lui, un élément flexible garde pour
+   minimum la hauteur de son contenu (min-height:auto) : le volet ne peut pas
+   rétrécir, `overflow-y:auto` ne se déclenche jamais, et le parent .view
+   (overflow:hidden) coupe purement et simplement les lignes du bas. C'est ce
+   qui masquait la fin du parc d'agents, sans barre de défilement pour le
+   signaler. */
+.pane { flex:1; min-height:0; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:16px; }
 
 /* ── 3. Composants transverses ──────────────────────────────────────────── */
 .btn {
@@ -204,7 +234,13 @@ button, input, select, textarea { font-family:inherit; color:inherit; }
 
 /* ── 4. Cartes et KPI ───────────────────────────────────────────────────── */
 .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
-.kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-card); padding:16px; }
+.kpi {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-card);
+  padding:16px; width:100%; text-align:left; cursor:pointer; font:inherit; color:inherit;
+  transition:border-color .12s, background .12s;
+}
+.kpi:hover { border-color:var(--border-2); background:var(--surface-2); }
+.kpi:focus-visible { outline:none; box-shadow:var(--focus); border-color:var(--accent); }
 .kpi-label { font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-3); margin-bottom:6px; }
 .kpi-value { font-family:var(--display); font-size:30px; font-weight:600; letter-spacing:-.03em; line-height:1; }
 .kpi-sub { font-size:11.5px; color:var(--text-3); margin-top:5px; }
@@ -224,7 +260,22 @@ button, input, select, textarea { font-family:inherit; color:inherit; }
 .chip .dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
 
 /* ── 5. Tableaux ────────────────────────────────────────────────────────── */
-.tbl { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-card); overflow:hidden; }
+/* flex-shrink:0 est OBLIGATOIRE, et c'est subtil.
+
+   `.tbl` porte overflow:hidden. Or la taille minimale automatique d'un élément
+   flexible (min-height:auto) ne s'applique QUE si son overflow vaut `visible` :
+   ici elle retombe à 0. Le tableau se laissait donc écraser par flex-shrink,
+   coupant ses dernières lignes — pendant que la barre d'outils et la note,
+   elles, restaient visibles. D'où l'impression d'une liste tronquée sans
+   possibilité de défiler.
+
+   Avec flex-shrink:0 le tableau garde sa hauteur naturelle, .pane déborde et
+   défile réellement. `min-height:0` sur .pane ne suffisait pas : il rendait le
+   défilement possible, mais rien ne débordait puisque l'enfant se compressait. */
+.tbl {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-card); overflow:hidden; flex-shrink:0;
+}
 .tbl-scroll { overflow-x:auto; }
 .tbl-head, .tbl-row { display:grid; align-items:center; min-width:760px; }
 .tbl-head { background:var(--bg-2); border-bottom:1px solid var(--border); }
@@ -251,7 +302,9 @@ button, input, select, textarea { font-family:inherit; color:inherit; }
 .queue-filters { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap; }
 .queue-filters .input { flex:1; min-width:110px; padding:7px 10px; }
 .queue-filters .select { padding:7px 8px; font-size:11px; }
-.queue-list { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
+/* même règle que .pane : sans min-height:0, la file ne défile pas et les
+   alertes du bas sont coupées sans indication. */
+.queue-list { flex:1; min-height:0; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
 
 .q-item {
   width:100%; text-align:left;
@@ -267,7 +320,7 @@ button, input, select, textarea { font-family:inherit; color:inherit; }
 .q-tags  { display:flex; gap:4px; flex-wrap:wrap; margin-top:8px; }
 .q-tag   { font-family:var(--mono); font-size:9px; padding:2px 6px; border-radius:4px; border:1px solid currentColor; }
 
-.detail { flex:1; min-width:0; overflow-y:auto; padding:20px 22px; }
+.detail { flex:1; min-width:0; min-height:0; overflow-y:auto; padding:20px 22px; }
 .detail-head { display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
 .detail-score { font-family:var(--display); font-size:44px; font-weight:600; letter-spacing:-.04em; line-height:1; }
 .detail-score small { font-size:16px; opacity:.5; }
@@ -281,6 +334,20 @@ button, input, select, textarea { font-family:inherit; color:inherit; }
 .chain-body { padding-bottom:16px; }
 .chain-tac  { font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; border:1px solid currentColor; border-radius:4px; padding:2px 7px; }
 .chain-tid  { font-family:var(--mono); font-size:11px; color:var(--text-2); }
+.lien-perim {
+  background:none; border:none; padding:0; font:inherit; color:var(--text);
+  cursor:pointer; text-align:left; border-bottom:1px dotted var(--text-4);
+}
+.lien-perim:hover { color:var(--accent); border-bottom-color:var(--accent); }
+.lien-perim:focus-visible { outline:none; box-shadow:var(--focus); border-radius:3px; }
+.spark { display:inline-flex; align-items:flex-end; gap:1.5px; height:22px; width:78px; }
+.spark i { flex:1; border-radius:1px; min-height:2px; }
+.mitre-lien {
+  background:none; border:none; padding:0; font:inherit; cursor:pointer;
+  color:var(--text-2); text-decoration:none; border-bottom:1px dotted var(--text-4);
+}
+.mitre-lien:hover { color:var(--accent); border-bottom-color:var(--accent); }
+.mitre-lien:focus-visible { outline:none; box-shadow:var(--focus); border-radius:3px; }
 .chain-desc { font-size:13px; color:var(--text); margin-top:5px; line-height:1.55; }
 
 .reason { display:flex; gap:9px; align-items:flex-start; font-size:13px; color:var(--text-2); line-height:1.55; }
@@ -453,6 +520,10 @@ button, input, select, textarea { font-family:inherit; color:inherit; }
       </button>
       <h1 id="view-title">Tableau de bord</h1>
       <div class="hdr-spacer"></div>
+      <button class="icon-btn" id="theme-toggle" aria-label="Basculer le thème clair ou sombre" title="Thème clair / sombre">
+        <svg class="ic" id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+        <svg class="ic" id="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+      </button>
       <button class="icon-btn" id="refresh" aria-label="Rafraîchir maintenant">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 11-2.4-5.9"/><path d="M20.5 4v4.2h-4.2"/></svg>
       </button>
@@ -488,13 +559,48 @@ const esc = s => String(s == null ? '' : s)
    Les couleurs produites en JS servent aussi dans des attributs SVG et dans des
    compositions rgba() : var(--red) n'y est pas exploitable. Toute modification
    d'un token de :root doit être répercutée ici. */
-const C = {
-  red:'#EF4444', amber:'#F5A524', accent:'#5EAAFF', teal:'#3DDC97',
-  purple:'#B98BFF', cyan:'#38E1D6',
-  text:'#E2E8F0', text2:'#94A3B8', muted:'#64748B', border:'#1E293B',
-  // Tactiques MITRE — miroir des tokens --tac-*
-  tacInitial:'#E879F9', tacWarm:'#FB923C',
-};
+/* Les couleurs utilisées par le JS sont LUES sur les tokens CSS plutôt que
+   recopiées. Elles suivent donc le thème sans duplication — et la valeur
+   résolue (un vrai hex) reste utilisable dans un attribut SVG, où `var()` ne
+   passerait pas. Rechargées à chaque bascule de thème. */
+function lireTokens() {
+  const s = getComputedStyle(document.documentElement);
+  const v = (n, secours) => (s.getPropertyValue('--' + n).trim() || secours);
+  return {
+    red:v('red', '#EF4444'), amber:v('amber', '#F5A524'),
+    accent:v('accent', '#5EAAFF'), teal:v('teal', '#3DDC97'),
+    purple:v('purple', '#B98BFF'), cyan:v('cyan', '#38E1D6'),
+    text:v('text', '#E2E8F0'), text2:v('text-2', '#94A3B8'),
+    muted:v('text-3', '#64748B'), border:v('border', '#1E293B'),
+    tacInitial:v('tac-initial', '#E879F9'), tacWarm:v('tac-discover', '#FB923C'),
+  };
+}
+
+/* ── Thème ────────────────────────────────────────────────────────────────
+   Choix explicite mémorisé ; à défaut, préférence du système. La console est
+   un poste de travail : un opérateur en salle éclairée doit pouvoir lire son
+   écran sans forcer. */
+const THEME_KEY = 'nexus_theme';
+function themeInitial() {
+  const m = localStorage.getItem(THEME_KEY);
+  if (m === 'light' || m === 'dark') return m;
+  return matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+// Déclarées AVANT toute application de thème : `appliquerTheme` les recalcule,
+// et une affectation avant déclaration lèverait une ReferenceError.
+let C, CRIT, AGENT_STATE;
+
+function appliquerTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem(THEME_KEY, t);
+  C = lireTokens();
+  // Ces tables figeaient les couleurs au chargement : sans recalcul, elles
+  // gardaient les teintes du thème précédent après une bascule.
+  CRIT = { critique:C.red, sensible:C.amber, standard:C.accent };
+  AGENT_STATE = { actif:C.teal, isole:C.amber, hors_ligne:C.muted };
+}
+appliquerTheme(themeInitial());
 const RISK = s => s >= 80 ? C.red : s >= 60 ? C.amber : s >= 40 ? C.accent : C.teal;
 
 /* Fond translucide d'un badge, dérivé de sa couleur de texte. */
@@ -504,8 +610,8 @@ function tint(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a == null ? .1 : a})`;
 }
 
-const CRIT = { critique:C.red, sensible:C.amber, standard:C.accent };
-const AGENT_STATE = { actif:C.teal, isole:C.amber, hors_ligne:C.muted };
+/* CRIT et AGENT_STATE sont bâties par appliquerTheme() : elles doivent suivre
+   la bascule clair/sombre, pas figer les couleurs du premier rendu. */
 
 /* Délai de tolérance avant de déclarer un poste hors ligne. Valeur d'autorité
    côté serveur (AGENT_STALE_SECONDS) ; la valeur ci-dessous n'est qu'un repli
@@ -599,6 +705,77 @@ const MITRE = {
    d'affichage (couleur et description). */
 const TID_RE = /T\d{4}(?:\.\d{3})?/;
 
+/* Nom officiel ATT&CK et règle de détection réellement appliquée.
+
+   Ces données ne sont pas recopiées de mémoire : elles proviennent de
+   Lot2_Pipeline_SIEM/correlation_engine_v2.py, c'est-à-dire du code qui lève
+   effectivement la détection. La fiche décrit donc ce que NEXUS cherche, pas
+   une généralité — ce qui est plus utile à l'analyste que la page publique. */
+const MITRE_REGLE = {
+  T1204: ['User Execution: Malicious File',
+          'Fichier apparu dans un répertoire de téléchargement avec une extension exécutable (.exe, .scr, .js, .bat, .vbs).'],
+  T1059: ['Command and Scripting Interpreter',
+          'Processus figurant dans la liste des interpréteurs surveillés (cmd, powershell, wscript, cscript, nc, ncat, mshta, rundll32), ou binaire exécuté depuis un répertoire temporaire.'],
+  T1027: ['Obfuscated Files or Information',
+          'Exécutable lancé depuis /tmp, argument contenant une chaîne base64 de 40 caractères ou plus, double extension (.ps1.exe), ou motif PowerShell d’obfuscation (iex, invoke-expression, frombase64).'],
+  T1136: ['Create Account',
+          'Commande de création de compte (useradd, adduser, net user /add, dsadd). Une création massive sur une courte fenêtre lève la même technique en règle volumétrique.'],
+  T1005: ['Data from Local System',
+          'Accès à un chemin sensible : /etc/shadow, /etc/passwd, /etc/sudoers, ou chemin contenant finance, budget, contribuable, sigipes, sydonia.'],
+  T1083: ['File and Directory Discovery',
+          'Accès à des fichiers dans /etc/, /proc/, /var/log/, ou aux ruches Windows (SAM, SECURITY, HKLM, HKCU).'],
+  T1071: ['Application Layer Protocol',
+          'Connexion TCP ÉTABLIE vers un port de commande connu (4444, 6667, 1337, 9001, 31337, 5555) ou vers une adresse figurant en renseignement sur la menace.'],
+  T1486: ['Data Encrypted for Impact',
+          'Modification massive de fichiers sur une fenêtre courte, seuil configurable (MASS_FILE_THRESHOLD).'],
+};
+
+/* Fiche ATT&CK, affichée LOCALEMENT.
+
+   Le lien vers attack.mitre.org restait blanc sur ce déploiement : le site est
+   hébergé sur GitHub Pages, dont les adresses ne répondent pas depuis ce
+   réseau, et son nom ne résout qu'en IPv6 alors qu'aucune route IPv6 n'existe.
+   Une plateforme conçue pour fonctionner coupée d'Internet ne peut pas confier
+   une information de travail à une ressource distante : la fiche est donc
+   servie depuis la table locale, et le lien externe n'est qu'un complément
+   annoncé comme tel. */
+function mitreLien(tid, libelle) {
+  const id = String(tid || '').match(TID_RE);
+  if (!id) return `<span class="chain-tid">${esc(libelle)}</span>`;
+  return `<button class="chain-tid mitre-lien" data-mitre="${esc(id[0])}"
+            title="Fiche ${esc(id[0])} — consultable hors ligne">${esc(libelle)}</button>`;
+}
+
+function ficheMitre(tid) {
+  const base = tid.split('.')[0];
+  const m = MITRE[base] || {};
+  const [nomOfficiel, regle] = MITRE_REGLE[base] || [null, null];
+  const url = 'https://attack.mitre.org/techniques/' + tid.replace('.', '/') + '/';
+
+  openModal(`${esc(tid)}${nomOfficiel ? ' · ' + esc(nomOfficiel) : ''}`, `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      ${m.tac ? badge(m.tac, m.col || C.muted) : ''}
+      ${m.phase ? `<span class="note">phase ${esc(m.phase)} de la chaîne</span>` : ''}
+    </div>
+
+    ${m.lib ? `<div class="kicker" style="margin-bottom:8px">Ce que fait l'attaquant</div>
+      <p style="font-size:13.5px;color:var(--text-2);line-height:1.7;margin-bottom:18px">${esc(m.lib)}</p>` : ''}
+
+    ${regle ? `<div class="kicker" style="margin-bottom:8px">Ce que NEXUS observe pour la détecter</div>
+      <p style="font-size:13.5px;color:var(--text-2);line-height:1.7;margin-bottom:8px">${esc(regle)}</p>
+      <p class="note">Règle appliquée par Lot2_Pipeline_SIEM/correlation_engine_v2.py.</p>`
+      : `<p class="note">Aucune règle de détection propre à cette technique dans le moteur :
+         elle provient de l'étiquetage d'une alerte de scoring, pas d'une corrélation d'événements.</p>`}
+
+    <p class="note" style="margin-top:18px;padding-top:12px;border-top:1px solid var(--border);line-height:1.7">
+      Fiche complète sur le site officiel :
+      <a href="${url}" target="_blank" rel="noopener noreferrer">${esc(url)}</a><br>
+      Ressource externe — inaccessible sur un déploiement coupé d'Internet, et actuellement
+      injoignable depuis ce réseau.
+    </p>`,
+    `<button class="btn" data-close>Fermer</button>`);
+}
+
 function mitreOf(raw) {
   const s = String(raw).trim();
   const m = s.match(TID_RE);
@@ -687,12 +864,15 @@ const S = {
   dashboard:null, tenants:null, agents:null, health:null,
   alerts:null, pending:null, audit:null, metrics:null, drift:null,
   selected: null,
+  selAgents: [],            // sélection multiple du parc, pour les actions groupées
   loading:  {}, errors:  {},
   filters:  { alertRisk:'', alertStatut:'', alertQ:'',
               perimQ:'', perimCrit:'', agentQ:'', agentStatut:'', agentOs:'',
-              auditImpact:'', auditActeur:'', metricsHours:24, driftDays:7 },
+              auditImpact:'', auditActeur:'', auditQ:'', auditDu:'', auditAu:'',
+              metricsHours:24, driftDays:7 },
   enrol:    { tenantId:'', hostname:'', os:'linux', hours:24, oneTime:true, bind:true,
-              token:null, tab:'oneliner', qr:null, log:null, csv:null, csvRows:null },
+              token:null, tab:'oneliner', qr:null, log:null, csv:null, csvRows:null,
+              csvErreurs:[] },
   sort:     { perim:{ k:'nom', dir:1 }, agents:{ k:'hostname', dir:1 } },
 };
 
@@ -740,6 +920,14 @@ async function pull(key, fn) {
   S.loading[key] = true;
   try {
     const d = await fn();
+    /* Session expirée : api.js purge les jetons et renvoie `null` sans rediriger.
+       Sans ce test, la section restait en squelette perpétuel — ni donnée, ni
+       erreur, donc aucune explication à l'écran. */
+    if (d === null) {
+      S.errors[key] = { status: 401, detail: 'Session expirée — reconnectez-vous.' };
+      S[key] = null;
+      return;
+    }
     S[key] = d; S.errors[key] = null;
     if (!navigator.onLine) S.offline = true;
   } catch (e) {
@@ -757,7 +945,12 @@ async function loadSection() {
                                         .then(d => { if (d && d.stale_after_s) STALE_S = d.stale_after_s; return d; })),
                                       pull('alerts',    () => NexusAPI.getAlerts({ limit:20 })),
                                       pull('health',    () => NexusAPI.getHealth()));
-  if (sec === 'perimetres') jobs.push(pull('tenants', () => NexusAPI.getTenants()));
+  // La vue détail d'un périmètre agrège parc, alertes et file SOAR : sans ces
+  // trois chargements, elle afficherait des zéros au lieu de la réalité.
+  if (sec === 'perimetres') jobs.push(pull('tenants', () => NexusAPI.getTenants()),
+                                      pull('agents',  () => NexusAPI.getAgents()),
+                                      pull('alerts',  () => NexusAPI.getAlerts({ limit:100 })),
+                                      pull('pending', () => NexusAPI.getPendingSOAR()));
   if (sec === 'agents')     jobs.push(pull('agents',  () => NexusAPI.getAgents()),
                                       pull('tenants', () => NexusAPI.getTenants()));
   if (sec === 'sante')      jobs.push(pull('health',  () => NexusAPI.getHealth()));
@@ -769,7 +962,9 @@ async function loadSection() {
                                       pull('pending', () => NexusAPI.getPendingSOAR()));
   if (sec === 'soar')       jobs.push(pull('pending', () => NexusAPI.getPendingSOAR()),
                                       pull('audit',   () => NexusAPI.getSoarAudit({ limit:50 })));
-  if (sec === 'enrolement') jobs.push(pull('tenants', () => NexusAPI.getTenants()));
+  // `agents` alimente le suivi en direct de l'enrôlement en cours.
+  if (sec === 'enrolement') jobs.push(pull('tenants', () => NexusAPI.getTenants()),
+                                      pull('agents',  () => NexusAPI.getAgents()));
 
   renderView();
   await Promise.all(jobs);
@@ -820,15 +1015,20 @@ function renderDashboard() {
   const alerts = (S.alerts || []).filter(a => a.statut === 'ouverte');
   const healthy = (d.open_alerts || 0) === 0;
 
+  /* Chaque KPI mène à la vue qui l'explique, en y posant le filtre correspondant.
+     Un chiffre sur lequel on ne peut pas cliquer oblige l'analyste à refaire le
+     tri à la main pour retrouver ce qu'il vient de lire. */
   const kpis = [
     ['Alertes ouvertes', d.open_alerts ?? '—',
      healthy ? 'aucun incident en cours' : 'toutes périmètres confondus',
-     healthy ? C.teal : C.red],
+     healthy ? C.teal : C.red, { sec:'alertes', statut:'ouverte' }],
     ['Alertes critiques', d.critical_alerts ?? '—', 'seuil risque ≥ 80',
-     (d.critical_alerts || 0) ? C.red : C.teal],
+     (d.critical_alerts || 0) ? C.red : C.teal, { sec:'alertes', statut:'ouverte', risk:'80-100' }],
     ['Agents en ligne', d.agents_online ?? '—',
-     `sur ${d.tenants_total || 0} périmètre${(d.tenants_total || 0) > 1 ? 's' : ''}`, C.text],
-    ['Périmètres supervisés', d.tenants_total ?? '—', 'cloisonnés par RLS', C.text],
+     `sur ${d.tenants_total || 0} périmètre${(d.tenants_total || 0) > 1 ? 's' : ''}`,
+     C.text, { sec:'agents', agentStatut:'actif' }],
+    ['Périmètres supervisés', d.tenants_total ?? '—', 'cloisonnés par RLS',
+     C.text, { sec:'perimetres' }],
   ];
 
   const top = (d.top_tenants_by_incidents || []);
@@ -843,10 +1043,12 @@ function renderDashboard() {
 
   return `<div class="pane">
     <div class="kpi-grid">
-      ${kpis.map(([l, v, s, c]) => `<div class="kpi">
+      ${kpis.map(([l, v, s, c, cible]) => `<button class="kpi" type="button"
+          data-kpi="${esc(encodeURIComponent(JSON.stringify(cible)))}"
+          aria-label="${esc(l)} : ${esc(v)}. Ouvrir la vue détaillée.">
         <div class="kpi-label">${esc(l)}</div>
         <div class="kpi-value" style="color:${c}">${esc(v)}</div>
-        <div class="kpi-sub">${esc(s)}</div></div>`).join('')}
+        <div class="kpi-sub">${esc(s)}</div></button>`).join('')}
     </div>
 
     <div class="grid-2">
@@ -932,7 +1134,8 @@ function renderPerimetres() {
         const suspended = t.statut === 'suspendu';
         const nb = (S.agents || []).filter(a => String(a.tenant_id) === t.id).length;
         return `<div class="tbl-row" style="grid-template-columns:${PERIM_COLS}">
-          <div class="cell-strong">${esc(t.nom)}</div>
+          <div class="cell-strong"><button class="lien-perim" data-perim-detail="${esc(t.id)}"
+                 title="Voir le détail de ce périmètre">${esc(t.nom)}</button></div>
           <div class="cell-mono">${esc(t.type)}</div>
           <div>${badge(t.criticite, col)}</div>
           <div class="cell-mono">${nb || (t.agents_count ?? '—')}</div>
@@ -955,7 +1158,40 @@ function renderPerimetres() {
 }
 
 /* ── Parc d'agents ──────────────────────────────────────────────────────── */
-const AGENT_COLS = '1.3fr 1.3fr .7fr .9fr 1fr 1.1fr';
+const AGENT_COLS = '30px 1.2fr 1fr .7fr .85fr .9fr .8fr 1.1fr';
+
+/* Silhouette d'activité sur 24 h, 12 créneaux de 2 h.
+
+   C'est un COMPTE de mesures reçues, pas une valeur métier : un creux signale
+   un agent qui s'est tu. Les barres à zéro restent visibles en teinte de bord
+   — une colonne absente se confondrait avec la fin du graphe. */
+/* Version d'un agent, comparée à la plus récente du parc.
+   `version_agent` reste NULL tant que l'agent n'a pas émis avec un collecteur
+   assez récent pour la transmettre. On le dit — « inconnue » n'est pas « à
+   jour », et laisser la case vide ferait croire à une absence de problème. */
+function versionAgent(a) {
+  const v = a.version_agent;
+  if (!v) return `<span class="note" title="Ce collecteur ne transmet pas encore sa version. Mettez-le à jour pour la voir apparaître.">inconnue</span>`;
+  const ref = window._versionRef;
+  if (ref && v !== ref) {
+    return `<span style="color:var(--amber)" title="Version ${esc(v)} — la plus récente du parc est ${esc(ref)}">${esc(v)} ⚠</span>`;
+  }
+  return `<span style="color:var(--text-2)">${esc(v)}</span>`;
+}
+
+function sparkAgent(serie, couleur) {
+  const s = Array.isArray(serie) ? serie : [];
+  if (!s.length) return '<span class="note">—</span>';
+  const max = Math.max(1, ...s);
+  const total = s.reduce((a, b) => a + b, 0);
+  const creux = s.filter(v => v === 0).length;
+  const titre = total
+    ? `${total} mesures sur 24 h · ${creux} créneau(x) de 2 h sans donnée`
+    : 'aucune mesure sur 24 h';
+  return `<span class="spark" title="${esc(titre)}" role="img" aria-label="${esc(titre)}">${
+    s.map(v => `<i style="height:${v ? Math.max(12, Math.round(v / max * 100)) : 6}%;
+                          background:${v ? couleur : 'var(--border-2)'}"></i>`).join('')}</span>`;
+}
 
 function renderAgents() {
   if (S.loading.agents && !S.agents) return `<div class="pane">${skeleton(6)}</div>`;
@@ -970,8 +1206,17 @@ function renderAgents() {
   const so = S.sort.agents;
   rows.sort((a, b) => String(a[so.k] ?? '').localeCompare(String(b[so.k] ?? ''), 'fr') * so.dir);
 
-  const head = [['hostname','Hôte'],['perim','Périmètre'],['os','OS'],
-                ['statut','Statut'],['vu_le','Dernière vue'],[null,'Actions']];
+  const head = [[null,''],['hostname','Hôte'],['perim','Périmètre'],['os','OS'],
+                ['statut','Statut'],['vu_le','Dernière vue'],
+                [null,'Télémétrie 24 h'],['version_agent','Version'],[null,'Actions']];
+
+  /* Version de référence : la plus récente observée sur le parc. Elle n'est pas
+     codée en dur — un seuil figé deviendrait faux à la première mise à jour.
+     Un agent en retard est signalé, pas bloqué. */
+  const versions = rows.map(a => a.version_agent).filter(Boolean).sort();
+  const derniere = versions[versions.length - 1] || null;
+  const nbObsoletes = rows.filter(a => a.version_agent && a.version_agent !== derniere).length;
+  window._versionRef = derniere;
 
   return `<div class="pane">
     <div class="toolbar">
@@ -985,7 +1230,23 @@ function renderAgents() {
           `<option value="${v}"${f.agentOs === v ? ' selected' : ''}>${l}</option>`).join('')}
       </select>
       <button class="btn btn-primary" data-go-enrol>+ Enrôler un agent</button>
+      <div style="flex:1"></div>
+      ${/* Décompte explicite : sans lui, rien ne distingue une liste complète
+            d'une liste tronquée par le défilement ou par un filtre actif. */''}
+      <span class="note">${rows.length === (S.agents || []).length
+        ? `${rows.length} agent${rows.length > 1 ? 's' : ''}`
+        : `${rows.length} sur ${(S.agents || []).length} agents · filtre actif`}${
+        nbObsoletes ? ` · <span style="color:var(--amber)">${nbObsoletes} en version antérieure</span>` : ''}</span>
     </div>
+
+    ${S.selAgents.length ? `
+      <div class="card" style="border-color:var(--accent);display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px">
+        <span style="font-size:13px;font-weight:600">${S.selAgents.length} agent${S.selAgents.length > 1 ? 's' : ''} sélectionné${S.selAgents.length > 1 ? 's' : ''}</span>
+        <div style="flex:1"></div>
+        <button class="btn btn-sm btn-warn" id="bulk-isoler">Isoler</button>
+        <button class="btn btn-sm" id="bulk-reconnecter">Reconnecter</button>
+        <button class="btn btn-sm" id="bulk-vider">Annuler la sélection</button>
+      </div>` : ''}
 
     ${rows.length ? `<div class="tbl"><div class="tbl-scroll">
       <div class="tbl-head" style="grid-template-columns:${AGENT_COLS}">
@@ -995,7 +1256,10 @@ function renderAgents() {
       </div>
       ${rows.map(a => {
         const col = AGENT_STATE[a.statut] || C.muted;
+        const coche = S.selAgents.includes(String(a.id));
         return `<div class="tbl-row" style="grid-template-columns:${AGENT_COLS}">
+          <div><input type="checkbox" data-agent-pick="${esc(a.id)}"${coche ? ' checked' : ''}
+                      aria-label="Sélectionner ${esc(a.hostname)}"></div>
           <div class="cell-mono" style="color:var(--text)">${esc(a.hostname)}</div>
           <div style="font-size:12.5px;color:var(--text-2)">${esc(a.perim)}</div>
           <div class="cell-mono">${esc(a.os || '—')}${
@@ -1014,6 +1278,8 @@ function renderAgents() {
             ${esc(depuis(a.vu_il_y_a_s))}
             <div class="note" style="font-size:9.5px">${esc(a.vu_le ? fmt(a.vu_le) : '—')}</div>
           </div>
+          <div>${sparkAgent(a.telemetrie_24h, col)}</div>
+          <div class="cell-mono">${versionAgent(a)}</div>
           <div class="cell-actions">
             <button class="btn btn-sm btn-warn" data-agent-rotate="${esc(a.id)}">Rotation HMAC</button>
             <button class="btn btn-sm btn-danger" data-agent-revoke="${esc(a.id)}">Révoquer</button>
@@ -1168,7 +1434,8 @@ function svgChart(points, color, w, h) {
     : '';
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img"
                aria-label="Série de ${pts.length} points mesurés, de ${min.toFixed(1)} à ${max.toFixed(1)}${couverture}">
-    ${[.25, .5, .75].map(f => `<line x1="0" y1="${(h * f).toFixed(0)}" x2="${w}" y2="${(h * f).toFixed(0)}" stroke="#1E293B" stroke-width="1"/>`).join('')}
+    ${/* grille : token, pas hex figé — invisible sur fond clair sinon */''}
+    ${[.25, .5, .75].map(f => `<line x1="0" y1="${(h * f).toFixed(0)}" x2="${w}" y2="${(h * f).toFixed(0)}" stroke="${C.border}" stroke-width="1"/>`).join('')}
     ${trous.join('')}
     ${traces}
   </svg>`;
@@ -1330,6 +1597,30 @@ function renderDrift() {
         </div>`;
       }).join('')}
     </div>
+    ${/* Le ré-étalonnage est un travail long qui remplace les .joblib sous un
+          service en cours d'exécution. Le déclencher depuis une requête HTTP
+          serait imprudent : la console donne la commande, comme pour les
+          actions SOAR, et l'opérateur reste maître du moment. */''}
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div class="mono" style="font-size:9.5px;color:var(--text-3);letter-spacing:.08em;margin-bottom:6px">
+        RÉ-ÉTALONNER LA LIGNE DE BASE</div>
+      <p class="note" style="line-height:1.7;margin-bottom:8px">
+        Les modèles ont été entraînés sur des données synthétiques : sur l'activité réelle d'une
+        machine, leurs scores bruts saturent et le risque affiché reste bloqué à 100.
+        <b>Le ré-étalonnage ne réentraîne pas les modèles</b> — il mesure la distribution réelle
+        des scores sur une période calme, puis règle le mapping pour que « 100 » ne s'affiche
+        qu'en cas d'écart réel à la normale locale.
+      </p>
+      <div class="code" style="white-space:pre-wrap">python3 Lot3_IA/recalibrate_baseline.py --collect --duration 2700 --interval 15
+python3 Lot3_IA/recalibrate_baseline.py --apply --percentile 99</div>
+      <button class="btn btn-sm" style="margin-top:6px"
+        data-copycmd="${esc(encodeURIComponent('python3 Lot3_IA/recalibrate_baseline.py --collect --duration 2700 --interval 15\npython3 Lot3_IA/recalibrate_baseline.py --apply --percentile 99'))}">Copier les commandes</button>
+      <p class="note" style="margin-top:8px">
+        À lancer sur une machine en activité <b>normale</b> : une collecte faite pendant un incident
+        apprendrait l'anomalie comme référence. Les modèles sont sauvegardés avant remplacement.
+      </p>
+    </div>
+
     <p class="note" style="margin-top:12px">Seuils : PSI &gt; 0,10 surveillance · PSI &gt; 0,25 ré-entraînement.
        Fenêtre courante : les ${esc(d.days || jours)} derniers jours · référence : les ${esc(d.days || jours)} jours
        qui les précèdent. Le PSI mesure l'écart entre ces deux distributions de scores.</p>
@@ -1337,6 +1628,148 @@ function renderDrift() {
 }
 
 const AUDIT_COLS = '120px 1.4fr 1fr 1fr .7fr 1.2fr .9fr';
+
+/* Export CSV du journal d'audit.
+
+   Produit dans le navigateur à partir des lignes AFFICHÉES : ce qui est exporté
+   est exactement ce que l'analyste a sous les yeux, filtres compris. Un export
+   qui divergerait de l'écran serait une source de litige, or ce journal est
+   précisément la pièce qui fait foi en cas de contestation.
+
+   Séparateur point-virgule et BOM UTF-8 : sans eux, Excel en configuration
+   française colle tout dans une seule colonne et casse les accents. */
+/* Isolement ou reconnexion d'un lot d'agents.
+
+   La confirmation nomme les machines et dit ce que l'action fait RÉELLEMENT :
+   elle coupe l'ingestion, elle ne confine pas la machine. Laisser croire à un
+   confinement réseau serait la pire des ambiguïtés — on croirait la menace
+   contenue alors qu'on a seulement cessé de la regarder. */
+/* Vue détail d'un périmètre : son parc, ses alertes, sa file SOAR.
+
+   Tout provient de données DÉJÀ chargées — agents, alertes, propositions — donc
+   aucun appel supplémentaire. Le détail n'invente rien : il rassemble au même
+   endroit ce qui était éparpillé sur trois sections. */
+function detailPerimetre(id) {
+  const t = (S.tenants || []).find(x => String(x.id) === String(id));
+  if (!t) return;
+  const tid = String(t.id);
+
+  const agents  = (S.agents  || []).filter(a => String(a.tenant_id) === tid);
+  const alertes = (S.alerts  || []).filter(a => String(a.tenant_id) === tid);
+  const soar    = (S.pending || []).filter(p => String(p.tenant_id) === tid);
+  const ouvertes = alertes.filter(a => a.statut === 'ouverte');
+  const actifs   = agents.filter(a => a.statut === 'actif').length;
+  const legacy   = agents.filter(a => a.hmac_scheme && a.hmac_scheme !== 'derived').length;
+  const pire     = ouvertes.reduce((m, a) => Math.max(m, Number(a.risque) || 0), 0);
+
+  const bloc = (titre, valeur, couleur, sous) => `
+    <div style="flex:1;min-width:120px">
+      <div class="mono" style="font-size:9.5px;color:var(--text-3);letter-spacing:.1em">${esc(titre)}</div>
+      <div style="font-family:var(--display);font-size:26px;font-weight:600;color:${couleur}">${esc(valeur)}</div>
+      <div class="note">${esc(sous)}</div>
+    </div>`;
+
+  openModal(esc(t.nom), `
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px">
+      ${bloc('Agents', `${actifs}/${agents.length}`, actifs === agents.length ? C.teal : C.amber,
+             legacy ? `${legacy} en signature non vérifiée` : 'signatures vérifiées')}
+      ${bloc('Alertes ouvertes', ouvertes.length, ouvertes.length ? C.red : C.teal,
+             `${alertes.length} au total sur la fenêtre chargée`)}
+      ${bloc('Risque maximum', pire || '—', RISK(pire), pire ? 'sur les alertes ouvertes' : 'aucune alerte ouverte')}
+      ${bloc('File SOAR', soar.length, soar.length ? C.amber : C.teal, 'en attente de validation')}
+    </div>
+
+    <div class="kicker" style="margin-bottom:10px">Parc</div>
+    ${agents.length ? `<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:18px">
+      ${agents.map(a => `<div style="display:flex;justify-content:space-between;gap:10px;
+             font-family:var(--mono);font-size:11.5px;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text)">${esc(a.hostname)}</span>
+        <span style="color:${AGENT_STATE[a.statut] || C.muted}">${esc(AGENT_LABEL[a.statut] || a.statut)}</span>
+      </div>`).join('')}
+    </div>` : `<p class="note" style="margin-bottom:18px">Aucun agent enrôlé sur ce périmètre.</p>`}
+
+    <div class="kicker" style="margin-bottom:10px">Alertes ouvertes</div>
+    ${ouvertes.length ? `<div style="display:flex;flex-direction:column;gap:3px">
+      ${ouvertes.slice(0, 12).map(a => `<div style="display:flex;justify-content:space-between;gap:10px;
+             font-family:var(--mono);font-size:11.5px;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span>${esc(a.entite)} · ${esc(a.type)}</span>
+        <span style="color:${RISK(Number(a.risque))}">${esc(a.risque)}</span>
+      </div>`).join('')}
+      ${ouvertes.length > 12 ? `<p class="note" style="margin-top:6px">+ ${ouvertes.length - 12} autres</p>` : ''}
+    </div>` : `<p class="note">Aucune alerte ouverte.</p>`}
+
+    <p class="note" style="margin-top:16px;padding-top:11px;border-top:1px solid var(--border)">
+      Type ${esc(t.type)} · criticité ${esc(t.criticite)} · cloisonnement RLS sur tenant_id.
+      Ces chiffres portent sur les données déjà chargées par la console, pas sur l'historique complet.
+    </p>`,
+    `<button class="btn" data-close>Fermer</button>`);
+}
+
+async function actionGroupee(isoler) {
+  const ids = [...S.selAgents];
+  if (!ids.length) return;
+  const noms = (S.agents || []).filter(a => ids.includes(String(a.id)))
+                               .map(a => a.hostname);
+
+  const ok = await confirmDialog(
+    isoler ? `Isoler ${ids.length} agent${ids.length > 1 ? 's' : ''} ?`
+           : `Reconnecter ${ids.length} agent${ids.length > 1 ? 's' : ''} ?`,
+    (noms.length ? noms.slice(0, 8).join(', ') + (noms.length > 8 ? `, +${noms.length - 8}` : '') + '.\n\n' : '')
+    + (isoler
+        ? "Leur télémétrie sera refusée à la source : vous cessez de les observer. "
+          + "La machine garde son réseau — ce n'est PAS un confinement. Pour couper "
+          + "réellement ses flux, il faut une règle sur la passerelle."
+        : "Ils redeviendront actifs dès leur prochain lot."),
+    isoler ? 'Isoler' : 'Reconnecter');
+  if (!ok) return;
+
+  try {
+    const r = await NexusAPI.bulkAgentIsolation(ids, isoler);
+    toast(`${r.traites} agent${r.traites > 1 ? 's' : ''} ${isoler ? 'isolé' : 'reconnecté'}${r.traites > 1 ? 's' : ''}.`, 'ok');
+    S.selAgents = [];
+    loadSection();
+  } catch (err) { toast('Échec : ' + (err.detail || 'API injoignable'), 'err'); }
+}
+
+function exporterAuditCsv() {
+  const rows = window._journalAudit || [];
+  if (!rows.length) { toast('Rien à exporter avec ces filtres.', 'err'); return; }
+
+  const cols = [
+    ['horodatage', r => r.horodatage],
+    ['perimetre',  r => r.tenant_nom],
+    ['action',     r => r.action],
+    ['cible',      r => r.cible],
+    ['cible_type', r => r.cible_type],
+    ['impact',     r => r.impact],
+    ['decision',   r => r.decision],
+    ['statut',     r => r.statut],
+    ['execution',  r => r.execution],
+    ['acteur',     r => r.acteur],
+    ['execute_par', r => r.execute_par],
+    ['execute_le',  r => r.execute_le],
+    ['entite',     r => r.entite],
+    ['detail',     r => r.detail],
+  ];
+  // Une valeur commençant par = + - @ est interprétée comme formule par les
+  // tableurs : on la neutralise. Le détail d'un refus est saisi par un humain.
+  const cell = v => {
+    let s = v == null ? '' : String(v);
+    if (/^[=+\-@]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  };
+  const csv = '﻿'
+    + cols.map(c => c[0]).join(';') + '\r\n'
+    + rows.map(r => cols.map(c => cell(c[1](r))).join(';')).join('\r\n');
+
+  const url = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nexus-audit-soar-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`${rows.length} ligne${rows.length > 1 ? 's' : ''} exportée${rows.length > 1 ? 's' : ''}.`, 'ok');
+}
 
 function renderAuditTable() {
   const a = S.audit;
@@ -1355,7 +1788,26 @@ function renderAuditTable() {
     </div></div>`;
   }
   if (!a) return `<div class="tbl"><div class="sk" style="height:200px"></div></div>`;
-  const rows = a.items || [];
+  /* Recherche plein texte et plage de dates appliquées côté client : le journal
+     est déjà chargé (limite 100), un aller-retour serveur n'apporterait rien et
+     rendrait la frappe saccadée. Si la limite devait grandir, ces filtres
+     devraient passer dans la requête SQL. */
+  const fa = S.filters;
+  let rows = a.items || [];
+  if (fa.auditQ) {
+    const q = fa.auditQ.toLowerCase();
+    rows = rows.filter(r => [r.action, r.cible, r.acteur, r.detail, r.entite,
+                             r.tenant_nom, r.statut, r.decision]
+      .some(v => String(v || '').toLowerCase().includes(q)));
+  }
+  if (fa.auditDu) rows = rows.filter(r => (r.horodatage || '') >= fa.auditDu);
+  // Borne haute inclusive : sans le « T23:59 », choisir le 12 exclurait le 12.
+  if (fa.auditAu) rows = rows.filter(r => (r.horodatage || '') <= fa.auditAu + 'T23:59:59');
+  // Le filtre acteur était appliqué au moment du rendu ; il l'est ici pour que
+  // l'export porte exactement les mêmes lignes que le tableau.
+  if (fa.auditActeur) rows = rows.filter(r => r.acteur === fa.auditActeur);
+  window._journalAudit = rows;
+
   const facets = a.facets || { impacts:[], acteurs:[] };
   const IMPACT_COL = { fort:C.red, moyen:C.amber, faible:C.text2, info:C.muted };
   /* « EXÉCUTÉE » sans exécution réelle est en teal comme le reste : c'est un
@@ -1385,12 +1837,19 @@ function renderAuditTable() {
         <option value="">Tous acteurs</option>
         ${facets.acteurs.map(i => `<option value="${esc(i)}"${S.filters.auditActeur === i ? ' selected' : ''}>${esc(i)}</option>`).join('')}
       </select>
+      <input class="input" id="audit-q" style="max-width:200px" placeholder="Rechercher…"
+             value="${esc(S.filters.auditQ || '')}">
+      <input class="input" id="audit-du" type="date" style="max-width:150px"
+             value="${esc(S.filters.auditDu || '')}" aria-label="À partir du">
+      <input class="input" id="audit-au" type="date" style="max-width:150px"
+             value="${esc(S.filters.auditAu || '')}" aria-label="Jusqu'au">
+      <button class="btn btn-sm" id="audit-csv"${rows.length ? '' : ' disabled'}>↓ CSV</button>
     </div>
     ${rows.length ? `<div class="tbl-scroll">
       <div class="tbl-head" style="grid-template-columns:${AUDIT_COLS}">
         ${['Horodatage','Action','Cible','Acteur','Impact','Statut','Exécution'].map(h => `<div>${h}</div>`).join('')}
       </div>
-      ${rows.filter(r => !S.filters.auditActeur || r.acteur === S.filters.auditActeur).map(r => {
+      ${rows.map(r => {
         const [el, ec] = EXEC_LIB[r.execution] || ['—', C.muted];
         const attestable = r.decision === 'APPROUVÉE' && r.execution === 'non_executee';
         return `
@@ -1443,6 +1902,9 @@ function renderAlertes() {
   if (S.selected && !list.some(a => String(a.id) === S.selected)) S.selected = null;
   if (!S.selected && list.length) S.selected = String(list[0].id);
   const sel = list.find(a => String(a.id) === S.selected);
+  // Exposée pour les raccourcis j/k : ils doivent parcourir la liste FILTRÉE
+  // telle qu'elle est affichée, pas l'ensemble des alertes chargées.
+  window._fileAlertes = list;
 
   const queue = S.errors.alerts && !S.alerts
     ? `<div class="empty err"><div class="mark">!</div><h3>File indisponible</h3>
@@ -1540,6 +2002,41 @@ function renderDetail(a) {
        chronologie. On l'ordonne par phase ATT&CK en le disant. */
   const etapes = chainList(a.chaine);
 
+  /* Alertes rattachées : même périmètre, même type, même entité, marquées
+     « agregee ». Ce n'est pas un regroupement inventé pour l'affichage — c'est
+     le lien posé lors de l'arbitrage, quand une condition persistante produit
+     une alerte par cycle. Les afficher ici évite d'avoir à les chercher, et
+     montre depuis quand la condition dure. */
+  const liees = (S.alerts || []).filter(x =>
+    String(x.id) !== String(a.id) &&
+    x.statut === 'agregee' &&
+    x.tenant_id === a.tenant_id &&
+    x.type === a.type &&
+    x.entite === a.entite);
+
+  const groupe = liees.length ? `
+    <div class="card">
+      <div class="kicker" style="margin-bottom:12px">Incident regroupé · ${liees.length} détection${liees.length > 1 ? 's' : ''} antérieure${liees.length > 1 ? 's' : ''}</div>
+      <p class="note" style="margin-bottom:12px;line-height:1.7">
+        La même condition a été détectée ${liees.length + 1} fois sur ${esc(a.entite)}.
+        Cette alerte est la plus récente ; les autres lui sont rattachées et sorties de la file.
+        <b>Chaque détection était juste</b> — c'est la répétition qui est redondante, pas le signal.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:4px;max-height:210px;overflow-y:auto">
+        ${liees.slice()
+            .sort((x, y) => String(y.cree_le).localeCompare(String(x.cree_le)))
+            .map(x => `<div style="display:flex;justify-content:space-between;gap:10px;
+                                   font-family:var(--mono);font-size:11.5px;padding:4px 0;
+                                   border-bottom:1px solid var(--border)">
+              <span style="color:var(--text-3)">${esc(fmt(x.cree_le))}</span>
+              <span style="color:${RISK(Number(x.risque))}">${esc(x.risque)}</span>
+            </div>`).join('')}
+      </div>
+      <p class="note" style="margin-top:10px">
+        Première détection : ${esc(fmt(liees.map(x => x.cree_le).sort()[0]))}
+      </p>
+    </div>` : '';
+
   const chain = etapes.length ? `
     <div class="card">
       <div class="kicker" style="margin-bottom:16px">Chaîne d'attaque reconstituée · MITRE ATT&amp;CK</div>
@@ -1556,7 +2053,7 @@ function renderDetail(a) {
           <div class="chain-body">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <span class="chain-tac" style="color:${col};background:${col}0F">${esc(e.tactique || mi.tac)}</span>
-              <span class="chain-tid">${esc(e.technique || e.technique_id || '')}</span>
+              ${mitreLien(e.technique_id, e.technique || e.technique_id || '')}
             </div>
             <div class="chain-desc">${esc(mi.lib)}</div>
             ${e.detail ? `<div class="note" style="margin-top:3px;word-break:break-all">${esc(e.detail)}</div>` : ''}
@@ -1582,7 +2079,7 @@ function renderDetail(a) {
           <div class="chain-body">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <span class="chain-tac" style="color:${mi.col};background:${mi.col}0F">${esc(mi.tac)}</span>
-              <span class="chain-tid">${esc(tid)}</span>
+              ${mitreLien(tid, tid)}
             </div>
             <div class="chain-desc">${esc(mi.lib)}</div>
           </div>
@@ -1671,6 +2168,7 @@ function renderDetail(a) {
       </div>
     </div>
     ${chain}
+    ${groupe ? `<div style="margin-top:14px">${groupe}</div>` : ''}
     <div class="grid-2" style="margin-top:14px">${why}${scale}</div>
     <div style="margin-top:14px">${soar}</div>`;
 }
@@ -1869,7 +2367,34 @@ function renderDeployTab() {
 
   if (e.tab === 'oneliner') {
     const cmd = NexusAPI.getOneliner(e.token.bearer_token, e.hostname, e.os);
+    /* Suivi en direct : on interroge le parc, pas le journal d'enrôlement.
+       Le journal enregistre les TENTATIVES ; ce qu'on veut savoir, c'est si
+       l'agent a réellement commencé à émettre — c'est-à-dire s'il a un premier
+       battement. Un jeton consommé sans battement signale une installation qui
+       a échoué après l'enrôlement, cas fréquent quand SOC_URL est absent. */
+    const vivant = (S.agents || []).find(a => String(a.id) === String(e.token.agent_id));
+    const emis   = vivant && vivant.vu_le;
+    const suivi = `
+      <div class="card" style="border-color:${emis ? C.teal : C.amber}">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="dot" style="background:${emis ? C.teal : C.amber};width:8px;height:8px;border-radius:50%;
+                ${emis ? '' : 'animation:pulse 1.6s infinite'}"></span>
+          <b style="font-size:13px">${emis ? 'Agent en service' : 'En attente du premier battement'}</b>
+          <div style="flex:1"></div>
+          <button class="btn btn-sm" id="enrol-refresh">Vérifier maintenant</button>
+        </div>
+        <p class="note" style="margin-top:8px;line-height:1.7">
+          ${emis
+            ? `Premier contact établi — dernière émission ${esc(depuis(vivant.vu_il_y_a_s))}. `
+              + `Statut : ${esc(AGENT_LABEL[vivant.statut] || vivant.statut)}.`
+            : `Le jeton est généré et valide, mais aucun lot n'a encore été reçu. `
+              + `Exécutez la commande ci-dessous sur le poste. Si rien n'arrive après, `
+              + `la cause la plus fréquente est un <b>SOC_URL absent</b> : le collecteur vise `
+              + `alors 127.0.0.1, c'est-à-dire la machine elle-même.`}
+        </p>
+      </div>`;
     return `<div style="display:flex;flex-direction:column;gap:14px">
+      ${suivi}
       <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
         <div style="flex:1;min-width:220px">
           <div style="font-size:13.5px;font-weight:600">Commande à exécuter sur le poste cible</div>
@@ -1980,16 +2505,27 @@ function renderCsvTab() {
                     : 'Déposez un fichier CSV ici, ou cliquez pour le choisir.'}
     </label>
 
+    ${/* Problèmes de structure signalés UNE fois, au-dessus du tableau : une
+          colonne absente répétée sur chaque ligne noyait l'information. */''}
+    ${(S.enrol.csvErreurs || []).length ? `
+      <div class="card" style="border-color:${C.amber}">
+        <div class="mono" style="font-size:9.5px;color:var(--amber);letter-spacing:.08em;margin-bottom:8px">CONTRÔLE DU FICHIER</div>
+        ${S.enrol.csvErreurs.map(m => `<div style="font-size:12.5px;color:var(--text-2);line-height:1.7">• ${esc(m)}</div>`).join('')}
+      </div>` : ''}
+
     ${rows ? `
       <div class="tbl"><div class="tbl-scroll">
-        <div class="tbl-head" style="grid-template-columns:1.4fr 1fr .9fr 1.4fr">
-          ${['Hôte','Description','OS','Validation'].map(h => `<div>${h}</div>`).join('')}
+        <div class="tbl-head" style="grid-template-columns:52px 1.4fr 1fr .9fr 1.6fr">
+          ${['Ligne','Hôte','Description','OS','Validation'].map(h => `<div>${h}</div>`).join('')}
         </div>
-        ${rows.map(r => `<div class="tbl-row" style="grid-template-columns:1.4fr 1fr .9fr 1.4fr;${r.ok ? '' : 'background:rgba(239,68,68,.05)'}">
+        ${rows.map(r => `<div class="tbl-row" style="grid-template-columns:52px 1.4fr 1fr .9fr 1.6fr;${
+              r.ok ? (r.avert ? `background:${tint(C.amber, .06)}` : '') : `background:${tint(C.red, .06)}`}">
+          <div class="cell-mono" style="color:var(--text-3)">${esc(r.ligne)}</div>
           <div class="cell-mono" style="color:var(--text)">${esc(r.hostname || '—')}</div>
           <div class="cell-mono">${esc(r.description || '—')}</div>
           <div class="cell-mono">${esc(r.os)}</div>
-          <div class="mono" style="font-size:11px;color:${r.ok ? C.teal : C.red}">${r.ok ? '✓ prêt' : '✕ ' + esc(r.err)}</div>
+          <div class="mono" style="font-size:11px;color:${r.ok ? (r.avert ? C.amber : C.teal) : C.red}">${
+            r.ok ? (r.avert ? '⚠ ' + esc(r.err) : '✓ prêt') : '✕ ' + esc(r.err)}</div>
         </div>`).join('')}
       </div></div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -2009,6 +2545,18 @@ const each = (sel, ev, fn) => document.querySelectorAll(sel).forEach(el => el.ad
 const WIRE = {
   dashboard() {
     each('[data-go-alertes]', 'click', () => goto('alertes'));
+    /* Un KPI pose son filtre AVANT de changer de section : sinon la vue
+       s'ouvre non filtrée et le chiffre cliqué ne correspond plus à ce qui
+       s'affiche. */
+    each('[data-kpi]', 'click', e => {
+      let c; try { c = JSON.parse(decodeURIComponent(e.currentTarget.dataset.kpi)); }
+      catch { return; }
+      if (c.statut !== undefined)       S.filters.alertStatut  = c.statut;
+      if (c.risk !== undefined)         S.filters.alertRisk    = c.risk;
+      if (c.agentStatut !== undefined)  S.filters.agentStatut  = c.agentStatut;
+      if (c.statut !== undefined || c.risk !== undefined) S.filters.alertQ = '';
+      goto(c.sec);
+    });
   },
 
   perimetres() {
@@ -2016,6 +2564,7 @@ const WIRE = {
       const i = $('perim-q'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } });
     on('perim-crit', 'change', e => { S.filters.perimCrit = e.target.value; renderView(); });
     on('perim-new', 'click', () => tenantForm(null));
+    each('[data-perim-detail]', 'click', e => detailPerimetre(e.currentTarget.dataset.perimDetail));
     each('[data-sort-perim]', 'click', e => {
       const k = e.currentTarget.dataset.sortPerim;
       S.sort.perim = { k, dir: S.sort.perim.k === k ? -S.sort.perim.dir : 1 };
@@ -2057,6 +2606,18 @@ const WIRE = {
     on('agent-statut', 'change', e => { S.filters.agentStatut = e.target.value; renderView(); });
     on('agent-os', 'change', e => { S.filters.agentOs = e.target.value; renderView(); });
     each('[data-go-enrol]', 'click', () => goto('enrolement'));
+
+    each('[data-agent-pick]', 'change', e => {
+      const id = e.currentTarget.dataset.agentPick;
+      S.selAgents = e.currentTarget.checked
+        ? [...new Set([...S.selAgents, id])]
+        : S.selAgents.filter(x => x !== id);
+      renderView();
+    });
+    on('bulk-vider', 'click', () => { S.selAgents = []; renderView(); });
+    on('bulk-isoler',      'click', () => actionGroupee(true));
+    on('bulk-reconnecter', 'click', () => actionGroupee(false));
+
     each('[data-sort-agents]', 'click', e => {
       const k = e.currentTarget.dataset.sortAgents;
       S.sort.agents = { k, dir: S.sort.agents.k === k ? -S.sort.agents.dir : 1 };
@@ -2100,6 +2661,13 @@ const WIRE = {
     });
     on('audit-impact', 'change', e => { S.filters.auditImpact = e.target.value; loadSection(); });
     on('audit-acteur', 'change', e => { S.filters.auditActeur = e.target.value; renderView(); });
+    on('audit-q', 'input', e => {
+      S.filters.auditQ = e.target.value; renderView();
+      const i = $('audit-q'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+    });
+    on('audit-du', 'change', e => { S.filters.auditDu = e.target.value; renderView(); });
+    on('audit-au', 'change', e => { S.filters.auditAu = e.target.value; renderView(); });
+    on('audit-csv', 'click', exporterAuditCsv);
     // Le journal d'audit est aussi rendu ici : ses boutons « Attester » doivent
     // être câblés, sinon ils sont inertes hors de la section Approbation SOAR.
     wireSoarButtons();
@@ -2111,6 +2679,7 @@ const WIRE = {
     on('alert-risk', 'change', e => { S.filters.alertRisk = e.target.value; renderView(); });
     on('alert-statut', 'change', e => { S.filters.alertStatut = e.target.value; renderView(); });
     each('[data-select]', 'click', e => { S.selected = e.currentTarget.dataset.select; renderView(); });
+    each('[data-mitre]', 'click', e => ficheMitre(e.currentTarget.dataset.mitre));
     wireSoarButtons();
   },
 
@@ -2173,6 +2742,12 @@ const WIRE = {
       if (src) copy(src.textContent, 'Commande');
     });
 
+    // Le suivi lit S.agents : il faut donc recharger le parc, pas la section.
+    on('enrol-refresh', 'click', async () => {
+      await pull('agents', () => NexusAPI.getAgents());
+      renderView();
+    });
+
     on('dl-installer', 'click', async () => {
       try { await NexusAPI.downloadInstaller(e.token.agent_id, e.os, e.token.bearer_token, e.token.hmac_key); }
       catch (err) { toast('Téléchargement refusé : ' + (err.detail || ''), 'err'); }
@@ -2196,7 +2771,7 @@ const WIRE = {
       try {
         const r = await NexusAPI.bulkProvision(e.tenantId, e.csv, e.hours);
         bulkResultDialog(r);
-        e.csv = null; e.csvRows = null;
+        e.csv = null; e.csvRows = null; e.csvErreurs = [];
         loadSection();
       } catch (err) { toast('Échec : ' + (err.detail || 'API injoignable'), 'err'); renderView(); }
     });
@@ -2270,28 +2845,69 @@ function wireSoarButtons() {
   });
 }
 
+/* Lecture et validation d'un CSV d'enrôlement en masse.
+
+   La validation portait uniquement sur la ligne courante : une colonne absente
+   était signalée autant de fois qu'il y avait de lignes, et un hôte déjà
+   présent dans le parc passait sans un mot pour échouer à l'envoi. On valide
+   maintenant le fichier ET son rapport au parc existant.
+
+   Le séparateur est détecté : un export Excel français produit des
+   points-virgules, et découper sur la virgule mettait alors tout dans la
+   première colonne sans que rien ne le signale. */
 function readCsv(file) {
   S.enrol.csv = file;
+  S.enrol.csvErreurs = [];
   const r = new FileReader();
   r.onload = () => {
-    const lines = String(r.result).split(/\r?\n/).filter(l => l.trim());
-    if (!lines.length) { S.enrol.csvRows = []; renderView(); return; }
-    const head = lines[0].split(',').map(h => h.trim().toLowerCase());
+    let texte = String(r.result).replace(/^﻿/, '');   // BOM des exports Excel
+    const lines = texte.split(/\r?\n/).filter(l => l.trim());
+    const pb = [];
+    if (!lines.length) {
+      S.enrol.csvRows = [];
+      S.enrol.csvErreurs = ['Fichier vide.'];
+      renderView(); return;
+    }
+
+    const sep = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
+    const head = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
     const iHost = head.indexOf('hostname'), iOs = head.indexOf('os'), iDesc = head.indexOf('description');
+
+    // Problèmes de STRUCTURE : signalés une seule fois, pas à chaque ligne.
+    if (iHost < 0) pb.push("Colonne « hostname » absente — en-têtes lus : " + (head.join(', ') || '(aucun)'));
+    if (iOs < 0)   pb.push("Colonne « os » absente : « linux » sera appliqué par défaut.");
+    if (lines.length === 1) pb.push("Le fichier ne contient qu'une ligne d'en-tête, aucun hôte.");
+
+    const dejaEnParc = new Set((S.agents || []).map(a => String(a.hostname).toLowerCase()));
     const seen = new Set();
-    S.enrol.csvRows = lines.slice(1).map(l => {
-      const c = l.split(',').map(x => x.trim());
-      const hostname = iHost >= 0 ? c[iHost] : c[0];
-      const os = (iOs >= 0 ? c[iOs] : 'linux') || 'linux';
-      const description = iDesc >= 0 ? c[iDesc] : '';
+
+    S.enrol.csvRows = lines.slice(1).map((l, i) => {
+      const c = l.split(sep).map(x => x.trim().replace(/^"|"$/g, ''));
+      const hostname = iHost >= 0 ? (c[iHost] || '') : (c[0] || '');
+      const os = ((iOs >= 0 ? c[iOs] : '') || 'linux').toLowerCase();
+      const description = iDesc >= 0 ? (c[iDesc] || '') : '';
+      const cle = hostname.toLowerCase();
       let err = '';
-      if (iHost < 0) err = "colonne 'hostname' absente";
-      else if (!hostname) err = 'hôte vide';
-      else if (seen.has(hostname)) err = 'doublon dans le fichier';
-      else if (!['linux', 'windows'].includes(os.toLowerCase())) err = `OS « ${os} » non pris en charge`;
-      if (!err) seen.add(hostname);
-      return { hostname, os, description, ok: !err, err };
+      if (iHost < 0)                     err = 'colonne hostname absente';
+      else if (!hostname)                err = 'hôte vide';
+      else if (seen.has(cle))            err = 'doublon dans le fichier';
+      else if (dejaEnParc.has(cle))      err = 'déjà enrôlé — son jeton sera renouvelé';
+      else if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/.test(hostname))
+                                         err = 'nom d’hôte invalide (lettres, chiffres, . _ -)';
+      else if (!['linux', 'windows'].includes(os))
+                                         err = `OS « ${os} » non pris en charge`;
+      if (!seen.has(cle)) seen.add(cle);
+      // « Déjà enrôlé » n'est pas une erreur bloquante : le serveur renouvelle
+      // le jeton au lieu de créer un doublon. On l'affiche en avertissement.
+      const bloquant = err && err !== 'déjà enrôlé — son jeton sera renouvelé';
+      return { ligne: i + 2, hostname, os, description, ok: !bloquant, err, avert: !!err && !bloquant };
     });
+
+    const nb = S.enrol.csvRows.filter(x => !x.ok).length;
+    if (nb) pb.push(nb > 1
+      ? `${nb} lignes rejetées : elles ne seront pas envoyées.`
+      : `1 ligne rejetée : elle ne sera pas envoyée.`);
+    S.enrol.csvErreurs = pb;
     renderView();
   };
   r.readAsText(file);
@@ -2465,6 +3081,62 @@ $('avatar').textContent = (u.email || '?').split('@')[0].split(/[.\-_]/)
 
 $('logout').addEventListener('click', () => NexusAPI.logout());
 $('refresh').addEventListener('click', loadSection);
+
+/* ── Raccourcis clavier de la file d'alertes ──────────────────────────────
+   j/k pour naviguer, a pour approuver l'action SOAR proposée, Échap pour
+   fermer un dialogue. Seulement dans la section Alertes.
+
+   Deux garde-fous, tous deux indispensables :
+   — on ignore la frappe dès qu'un champ a le focus, sinon taper « j » dans la
+     recherche déplacerait la sélection ;
+   — « a » n'exécute rien directement, il ouvre la confirmation. Un raccourci
+     d'une touche qui déclencherait une action de sécurité serait dangereux. */
+const _alertesVisibles = () => (S.section === 'alertes');
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  const saisie = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' ||
+                       t.tagName === 'SELECT' || t.isContentEditable);
+  if (saisie) return;
+  if (!_alertesVisibles()) return;
+
+  const list = window._fileAlertes || [];
+  if (!list.length) return;
+  const i = Math.max(0, list.findIndex(x => String(x.id) === S.selected));
+
+  if (e.key === 'j' || e.key === 'k') {
+    e.preventDefault();
+    const n = e.key === 'j' ? Math.min(list.length - 1, i + 1) : Math.max(0, i - 1);
+    S.selected = String(list[n].id);
+    renderView();
+    const el = document.querySelector(`[data-select="${CSS.escape(S.selected)}"]`);
+    if (el) el.scrollIntoView({ block:'nearest' });
+  } else if (e.key === 'a') {
+    const p = (S.pending || []).find(x => String(x.alert_id) === S.selected);
+    if (!p) { toast("Aucune action SOAR en attente sur cette alerte.", 'err'); return; }
+    e.preventDefault();
+    const btn = document.querySelector(`[data-approve="${CSS.escape(String(p.id))}"]`);
+    if (btn) btn.click();          // passe par la confirmation, jamais en direct
+  }
+});
+
+/* Bascule de thème. Le re-rendu est indispensable : une bonne partie des
+   couleurs est injectée en style inline par le JS, elle ne suit donc pas un
+   simple changement d'attribut sur <html>. */
+function majIconesTheme() {
+  const clair = document.documentElement.getAttribute('data-theme') === 'light';
+  $('ic-moon').hidden = clair;
+  $('ic-sun').hidden  = !clair;
+}
+majIconesTheme();
+$('theme-toggle').addEventListener('click', () => {
+  const clair = document.documentElement.getAttribute('data-theme') === 'light';
+  appliquerTheme(clair ? 'dark' : 'light');
+  majIconesTheme();
+  renderView();
+  renderNav();
+});
 $('burger').addEventListener('click', () => {
   $('side').classList.add('open');
   const sc = document.createElement('div');

@@ -59,6 +59,12 @@ Son jeton d'enrôlement a expiré le **29/07 à 21 h 36**, ce qui correspond
 exactement à sa dernière émission. Ce n'est ni un défaut de signature, ni un
 problème de HMAC : un jeton de 168 h qui arrive à terme.
 
+**L'enrôlement exige un compte `admin_plateforme`.** La base n'en contient qu'un
+seul, `admin@nexussoc.cm` ; les comptes `resp.sigipes@` et `resp.antilope@` sont
+des responsables de périmètre et seront refusés. Tout autre courriel est inconnu
+et provoque un 401 sur `/auth/token` — c'est la connexion qui échoue, pas
+l'enrôlement.
+
 Le collecteur tourne sous l'utilisateur `noxtheteenager`, sa configuration vit
 dans `~/.nexus-agent` — pas de `sudo` :
 
@@ -67,11 +73,15 @@ cd ~/Documents/Projets/NEXUS_SOC
 .venv/bin/python Lot1_Agent_Go/nexus_collector.py --enroll \
     --hostname NoxTheMachine \
     --perimetre "Réseau/LAN CENADI" \
-    --email <votre-admin> --password <votre-mot-de-passe>
+    --email admin@nexussoc.cm --password <mot-de-passe-admin>
 
-sudo systemctl restart nexus-collector.service
-journalctl -u nexus-collector -n 10 --no-pager     # les 401 doivent cesser
+sudo systemctl restart nexus-collector.service     # indispensable :
+journalctl -u nexus-collector -n 10 --no-pager     # le jeton est lu au démarrage
 ```
+
+Le redémarrage n'est pas cosmétique : `charger_conf()` n'est appelée qu'au
+lancement. Sans lui, le processus continue d'émettre avec le jeton expiré qu'il
+a en mémoire, et les 401 se poursuivent malgré un enrôlement réussi.
 
 Le réenrôlement **renouvelle** la ligne existante, il n'en crée pas une seconde,
 et bascule l'agent de `legacy` vers `derived` — sa signature devient réellement
@@ -99,19 +109,44 @@ l'hôte. Une fois SSH ouvert :
 scp Lot1_Agent_Go/nexus_collector.py <utilisateur>@192.168.122.25:/tmp/
 
 # sur la VM
-sudo mkdir -p /opt/nexus-agent
+sudo mkdir -p /opt/nexus-agent /etc/nexus-agent
 sudo mv /tmp/nexus_collector.py /opt/nexus-agent/
 export SOC_URL=http://192.168.122.1:8000
+export NEXUS_AGENT_DIR=/etc/nexus-agent
 sudo -E python3 /opt/nexus-agent/nexus_collector.py --enroll \
      --hostname POSTE-RSSI-01 --perimetre "Réseau/LAN CENADI" \
-     --email <votre-admin> --password <votre-mot-de-passe>
+     --email admin@nexussoc.cm --password <mot-de-passe-admin>
 ```
 
-`SOC_URL` est indispensable : sans lui le collecteur vise `127.0.0.1:8000`,
-c'est-à-dire la VM elle-même. C'est la première cause d'échec d'enrôlement.
+Deux variables, et les deux comptent.
 
-Puis le service, pour qu'il survive au redémarrage — c'est ce qui manque
-aujourd'hui à tout le parc :
+`SOC_URL` : sans lui le collecteur vise `127.0.0.1:8000`, c'est-à-dire la VM
+elle-même.
+
+`NEXUS_AGENT_DIR` : **à définir dès l'enrôlement**. Avec `sudo -E`, `HOME` est
+conservé, donc la configuration atterrit dans `~/.nexus-agent` de l'utilisateur
+qui a lancé la commande — par exemple `/home/rssi/.nexus-agent/config.json`. Le
+service systemd ci-dessous lit `/etc/nexus-agent` et échouerait sur
+« Agent non enrôlé ». Si l'enrôlement a déjà eu lieu sans cette variable :
+
+```bash
+sudo mkdir -p /etc/nexus-agent
+sudo cp ~/.nexus-agent/config.json /etc/nexus-agent/
+```
+
+### Enrôler ne suffit pas : il faut collecter
+
+L'enrôlement crée la ligne d'agent, rien de plus. Tant qu'aucune collecte n'a été
+envoyée, `vu_le` reste NULL et la console affiche **hors ligne** — à juste titre.
+
+```bash
+# vérification immédiate
+sudo -E python3 /opt/nexus-agent/nexus_collector.py --once
+```
+
+La machine doit passer « actif » dans la console dans les deux minutes
+(`AGENT_STALE_SECONDS`). Puis le service, pour qu'il survive au redémarrage —
+c'est ce qui manque aujourd'hui à tout le parc :
 
 ```bash
 sudo tee /etc/systemd/system/nexus-collector.service >/dev/null <<'EOF'
@@ -134,20 +169,88 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now nexus-collector.service
 ```
 
-### 2.3 KaliPrime — pas d'adresse sur le réseau de gestion
+### 2.3 KaliPrime — le poste compromis
 
-`KaliPrime` a deux interfaces (`default` et `nexus-cenadi-men`) mais **n'apparaît
-pas dans la table ARP de `virbr0`** : sa patte de gestion n'a pas d'adresse. À
-vérifier depuis sa console :
+C'est la machine de la zone Menace, décrite par l'architecture comme le « poste
+compromis (simulation) ». L'enrôler paraît contre-intuitif — on ne met pas
+d'agent chez l'attaquant. Mais dans le scénario que porte ce projet, la menace
+est **interne** : un poste bureautique du CENADI compromis, pas un adversaire
+extérieur. Sans capteur dessus, l'attaque n'est observée qu'à l'arrivée, jamais à
+la source, et la chaîne ATT&CK perd ses premières étapes — celles qui font toute
+la démonstration.
 
-```bash
-ip -br a          # la patte sur virbr0 doit porter une 192.168.122.x
-sudo dhclient -v <interface>
+#### a. La route existe déjà — passer par la zone Menace
+
+`eth0` (patte de gestion sur `virbr0`) est UP mais sans adresse : aucun bail
+DHCP, aucune entrée ARP. Inutile d'insister, **`eth1` suffit** :
+
+```
+eth1   UP   10.50.50.50/24
 ```
 
-Une fois joignable, même commande qu'en 2.2 avec
-`--hostname POSTE-MENACE-01`. C'est la seule machine de la zone Menace : sans
-elle, aucune attaque simulée n'est observée à la source.
+C'est l'adresse fixe de la zone Menace prévue par l'architecture, et l'hôte tient
+`10.50.50.1` sur ce même bridge. Vérifié : l'hôte joint 10.50.50.50 en 0,17 ms,
+et le SOC écoute sur `0.0.0.0:8000` — donc sur toutes ses interfaces, y compris
+celle-là.
+
+Le réseau `nexus-cenadi-men` est déclaré **sans `<forward>`** : il est isolé du
+reste, mais l'hôte étant sur le bridge, le dialogue machine ↔ hôte reste possible.
+C'est exactement la propriété recherchée — le poste compromis parle au SOC et à
+personne d'autre.
+
+Depuis la console de KaliPrime, confirmer avant d'aller plus loin :
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://10.50.50.1:8000/health   # attendu : 200
+```
+
+Si cette commande échoue alors que le ping passe, c'est le pare-feu de l'hôte
+qu'il faut regarder, pas le réseau de la VM.
+
+#### b. Copier le collecteur
+
+Depuis l'**hôte**, par la zone Menace :
+
+```bash
+scp Lot1_Agent_Go/nexus_collector.py kali@10.50.50.50:/tmp/
+```
+
+Si SSH n'écoute pas sur Kali : `sudo systemctl enable --now ssh`.
+
+#### c. Enrôler
+
+Il n'existe pas de périmètre « Menace » : la base n'en contient que trois
+(`ANTILOPE`, `SIGIPES`, `Réseau/LAN CENADI`). Un poste bureautique compromis
+appartient au LAN — c'est `Réseau/LAN CENADI`. Créer un quatrième périmètre
+dédié est possible, mais brouillerait la démonstration : la matrice de flux
+oppose des zones réseau, pas des périmètres supervisés.
+
+```bash
+sudo mkdir -p /opt/nexus-agent /etc/nexus-agent
+sudo mv /tmp/nexus_collector.py /opt/nexus-agent/
+export SOC_URL=http://10.50.50.1:8000        # zone Menace, pas 192.168.122.1
+export NEXUS_AGENT_DIR=/etc/nexus-agent
+sudo -E python3 /opt/nexus-agent/nexus_collector.py --enroll \
+     --hostname POSTE-MENACE-01 --perimetre "Réseau/LAN CENADI" \
+     --email admin@nexussoc.cm --password <mot-de-passe-admin>
+
+sudo -E python3 /opt/nexus-agent/nexus_collector.py --once
+```
+
+Puis le service systemd du §2.2, en remplaçant l'adresse du SOC par
+`http://10.50.50.1:8000`.
+
+#### d. Ce que ça change pour la démonstration
+
+Avec un capteur sur le poste compromis, les techniques d'**Initial Access**,
+d'**Execution** et de **Defense Evasion** deviennent observables là où elles se
+produisent. C'est la condition pour que le moteur reconstitue une chaîne
+complète : il exige trois tactiques distinctes en trente minutes, et les
+premières ne sont visibles que depuis la machine attaquante.
+
+Attention toutefois : `--simulate chaine` lancé **depuis KaliPrime** produira une
+chaîne attribuée à `POSTE-MENACE-01`. Pour une démonstration racontant une
+exfiltration depuis un serveur métier, le lancer plutôt depuis `vm-app-gov`.
 
 ### 2.4 Les cinq lignes de démonstration
 

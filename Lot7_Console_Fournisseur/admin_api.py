@@ -320,15 +320,95 @@ def list_agents(tenant_id: Optional[str] = None, db=Depends(get_db), _=Depends(r
     lot ingéré ; l'éteindre la fait passer à `hors_ligne` après le délai de
     tolérance, sans intervention."""
     cols = (f"a.id, a.tenant_id, a.hostname, a.os, a.vu_le, a.hmac_scheme, "
-            f"{agent_presence_cols('a')}")
+            f"a.version_agent, {agent_presence_cols('a')}")
     with db.cursor() as cur:
         if tenant_id:
             cur.execute(f"SELECT {cols} FROM agents a WHERE a.tenant_id = %s ORDER BY a.hostname",
                         (tenant_id,))
         else:
             cur.execute(f"SELECT {cols} FROM agents a ORDER BY a.tenant_id, a.hostname")
-        rows = cur.fetchall()
-    return [dict(r) for r in rows]
+        rows = [dict(r) for r in cur.fetchall()]
+
+        # Télémétrie récente, 12 créneaux de 2 h : de quoi tracer une silhouette
+        # d'activité par agent. C'est un COMPTE de mesures reçues, pas une
+        # valeur métier — un creux signale un agent qui s'est tu, ce qui est
+        # précisément ce qu'on veut voir d'un coup d'œil.
+        cur.execute("""
+            SELECT agent_id,
+                   floor(EXTRACT(EPOCH FROM (now() - ts)) / 7200)::int AS creneau,
+                   count(*) AS n
+              FROM metrics
+             WHERE ts > now() - interval '24 hours' AND agent_id IS NOT NULL
+             GROUP BY 1, 2
+        """)
+        series = {}
+        for r in cur.fetchall():
+            if r["creneau"] is None or not (0 <= r["creneau"] < 12):
+                continue
+            series.setdefault(str(r["agent_id"]), [0] * 12)[11 - r["creneau"]] = int(r["n"])
+
+    for a in rows:
+        a["telemetrie_24h"] = series.get(str(a["id"]), [0] * 12)
+    return rows
+
+
+class BulkAgentAction(BaseModel):
+    agent_ids: List[str]
+    isoler:    bool
+    motif:     Optional[str] = None
+
+
+@router.post("/agents/isolation", summary="Isoler ou reconnecter plusieurs agents")
+def bulk_agent_isolation(body: BulkAgentAction, db=Depends(get_db),
+                         user: dict = Depends(require_admin)):
+    """Isole — ou reconnecte — un lot d'agents.
+
+    L'isolement est réel : `_verify_ingest` refuse tout lot d'un agent dont le
+    statut vaut `isole`, sa télémétrie est donc coupée à la source.
+
+    Ce n'est PAS un confinement réseau. La machine garde son réseau et continue
+    de fonctionner ; c'est la plateforme qui cesse de l'écouter. Le confinement
+    demande une règle sur la passerelle (voir lab-cenadi/03-quarantaine-blocage.md).
+    L'action est journalisée pour que l'écart entre les deux reste traçable.
+    """
+    ids = [i for i in (body.agent_ids or []) if i]
+    if not ids:
+        raise HTTPException(422, detail="Aucun agent désigné.")
+    if len(ids) > 200:
+        raise HTTPException(422, detail="Lot trop grand : 200 agents au maximum.")
+
+    cible = 'isole' if body.isoler else 'hors_ligne'
+    acteur = user.get("email", "admin")
+    with db.cursor() as cur:
+        # Le statut effectif est dérivé du battement : repasser un agent à
+        # « hors_ligne » suffit à le reconnecter, son prochain lot le rendra
+        # actif de lui-même.
+        cur.execute(
+            "UPDATE agents SET statut = %s WHERE id = ANY(%s::uuid[]) "
+            "RETURNING id::text, hostname, tenant_id::text",
+            (cible, ids))
+        touches = [dict(r) for r in cur.fetchall()]
+
+        for a in touches:
+            cur.execute(
+                "INSERT INTO soar_audit (alert_id, tenant_id, action, impact, decision, "
+                "                        statut, acteur, detail, cible, cible_type, execution) "
+                "VALUES (NULL, %s::uuid, %s, 'fort', 'APPROUVÉE', %s, %s, %s, %s, 'hote', %s)",
+                (a["tenant_id"],
+                 'isolate_host' if body.isoler else 'reconnect_host',
+                 'EXÉCUTÉE (manuelle)',
+                 acteur,
+                 (body.motif or ('Isolement décidé depuis la console.' if body.isoler
+                                 else 'Reconnexion décidée depuis la console.'))
+                 + ' Ingestion coupée à la source ; aucun confinement réseau.',
+                 a["hostname"],
+                 'automatique'))
+        db.commit()
+
+    return {"traites": len(touches), "statut": cible,
+            "agents": [a["hostname"] for a in touches],
+            "avertissement": "L'ingestion est coupée. La machine reste sur le réseau : "
+                             "le confinement demande une règle sur la passerelle."}
 
 
 @router.post("/agents/token", status_code=201, summary="Générer un jeton d'enrôlement d'agent")
@@ -1115,6 +1195,85 @@ def portal_score_history(days: int = 14, db=Depends(get_db),
         "jours_aveugles": len(serie) - mesures_jours,
         "source": "alerts + metrics, agrégés par jour côté serveur",
     }
+
+
+@portail_router.post("/alerts/{alert_id}/request-isolation", status_code=201,
+                     summary="Demander l'isolation de l'entité d'une alerte")
+def portal_request_isolation(alert_id: str, body: dict = None, db=Depends(get_db),
+                             user: dict = Depends(require_client)):
+    """Le responsable de périmètre demande une isolation ; il ne l'exécute pas.
+
+    La demande entre dans la file SOAR comme n'importe quelle proposition, en
+    attente de validation d'un analyste. C'est le point important : le portail
+    donne un moyen d'agir sans transférer au responsable métier un pouvoir
+    d'exécution sur le parc.
+
+    Refusée si une demande est déjà en attente sur la même alerte — un bouton
+    cliqué trois fois ne doit pas produire trois décisions à arbitrer.
+    """
+    tid = _tenant_id_or_403(user)
+    motif = (body or {}).get("motif") or ""
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, entite, type, risque FROM alerts "
+            " WHERE id = %s::uuid AND tenant_id = %s::uuid",
+            (alert_id, tid))
+        alerte = cur.fetchone()
+        if not alerte:
+            raise HTTPException(404, detail="Alerte introuvable sur ce périmètre.")
+
+        cur.execute(
+            "SELECT id FROM soar_audit "
+            " WHERE alert_id = %s::uuid AND action = 'isolate_host' "
+            "   AND statut = 'EN ATTENTE DE VALIDATION' LIMIT 1",
+            (alert_id,))
+        if cur.fetchone():
+            raise HTTPException(
+                409, detail="Une demande d'isolation est déjà en attente sur cette alerte.")
+
+        entite = alerte["entite"] or ""
+        cible = entite[5:] if entite.startswith("hote_") else entite
+        cur.execute(
+            "INSERT INTO soar_audit (alert_id, tenant_id, action, impact, statut, detail, "
+            "                        cible, cible_type, acteur) "
+            "VALUES (%s::uuid, %s::uuid, 'isolate_host', 'fort', "
+            "        'EN ATTENTE DE VALIDATION', %s, %s, 'hote', %s) "
+            "RETURNING id",
+            (alert_id, tid,
+             f"Isolation demandée par le responsable de périmètre sur l'alerte "
+             f"« {alerte['type']} » (risque {alerte['risque']})."
+             + (f" Motif : {motif}" if motif else ""),
+             cible, user.get("email", "responsable")))
+        ref = cur.fetchone()["id"]
+        db.commit()
+
+    return {"message": "Demande transmise au SOC. Un analyste doit la valider "
+                       "avant toute exécution.",
+            "audit_id": str(ref), "cible": cible}
+
+
+@portail_router.get("/reports", summary="Historique des rapports d'incident du périmètre")
+def portal_reports(limit: int = 50, db=Depends(get_db),
+                   user: dict = Depends(require_client)):
+    """Tous les rapports produits sur le périmètre, pas seulement le dernier.
+
+    Un responsable doit pouvoir retrouver un incident d'il y a trois semaines
+    pour l'annexer à un compte rendu ; le portail n'exposait que la dernière
+    notification lue.
+    """
+    limit = max(1, min(int(limit), 200))
+    tid = _tenant_id_or_403(user)
+    with db.cursor() as cur:
+        cur.execute("""
+            SELECT n.id, n.title, n.severity, n.created_at, n.read_at,
+                   a.entite, a.type AS type_alerte, a.risque, a.statut AS statut_alerte
+              FROM notifications n
+              LEFT JOIN alerts a ON a.id = n.alert_id
+             WHERE n.tenant_id = %s::uuid AND n.report_html IS NOT NULL
+             ORDER BY n.created_at DESC
+             LIMIT %s
+        """, (tid, limit))
+        return {"items": [dict(r) for r in cur.fetchall()]}
 
 
 @portail_router.get("/agents", summary="Agents du tenant courant")

@@ -217,6 +217,12 @@
     revokeToken(id)               { return this.post(`/provision/revoke/${id}`); }
     revokeAllAgents(tenantId)     { return this.post(`/provision/revoke-tenant/${tenantId}`); }
     rotateHmac(agentId)           { return this.post(`/provision/rotate-hmac/${agentId}`); }
+    /** Isole (ou reconnecte) un lot d'agents. L'isolement coupe l'ingestion à
+     *  la source ; il ne confine pas la machine sur le réseau. */
+    bulkAgentIsolation(agentIds, isoler, motif = null) {
+      return this.post('/admin/agents/isolation',
+                       { agent_ids: agentIds, isoler, motif });
+    }
     getInstaller(id, os)          { return this.get(`/provision/installer/${id}?os=${os}`); }
     getQrCode(agentId, bearer = '') {
       const qs = new URLSearchParams({ bearer }).toString();
@@ -345,6 +351,15 @@
      *  reviennent avec `score: null` — ce sont des jours sans information, pas
      *  des jours sans incident. */
     getScoreHistory(days = 14) { return this.get(`/portal/score-history?days=${days}`); }
+
+    /** Historique complet des rapports du périmètre, pas seulement le dernier. */
+    getReportHistory(limit = 50) { return this.get(`/portal/reports?limit=${limit}`); }
+
+    /** Le responsable DEMANDE l'isolation ; un analyste la valide. La demande
+     *  entre dans la file SOAR, elle n'exécute rien. */
+    requestIsolation(alertId, motif = null) {
+      return this.post(`/portal/alerts/${alertId}/request-isolation`, { motif });
+    }
 
     getNotifReport(id, lang = 'fr') {
       return this.get(`/portal/notifications/${id}/report?lang=${encodeURIComponent(lang)}`);

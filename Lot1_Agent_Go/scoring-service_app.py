@@ -1375,11 +1375,15 @@ async def ingest(request: Request):
                 # `isole` est une décision humaine ou SOAR : un poste isolé qui
                 # continue d'émettre doit RESTER isolé, sinon l'ingestion
                 # annulerait silencieusement la décision de l'analyste.
+                # La version n'est écrite que si le lot en porte une : un agent
+                # ancien continue de fonctionner, sa colonne reste simplement
+                # NULL et la console l'affiche comme « version inconnue ».
                 cur.execute(
                     "UPDATE agents SET vu_le = now(), "
-                    "       statut = CASE WHEN statut = 'isole' THEN 'isole' ELSE 'actif' END "
+                    "       statut = CASE WHEN statut = 'isole' THEN 'isole' ELSE 'actif' END, "
+                    "       version_agent = COALESCE(%s, version_agent) "
                     " WHERE token_hash = %s",
-                    (token_hash,)
+                    (batch.get("version"), token_hash)
                 )
             STATE["db"].commit()
         except Exception:

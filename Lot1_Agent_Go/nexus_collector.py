@@ -48,6 +48,11 @@ SOC_URL   = os.getenv("SOC_URL", "http://127.0.0.1:8000")
 CONF_DIR  = os.getenv("NEXUS_AGENT_DIR", os.path.expanduser("~/.nexus-agent"))
 CONF_FILE = os.path.join(CONF_DIR, "config.json")
 
+# Version du collecteur, transmise à chaque lot. À incrémenter quand le format
+# des événements ou les mesures collectées changent : c'est ce qui permet de
+# repérer un parc hétérogène après une mise à jour partielle.
+VERSION_AGENT = "1.4.0"
+
 HEURE_DEBUT_BUREAU, HEURE_FIN_BUREAU = 8, 18
 FICHIERS_SENSIBLES = ["/etc/shadow", "/etc/passwd", "/etc/sudoers", "/etc/gshadow"]
 
@@ -70,13 +75,41 @@ def sauver_conf(conf):
 
 
 def _post(path, payload, token=None):
+    """POST JSON vers le SOC.
+
+    Les échecs sont traduits en message lisible : un mot de passe erroné
+    produisait une trace Python de vingt-cinq lignes se terminant par
+    « HTTP Error 401 », sans dire quel appel avait échoué ni pourquoi.
+    """
     data = json.dumps(payload).encode()
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(SOC_URL + path, data=data, headers=headers, method="POST")
-    with urllib.request.urlopen(req, timeout=10) as r:
-        return json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        try:
+            detail = json.loads(e.read().decode()).get("detail", "")
+        except Exception:
+            detail = ""
+        if e.code == 401 and path == "/auth/token":
+            sys.exit(f"✗ Identifiants refusés par {SOC_URL}{path}.\n"
+                     f"  Le compte « {payload.get('email', '?')} » est inconnu ou son mot de "
+                     f"passe est incorrect.\n"
+                     f"  L'enrôlement exige un compte administrateur de plateforme.\n"
+                     f"  Comptes existants : voir la table users.")
+        if e.code in (401, 403):
+            sys.exit(f"✗ Accès refusé sur {path} (HTTP {e.code}).\n"
+                     f"  {detail or 'Rôle insuffisant : seul un administrateur de plateforme peut enrôler.'}")
+        if e.code == 409:
+            sys.exit(f"✗ Conflit sur {path} (HTTP 409).\n  {detail}")
+        sys.exit(f"✗ {path} → HTTP {e.code}. {detail}")
+    except urllib.error.URLError as e:
+        sys.exit(f"✗ {SOC_URL} injoignable ({e.reason}).\n"
+                 f"  Sur une VM, définir SOC_URL : sans lui le collecteur vise "
+                 f"127.0.0.1, c'est-à-dire la VM elle-même.")
 
 
 # --------------------------------------------------------------------------- #
@@ -87,8 +120,16 @@ def enroler(hostname, email, mot_de_passe, perimetre=None):
 
     req = urllib.request.Request(f"{SOC_URL}/admin/tenants",
                                  headers={"Authorization": f"Bearer {jwt}"})
-    with urllib.request.urlopen(req, timeout=10) as r:
-        perimetres = json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            perimetres = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        # Connexion réussie mais rôle insuffisant : le cas le plus fréquent est
+        # un compte de responsable de périmètre là où un compte plateforme est
+        # requis. Le dire, plutôt que d'échouer sur une trace.
+        sys.exit(f"✗ Lecture des périmètres refusée (HTTP {e.code}).\n"
+                 f"  Le compte « {email} » s'est authentifié mais n'a pas le rôle "
+                 f"administrateur de plateforme, seul habilité à enrôler un agent.")
     if not perimetres:
         sys.exit("✗ Aucun périmètre supervisé en base.")
 
@@ -437,8 +478,12 @@ def features_comportement():
 # Envoi signé vers /ingest
 # --------------------------------------------------------------------------- #
 def envoyer(conf, evenements):
+    # La version voyage dans le lot signé : la console peut alors repérer un
+    # parc hétérogène. Sans elle, la colonne `agents.version_agent` restait
+    # vide et l'écran n'avait rien à comparer.
     batch = {"agent_id": conf["agent_id"], "tenant_id": conf["tenant_id"],
-             "host": conf["hostname"], "events": evenements}
+             "host": conf["hostname"], "version": VERSION_AGENT,
+             "events": evenements}
     corps = json.dumps(batch).encode()
     signature = hmac.new(conf["hmac_key"].encode(), corps, hashlib.sha256).hexdigest()
     req = urllib.request.Request(
