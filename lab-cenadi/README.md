@@ -7,6 +7,12 @@ Lab de démonstration du **déploiement souverain** de NEXUS SOC au **CENADI**
 > le CENADI déploie et exploite NEXUS SOC *sur sa propre infrastructure*, sans
 > aucune donnée quittant le territoire ni même le datacenter.
 
+> **État au 17 août 2026.** Les sections 3 et 6 décrivent l'architecture
+> **cible**. Ce qui tourne est un réseau libvirt à plat, sans pare-feu ni
+> segmentation. La phase 1 du
+> [plan de réponse collaborative](../00_Documents/Decision_Reponse_Collaborative.md)
+> déploie la topologie décrite ici.
+
 ---
 
 ## 1. Pourquoi un déploiement souverain pour le CENADI ?
@@ -43,13 +49,15 @@ supervisé** (SIGIPES, ANTILOPE, réseau/LAN interne).
 | Critère | Choix du lab souverain CENADI |
 |---------|-------------------------------|
 | Hébergement du SOC | **Dans le datacenter CENADI** |
-| Exposition Internet | **Aucune** (reverse-proxy interne uniquement) |
+| Exposition Internet | **Aucune en entrée.** Sortie maîtrisée par zone : cœur SOC sur liste blanche journalisée, zone sensible jamais |
 | Cloisonnement | Par **périmètre supervisé** (RLS interne, un seul opérateur : le CENADI) |
 | Systèmes surveillés | **Serveurs applicatifs gouvernementaux internes** |
 | Notifications | Canal **in-app** (+ serveur SMTP interne Postfix on-premise si besoin) |
-| Enrichissement IOC | **Base de menaces locale** (miroir hors-ligne) ou désactivé |
+| Enrichissement IOC | **MISP auto-hébergé** ; VirusTotal désactivé par défaut |
 | Certificats TLS | **PKI interne CENADI** (autorité racine souveraine) |
-| Zone sensible | **Air-gap** (VLAN paie/budget sans route Internet) |
+| Zone sensible | **Air-gap** (paie/budget, aucune route Internet, télémétrie vers le SOC seule) |
+| Dossiers d'enquête | **DFIR-IRIS** (LGPL-3.0), cloisonné par périmètre |
+| Pare-feu | **OPNsense**, routage inter-zone + ACL + API de réponse |
 
 ---
 
@@ -64,13 +72,14 @@ supervisé** (SIGIPES, ANTILOPE, réseau/LAN interne).
 ║  │   • Reverse-proxy interne (portail SOC) : soc.cenadi.local          │   ║
 ║  │   • Serveur SMTP interne (Postfix) pour les OTP/notifications       │   ║
 ║  └───────────────────────────────┬────────────────────────────────────┘   ║
-║                                   │ pare-feu interne (pfSense)             ║
+║                                   │ OPNsense (routage + ACL + API)         ║
 ║  ┌────────────────────────────────┼───────────────────────────────────┐   ║
 ║  │  ZONE 1 — CŒUR SOC (NEXUS SOC souverain)                            │   ║
 ║  │   • PostgreSQL/TimescaleDB (données SOC, chiffré au repos)          │   ║
-║  │   • uvicorn NEXUS SOC (mono-tenant CENADI)                          │   ║
+║  │   • uvicorn NEXUS SOC                                               │   ║
 ║  │   • Wazuh Manager + Indexer (SIEM)                                  │   ║
 ║  │   • Moteur IA (M1 réseau, M2 UEBA) + SOAR                           │   ║
+║  │   • DFIR-IRIS (dossiers) + Mattermost (discussion)                  │   ║
 ║  │   • PKI interne (autorité de certification racine CENADI)          │   ║
 ║  └──────┬───────────────────────┬───────────────────────┬─────────────┘   ║
 ║         │ collecte              │ collecte              │ admin           ║
@@ -100,7 +109,8 @@ supervisé** (SIGIPES, ANTILOPE, réseau/LAN interne).
 
 | Zone | VM | IP | Rôle |
 |------|-----|-----|------|
-| Cœur SOC | `vm-soc-cenadi` (ou **HÔTE**) | 10.50.0.1 | NEXUS SOC souverain + PKI + SMTP interne |
+| Cœur SOC | **HÔTE** | 10.50.0.2 | NEXUS SOC + PKI + SMTP interne + IRIS + Mattermost |
+| Pare-feu | `OPNsense-CENADI` | `.1` de chaque zone | Routage inter-zone, ACL, alias de réponse |
 | Z2 Applicatif | `vm-app-gov` | 10.50.20.20 | Serveur applicatif métier (annuaire, messagerie) |
 | Z3 Sensible **air-gap** | `vm-antilope` | 10.50.30.30 | Simule ANTILOPE/SIGIPES (solde) — **zéro Internet** |
 | Z4 Admin | `vm-rssi` | 10.50.40.40 | Poste du RSSI/DSI CENADI (console + validation SOAR) |
@@ -112,7 +122,7 @@ supervisé** (SIGIPES, ANTILOPE, réseau/LAN interne).
 
 | # | Scénario | Preuve |
 |---|----------|--------|
-| 1 | **Souveraineté totale** — zéro sortie datacenter | tcpdump + config firewall : aucune route Internet, même pour le SOC |
+| 1 | **Sortie maîtrisée** — rien ne part sans règle | Depuis le SOC, une destination sur liste blanche répond, une autre est rejetée et journalisée |
 | 2 | **Air-gap de la zone sensible** | vm-antilope (VLAN 30) ne peut joindre NI Internet NI les autres zones, seulement envoyer sa télémétrie au SOC |
 | 3 | **Détection d'exfiltration de données de paie** | Un poste compromis tente d'aspirer ANTILOPE → Modèle 1/2 + SOAR |
 | 4 | **PKI souveraine** — certificats émis par l'AC CENADI | Le portail SOC est en HTTPS via une autorité racine **interne**, pas Let's Encrypt |
@@ -126,8 +136,12 @@ supervisé** (SIGIPES, ANTILOPE, réseau/LAN interne).
 lab-cenadi/
 ├── README.md                     ← ce fichier
 ├── 00-architecture-cenadi.md     ← architecture détaillée + adressage
-├── 01-network-setup.sh           ← réseaux libvirt (zones/VLANs souverains)
-├── 02-vm-specs.md                ← specs des VMs
+├── 01-network-setup.sh           ← réseaux libvirt (zones souveraines)
+├── 02-vm-specs.md                ← specs des VMs + budget mémoire
+├── 03-quarantaine-blocage.md     ← OPNsense : alias, API, connecteur
+├── 04-annuaire-vm-app-gov.md     ← annuaire LDAP, gel de compte
+├── 05-alimenter-en-donnees.md    ← faire produire de la télémétrie au lab
+├── 06-reponse-collaborative.md   ← DFIR-IRIS + Mattermost
 ├── SECURISATION.md               ← ★ durcissement défense-en-profondeur (pièce maîtresse)
 ├── RUNBOOK.md                    ← démo minute-par-minute
 ├── scripts/
@@ -147,12 +161,14 @@ lab-cenadi/
 ## 6. Ordre de mise en place
 
 1. Lire **`00-architecture-cenadi.md`** (comprendre les 6 zones)
-2. Lire **`SECURISATION.md`** (le durcissement — c'est le cœur de la valeur)
-3. Exécuter **`01-network-setup.sh`** (réseaux souverains isolés)
-4. Créer les VMs selon **`02-vm-specs.md`**
-5. Configurer le HÔTE : **`scripts/host-cenadi-configure.sh`**
-6. Configurer chaque VM : **`scripts/vm-*-setup.sh`**
-7. Répéter la démo avec **`RUNBOOK.md`**
+2. Lire **`SECURISATION.md`** (le durcissement)
+3. Exécuter **`01-network-setup.sh`** (réseaux isolés)
+4. Créer les VMs selon **`02-vm-specs.md`**, à commencer par OPNsense
+5. Appliquer la matrice de flux et les alias : **`03-quarantaine-blocage.md`**
+6. Configurer le HÔTE : **`scripts/host-cenadi-configure.sh`**
+7. Configurer chaque VM : **`scripts/vm-*-setup.sh`**
+8. Déployer l'annuaire (**`04-…`**) puis la pile de réponse (**`06-…`**)
+9. Répéter la démo avec **`RUNBOOK.md`**
 
 > Ce lab exécute **le même code** NEXUS SOC que le reste du dépôt : seules la
 > configuration (`.env` souverain), le réseau (aucune sortie), la PKI (AC

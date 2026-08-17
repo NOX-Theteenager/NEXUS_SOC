@@ -59,41 +59,46 @@ Dans le lab (VMs), on **simule** LUKS sur le volume de données PostgreSQL.
 
 ## Couche 2 — Réseau (segmentation + air-gap)
 
-C'est la couche la plus visible du lab. 6 zones, séparées par un pare-feu
-pfSense + routeur MikroTik avec ACL strictes.
+C'est la couche la plus visible du lab. Six zones, routées et filtrées par un
+seul équipement : **OPNsense**, en refus par défaut.
 
-| Zone | VLAN | Internet | Peut joindre |
-|------|------|----------|--------------|
-| DMZ interne | 10 | Non | SOC uniquement |
-| Cœur SOC | mgmt | Non | Toutes zones (collecte) |
-| Applicatif | 20 | Non | SOC (télémétrie) |
-| **Sensible (ANTILOPE)** | 30 | **AIR-GAP total** | **SOC uniquement, rien d'autre** |
-| Admin RSSI | 40 | Non | SOC + DMZ |
-| Menace | 50 | Non (simulée) | doit être bloquée partout sauf SOC |
+La version précédente répartissait les rôles entre pfSense en périmètre et
+MikroTik en routage inter-zone. Le trafic latéral ne remontait jamais jusqu'au
+pare-feu de périmètre, donc une adresse bloquée là-haut restait joignable par
+ses voisines. Un seul équipement supprime ce défaut.
+
+| Zone | Réseau | Internet | Peut joindre |
+|------|--------|----------|--------------|
+| DMZ interne | 10.50.10.0/24 | Non | SOC uniquement |
+| Cœur SOC | 10.50.0.0/24 | **Sortie sur liste blanche, journalisée** | Toutes zones (collecte) |
+| Applicatif | 10.50.20.0/24 | Non | SOC (télémétrie) |
+| **Sensible (ANTILOPE)** | 10.50.30.0/24 | **AIR-GAP total** | **SOC uniquement, rien d'autre** |
+| Admin RSSI | 10.50.40.0/24 | Sortie filtrée | SOC + DMZ |
+| Menace | 10.50.50.0/24 | Non | doit être bloquée partout sauf SOC |
+
+Le WAN d'OPNsense est actif. Il ne l'était pas dans la version précédente, où
+l'absence de câble tenait lieu de politique. Une politique de sortie se
+démontre, une absence de câble ne démontre rien : depuis le cœur SOC, une
+destination sur liste blanche répond et une autre est rejetée puis journalisée.
 
 **Règle d'or de l'air-gap (zone 30) :** un serveur ANTILOPE peut *émettre* sa
 télémétrie vers le SOC (flux sortant unidirectionnel vers 10.50.0.1), mais **ne
 peut initier aucune autre connexion** — ni Internet, ni latéralement vers une
 autre zone.
 
-**ACL MikroTik pour la zone sensible (extrait) :**
-```
-# La zone 30 (ANTILOPE) ne peut parler QU'au SOC, port 8000/443, rien d'autre
-/ip firewall filter
-add chain=forward src-address=10.50.30.0/24 dst-address=10.50.0.1 \
-    dst-port=8000,443 protocol=tcp action=accept comment="ANTILOPE→SOC OK"
-add chain=forward src-address=10.50.30.0/24 action=drop \
-    comment="ANTILOPE : tout le reste DROP (air-gap)"
+**Règles OPNsense sur l'interface LAN_SENS (dans l'ordre) :**
 
-# Aucune zone ne peut initier vers la zone 30 (sauf réponses établies)
-add chain=forward dst-address=10.50.30.0/24 connection-state=established,related \
-    action=accept
-add chain=forward dst-address=10.50.30.0/24 action=drop \
-    comment="Personne n'entre dans la zone sensible"
-```
+| # | Action | Source | Destination | Port | Commentaire |
+|---|--------|--------|-------------|------|-------------|
+| 1 | Autoriser | LAN_SENS net | 10.50.0.2 | 8000, 443 | ANTILOPE vers SOC : télémétrie |
+| 2 | Rejeter | LAN_SENS net | any | any | air-gap, tout le reste |
+
+Et sur les autres interfaces, une règle de rejet vers `LAN_SENS net`, pour que
+personne n'entre dans la zone sensible. Les réponses aux connexions établies
+sont gérées par le suivi d'état d'OPNsense, sans règle explicite.
 
 **Preuve (scénario 02) :** depuis vm-antilope, `ping 8.8.8.8` échoue,
-`ping 10.50.20.20` (autre zone) échoue, mais `curl 10.50.0.1:8000/health`
+`ping 10.50.20.20` (autre zone) échoue, mais `curl 10.50.0.2:8000/health`
 réussit.
 
 ---

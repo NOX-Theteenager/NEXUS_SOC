@@ -6,7 +6,7 @@
 # QU'émettre sa télémétrie vers le SOC. Déploie le VRAI collecteur (mesures
 # réelles), rattaché au périmètre supervisé « ANTILOPE ».
 #
-# PRÉREQUIS : l'ACL MikroTik doit autoriser 10.50.30.0/24 → 10.50.0.1 (SOC)
+# PRÉREQUIS : la règle OPNsense LAN_SENS → 10.50.0.2 (tcp 8000/443) doit exister
 # et DROP tout le reste (voir SECURISATION.md couche 2).
 # =============================================================================
 set -euo pipefail
@@ -20,7 +20,7 @@ INSTALL_DIR=/opt/nexus-agent
 echo "═══ 0/4 Connectivité SOC (seul flux autorisé en air-gap) ═══"
 if ! curl -s --max-time 3 "${SOC_URL}/health" | grep -q '"status":"ok"'; then
     echo "✗ SOC injoignable. En air-gap, SEUL 10.50.0.1 doit être joignable."
-    echo "  Vérifier l'ACL MikroTik : zone 30 → SOC autorisé, reste DROP."
+    echo "  Vérifier la règle OPNsense : LAN_SENS → 10.50.0.2 autorisé, reste rejeté."
     exit 1
 fi
 echo "✓ SOC accessible (flux télémétrie unidirectionnel)"

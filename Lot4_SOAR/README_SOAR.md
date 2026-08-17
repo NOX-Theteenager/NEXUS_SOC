@@ -4,6 +4,16 @@ Le SOAR (*Security Orchestration, Automation and Response*) **boucle la couche I
 les alertes produites par les modèles (Modèle 1 réseau, Modèle 2 fraude) et déclenche une
 **réponse automatisée** via des **playbooks**, sous le contrôle de **garde-fous**.
 
+> **`soar_engine.py` est un démonstrateur autonome, pas le chemin d'exécution.**
+> En production, la proposition d'action est faite par `choisir_action_soar()` et
+> `_proposer_soar()` dans `Lot1_Agent_Go/scoring-service_app.py`, écrite dans la
+> table `soar_audit`, puis arbitrée par les routes `/analyst/*` de
+> `Lot7_Console_Fournisseur/admin_api.py`. Ce fichier sert à exposer la logique de
+> décision et les garde-fous sur un jeu d'alertes reproductible. Un correctif
+> appliqué ici ne change rien au comportement de la plateforme, et réciproquement.
+> La consolidation des deux implémentations est à l'ordre du jour (phase 6 du
+> [plan](../00_Documents/Decision_Reponse_Collaborative.md)).
+
 ---
 
 ## 1. Contenu
@@ -66,13 +76,29 @@ Alert(type="Fraude interne", entity="agent_DGI_0421", entity_kind="compte",
 Le champ `reasons` provient directement de l'**explicabilité** du Modèle 2 : c'est ce qui permet
 au DSI (et au LLM Analyst) de comprendre *pourquoi* une action est proposée.
 
-## 6. Connecteurs (intégration réelle)
+## 6. Connecteurs
 
-Dans cette démonstration, les actions sont **simulées** (pas de vrai pare-feu ni d'annuaire).
-En production, chaque fonction `_freeze_account`, `_isolate_host`, `_block_ip`, etc. appelle le
-connecteur correspondant (Active Directory/LDAP pour le gel de compte, API du pare-feu pour le
-blocage, EDR/agent pour l'isolation, passerelle SMS/WhatsApp pour les notifications). L'interface
-ne change pas : seul le corps des connecteurs est branché sur les systèmes réels.
+Dans ce démonstrateur, les actions restent **simulées**. Les connecteurs réels vivent dans
+`Lot4_SOAR/connecteurs/` et sont appelés par `POST /analyst/execute/{id}` :
+
+| Action | Connecteur | Cible réelle |
+|---|---|---|
+| `block_ip` | `opnsense.py` | alias `nexus_block` du pare-feu |
+| `isolate_host` | `opnsense.py` | alias `nexus_quarantaine` |
+| `freeze_account` | `ldap_ppolicy.py` | attribut `pwdAccountLockedTime` de l'annuaire |
+
+Trois règles s'appliquent à tout nouveau connecteur :
+
+1. `execution` ne passe à `automatique` **qu'après relecture vérifiée** de l'état visé. Un code
+   HTTP 200 ne prouve pas que l'adresse figure dans l'alias.
+2. En cas d'échec, `execution` reste `non_executee`, le motif part dans `execution_note`, et la
+   console affiche la commande manuelle.
+3. Au démarrage, NEXUS relit les listes du pare-feu et repousse ce qui manque : un redémarrage
+   d'équipement ne doit pas lever une quarantaine en silence.
+
+La quarantaine réseau laisse volontairement passer la télémétrie vers le SOC. C'est ce qui la
+distingue de l'isolation locale de l'agent, laquelle coupe la machine du réseau et donc aussi de
+la supervision.
 
 ## 7. Place dans NEXUS SOC
 
@@ -83,7 +109,8 @@ tout en gardant l'humain dans la boucle pour les décisions lourdes.
 
 ## 8. Pistes d'amélioration (chapitre perspectives)
 
-- Brancher les connecteurs réels (AD/LDAP, pare-feu, EDR, passerelle SMS).
-- Ajouter une file d'approbation visible dans le portail (workflow de validation).
+- Consolider `soar_engine.py` et le chemin d'exécution réel en une seule implémentation.
 - Cartographier chaque action sur la phase de réponse MITRE D3FEND.
-- Mesurer le **MTTR** (temps moyen de réponse) réel apporté par l'automatisation.
+- Mesurer le **MTTR** réel, une fois les connecteurs branchés et la topologie déployée.
+- Étendre l'isolation aux voisines de zone (isolation de port sur le commutateur), que la
+  quarantaine par pare-feu ne couvre pas.

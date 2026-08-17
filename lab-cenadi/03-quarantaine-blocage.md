@@ -1,278 +1,213 @@
-# Quarantaine et blocage — mise en œuvre GNS3
+# Quarantaine et blocage — rendre les actions SOAR exécutables
 
-Comment rendre exécutables les actions `isolate_host` et `block_ip` proposées par
-NEXUS SOC. Complète [00-architecture-cenadi.md](00-architecture-cenadi.md).
+Comment OPNsense applique réellement `block_ip` et `isolate_host`, et comment
+NEXUS le pilote.
 
----
-
-## 0. Le point d'application est MikroTik, pas pfSense
-
-C'est le point le plus important du document, et il est contre-intuitif.
-
-Dans la topologie prévue, l'ordre est :
-
-```
-HÔTE (cœur SOC 10.50.0.1) → pfSense → MikroTik → VLAN 10/20/30/40/50
-```
-
-pfSense est **en amont** de MikroTik. Le trafic latéral — menace → app,
-app → sensible — transite par MikroTik et **ne remonte jamais** jusqu'à pfSense.
-
-Conséquence directe : bloquer une adresse sur pfSense coupe la machine **du
-SOC**, pas de ses voisines. C'est exactement l'erreur que corrige la refonte —
-se rendre aveugle en croyant confiner. **Les listes de blocage et de quarantaine
-vivent sur MikroTik.**
-
-pfSense garde son rôle : filtrage périmétrique entre le cœur SOC et le reste,
-WAN désactivé.
-
-### Limite à connaître avant de commencer
-
-Un routeur ne voit que le trafic qu'il **route**. Deux machines d'un même VLAN se
-parlent en couche 2 sans passer par MikroTik : la quarantaine ne les sépare pas.
-
-Deux façons de traiter ce cas, si votre démonstration en a besoin :
-
-- une machine par VLAN (chaque poste dans son propre segment) — simple, réaliste
-  pour un lab, verbeux au-delà de cinq machines ;
-- isolation de ports sur le bridge GNS3.
-
-Pour la soutenance, l'annoncer explicitement vaut mieux que de le découvrir sous
-une question du jury. La quarantaine coupe le nord-sud, pas l'est-ouest
-intra-segment.
+> **État au 17 août 2026.** OPNsense n'est pas encore déployé. Ce document décrit
+> ce que la phase 1 installe et ce que la phase 2 branche. Voir la
+> [décision](../00_Documents/Decision_Reponse_Collaborative.md).
 
 ---
 
-## 1. Libérer les adresses `.1` pour MikroTik
+## 0. Un seul point d'application
 
-Aujourd'hui vos réseaux libvirt portent l'adresse de passerelle sur **l'hôte** :
+La version précédente de ce document répartissait les rôles entre pfSense en
+périmètre et MikroTik en routage inter-zone, et devait ouvrir sur un
+avertissement : le trafic latéral ne remontait jamais jusqu'à pfSense, donc
+bloquer une adresse sur le pare-feu de périmètre coupait la machine du cœur SOC
+sans la couper de ses voisines. Les listes de réponse devaient vivre sur
+MikroTik.
 
-```
-virbr-cen-app    10.50.20.1
-virbr-cen-sens   10.50.30.1
-virbr-cen-adm    10.50.40.1
-```
+Cet avertissement disparaît. OPNsense route entre les zones **et** filtre le
+périmètre. Une adresse ajoutée à un alias est bloquée sur tous les chemins, y
+compris entre deux zones internes.
 
-Or l'architecture attribue ces mêmes `.1` à MikroTik. Tant que l'hôte les
-occupe, MikroTik ne peut pas les prendre et rien ne le traverse.
+Deux limites subsistent, et elles tiennent à la topologie, pas au produit :
 
-Les réseaux doivent devenir de **purs bridges de couche 2** : ni adresse IP, ni
-DHCP côté libvirt.
-
-```bash
-# Pour chaque zone : app, sens, adm, dmz, men
-virsh -c qemu:///system net-destroy  nexus-cenadi-app
-virsh -c qemu:///system net-edit     nexus-cenadi-app
-```
-
-Supprimer **tout le bloc `<ip>`** (il emporte le `<dhcp>`) :
-
-```xml
-<!-- À SUPPRIMER intégralement -->
-<ip address='10.50.20.1' netmask='255.255.255.0'>
-  <dhcp>
-    <range start='10.50.20.100' end='10.50.20.200'/>
-  </dhcp>
-</ip>
-```
-
-Le réseau conserve son `<bridge name='virbr-cen-app'/>` et reste sans
-`<forward>` : un commutateur virtuel, rien de plus.
-
-```bash
-virsh -c qemu:///system net-start nexus-cenadi-app
-ip -br a show virbr-cen-app        # ne doit plus afficher d'adresse IPv4
-```
-
-> **Conserver `nexus-cenadi-mgmt` tel quel.** L'hôte y garde 10.50.0.1 : c'est le
-> cœur SOC, il doit rester joignable indépendamment de l'état du lab.
+- **Deux machines d'une même zone se parlent en couche 2**, sans traverser la
+  passerelle. La quarantaine ne les sépare pas. Pour isoler une machine de ses
+  voisines immédiates, il faut l'isolation de port sur le commutateur, ou placer
+  la machine seule dans son segment.
+- **La quarantaine laisse volontairement passer la télémétrie vers le SOC.** Une
+  machine mise en quarantaine reste observée. C'est le point qui distingue cette
+  quarantaine de l'isolation locale que l'agent sait faire, laquelle coupe la
+  machine du réseau et donc aussi de la supervision.
 
 ---
 
-## 2. Câbler GNS3
+## 1. Interfaces d'OPNsense
 
-Dans GNS3, chaque réseau libvirt s'atteint par un nœud **Cloud** lié au bridge.
-
-| Nœud | Type | Rattachement |
-|---|---|---|
-| `soc-core` | Cloud | `virbr-cen-mgmt` |
-| `pfSense-CENADI` | VM QEMU (la vôtre) | em0 → `soc-core`, em1 → MikroTik |
-| `MikroTik-CENADI` | CHR | ether1 → pfSense, ether2..6 → zones |
-| `z-dmz` … `z-men` | Cloud | `virbr-cen-dmz` … `virbr-cen-men` |
-
-Correspondance des interfaces MikroTik :
+Sept interfaces : le WAN, et une par zone.
 
 | Interface | Zone | Adresse |
 |---|---|---|
-| ether1 | liaison pfSense | 10.50.1.2/30 |
-| ether2 | DMZ | 10.50.10.1/24 |
-| ether3 | Applicatif | 10.50.20.1/24 |
-| ether4 | Sensible | 10.50.30.1/24 |
-| ether5 | Admin | 10.50.40.1/24 |
-| ether6 | Menace | 10.50.50.1/24 |
+| WAN | sortie filtrée | selon le lien montant |
+| LAN_MGMT | cœur SOC | 10.50.0.1/24 |
+| LAN_DMZ | DMZ interne | 10.50.10.1/24 |
+| LAN_APP | applicatif | 10.50.20.1/24 |
+| LAN_SENS | sensible | 10.50.30.1/24 |
+| LAN_ADM | administration | 10.50.40.1/24 |
+| LAN_MEN | menace | 10.50.50.1/24 |
 
-Votre VM pfSense n'a **qu'une carte réseau** aujourd'hui. Il faut lui en ajouter
-une seconde avant de la câbler :
-
-```bash
-virsh -c qemu:///system shutdown Pfsense
-virsh -c qemu:///system attach-interface Pfsense network nexus-cenadi-mgmt \
-      --model e1000e --config
-virsh -c qemu:///system start Pfsense
-```
-
-Adresses fixes sur les VM (plus de DHCP), conformément au plan d'adressage :
-`vm-app-gov` 10.50.20.20/24 gw 10.50.20.1, `vm-antilope` 10.50.30.30/24 gw
-10.50.30.1, `vm-rssi` 10.50.40.40/24 gw 10.50.40.1.
+Les réseaux libvirt correspondants ne doivent plus porter d'adresse de
+passerelle : `01-network-setup.sh` les crée en mode isolé, sans DHCP ni
+routage, et OPNsense fournit les deux.
 
 ---
 
-## 3. Configurer MikroTik
+## 2. Les deux alias de réponse
 
-### 3.1 Les deux listes pilotées par NEXUS
+Un alias est une liste nommée d'adresses, modifiable sans toucher aux règles.
+C'est ce qui rend l'action réversible sans réécrire de configuration.
 
-Rien à créer : sur RouterOS, une liste d'adresses naît de son premier membre.
-Ce sont les règles qui doivent préexister.
+| Alias | Type | Usage |
+|---|---|---|
+| `nexus_block` | Host(s) | destinations bloquées, action `block_ip` |
+| `nexus_quarantaine` | Host(s) | machines confinées, action `isolate_host` |
 
-### 3.2 Les règles de filtrage
+Les règles qui s'appuient sur ces alias se placent **au-dessus** de la matrice
+de flux, dans l'ordre suivant :
 
-L'ordre est déterminant. Les autorisations SOC passent **avant** les rejets,
-sinon la quarantaine coupe aussi la télémétrie et vous perdez la visibilité sur
-la machine que vous vouliez observer.
+1. `nexus_quarantaine` vers `10.50.0.2` port 8000 et 443 : **autoriser**
+   (la machine confinée continue d'émettre sa télémétrie)
+2. source `nexus_quarantaine` : **rejeter**
+3. destination `nexus_quarantaine` : **rejeter**
+4. destination `nexus_block` : **rejeter**
+5. source `nexus_block` : **rejeter**
 
-```
-/ip firewall filter
-
-# ── Quarantaine : la machine ne parle plus qu'au SOC ──────────────────────
-add chain=forward src-address-list=NEXUS_QUARANTAINE dst-address=10.50.0.1 \
-    action=accept comment="NEXUS quarantaine — telemetrie vers le SOC"
-add chain=forward dst-address-list=NEXUS_QUARANTAINE src-address=10.50.0.1 \
-    action=accept comment="NEXUS quarantaine — retour du SOC"
-add chain=forward src-address-list=NEXUS_QUARANTAINE \
-    action=drop comment="NEXUS quarantaine — tout le reste"
-add chain=forward dst-address-list=NEXUS_QUARANTAINE \
-    action=drop comment="NEXUS quarantaine — trafic entrant"
-
-# ── Blocage d'indicateur ──────────────────────────────────────────────────
-add chain=forward dst-address-list=NEXUS_BLOCK \
-    action=drop comment="NEXUS blocage IOC — sortant"
-add chain=forward src-address-list=NEXUS_BLOCK \
-    action=drop comment="NEXUS blocage IOC — entrant"
-```
-
-Ces six règles doivent se trouver **en tête** de la chaîne `forward`, avant la
-matrice de flux inter-zones du §2 de l'architecture :
-
-```
-/ip firewall filter print                    # relever les numéros
-/ip firewall filter move [find comment~"NEXUS"] destination=0
-```
-
-### 3.3 Le compte de service pour NEXUS
-
-Un compte dédié, restreint à l'adresse du SOC, par clé uniquement :
-
-```
-/user group add name=soar policy=ssh,read,write,test \
-    comment="NEXUS SOC — pilotage des listes de reponse"
-/user add name=nexus-soar group=soar address=10.50.0.1/32
-/user ssh-keys import public-key-file=nexus-soar.pub user=nexus-soar
-/ip service set ssh address=10.50.0.1/32
-/ip service disable telnet,ftp,www,api
-```
-
-Côté hôte SOC :
-
-```bash
-sudo -u nexus ssh-keygen -t ed25519 -N '' -f /etc/nexus/mikrotik_ed25519
-```
-
-`policy=write` est nécessaire pour modifier les listes. Le garde-fou n'est pas le
-niveau de privilège mais `address=10.50.0.1/32` : la clé ne sert que depuis le
-cœur SOC.
+L'ordre compte. Si la règle 1 passait après la règle 2, la mise en quarantaine
+couperait aussi l'observation, et la démonstration perdrait tout son intérêt.
 
 ---
 
-## 4. Les commandes que NEXUS affiche
+## 3. Le compte d'API pour NEXUS
 
-La console produit exactement ces commandes, avec l'identifiant d'audit en
-commentaire pour que chaque règle soit traçable jusqu'à la décision qui l'a
-motivée.
+OPNsense authentifie l'API par une paire clé/secret, en HTTP Basic. Créer un
+utilisateur `nexus-soar`, sans accès à l'interface web, et lui accorder les
+seuls privilèges nécessaires :
+
+- `Firewall: Alias: Edit`
+- `Firewall: Alias: Util`
+
+Rien d'autre. Un moteur SOAR compromis doit pouvoir modifier deux listes, pas
+reconfigurer un pare-feu.
+
+Restreindre également l'accès à l'interface d'administration à `10.50.0.2/32`,
+et conserver l'empreinte du certificat pour l'épingler côté connecteur. Un SOAR
+qui accepte n'importe quel certificat se fait détourner par la première attaque
+active sur le lien.
+
+```bash
+# Sur l'hôte, après création de la clé dans OPNsense
+sudo install -d -m 0700 -o nexus /etc/nexus
+sudo openssl s_client -connect 10.50.0.1:443 </dev/null 2>/dev/null \
+  | openssl x509 > /etc/nexus/opnsense-ca.pem
+sudo chown nexus:nexus /etc/nexus/opnsense-ca.pem
+```
+
+---
+
+## 4. Les appels que NEXUS produit
+
+La console affiche exactement ces appels, avec l'identifiant d'audit, pour que
+chaque entrée d'alias remonte à la décision qui l'a motivée.
 
 **Blocage d'un indicateur**
 
-```
-/ip firewall address-list add list=NEXUS_BLOCK address=185.220.101.45 \
-    comment="NEXUS 42"
-```
-
-**Mise en quarantaine d'un hôte**
-
-```
-/ip firewall address-list add list=NEXUS_QUARANTAINE address=10.50.20.20 \
-    comment="NEXUS 43"
+```bash
+curl -sS -u "$OPNSENSE_KEY:$OPNSENSE_SECRET" --cacert /etc/nexus/opnsense-ca.pem \
+  -X POST https://10.50.0.1/api/firewall/alias_util/add/nexus_block \
+  -H 'Content-Type: application/json' \
+  -d '{"address": "185.220.101.45"}'
 ```
 
-**Levée** — c'est ce qui rend l'action réellement réversible, comme la console
-l'annonce :
+**Mise en quarantaine d'une machine**
 
+```bash
+curl -sS -u "$OPNSENSE_KEY:$OPNSENSE_SECRET" --cacert /etc/nexus/opnsense-ca.pem \
+  -X POST https://10.50.0.1/api/firewall/alias_util/add/nexus_quarantaine \
+  -H 'Content-Type: application/json' \
+  -d '{"address": "10.50.20.20"}'
 ```
-/ip firewall address-list remove [find list=NEXUS_QUARANTAINE address=10.50.20.20]
+
+**Levée**, ce qui rend l'action réellement réversible comme la console l'annonce :
+
+```bash
+curl -sS -u "$OPNSENSE_KEY:$OPNSENSE_SECRET" --cacert /etc/nexus/opnsense-ca.pem \
+  -X POST https://10.50.0.1/api/firewall/alias_util/delete/nexus_quarantaine \
+  -H 'Content-Type: application/json' \
+  -d '{"address": "10.50.20.20"}'
 ```
+
+**Relecture**, qui sert à la vérification et à la réconciliation :
+
+```bash
+curl -sS -u "$OPNSENSE_KEY:$OPNSENSE_SECRET" --cacert /etc/nexus/opnsense-ca.pem \
+  https://10.50.0.1/api/firewall/alias_util/list/nexus_quarantaine
+```
+
+Les modifications d'alias par `alias_util` prennent effet immédiatement. Un
+`POST /api/firewall/alias/reconfigure` n'est nécessaire qu'après une
+modification de la définition d'un alias, pas de son contenu.
 
 ---
 
 ## 5. Vérifier
 
-```
-/ip firewall address-list print where list=NEXUS_QUARANTAINE
-/ip firewall filter print stats where comment~"NEXUS"
-```
-
-La colonne des compteurs doit progresser dès que la machine tente de sortir.
 Depuis la machine mise en quarantaine :
 
 ```bash
-ping -c2 10.50.30.30      # zone sensible  → doit échouer
-ping -c2 10.50.0.1        # cœur SOC       → doit répondre
+ping -c2 10.50.30.30      # zone sensible → doit échouer
+ping -c2 10.50.20.20      # zone applicative → doit échouer
+curl -s 10.50.0.2:8000/health   # cœur SOC → doit répondre
 ```
 
-Ce couple est votre démonstration : la machine est coupée, **et reste observée**.
-C'est précisément ce que l'isolation actuelle ne fait pas — elle coupe
-l'observation en laissant la machine libre de ses mouvements.
+Ce triplet est la démonstration : la machine est coupée de ses voisines, et
+reste observée. C'est exactement ce que l'isolation locale de l'agent ne fait
+pas, puisqu'elle coupe l'observation en laissant la machine libre de ses
+mouvements.
+
+Côté pare-feu, les compteurs de la règle de rejet doivent progresser dès que la
+machine tente de sortir de sa zone.
 
 ---
 
-## 6. Une fois le connecteur raccordé
+## 6. Le connecteur (phase 2)
 
-Tant qu'aucun connecteur n'existe, la console affiche la commande et enregistre
-qui déclare l'avoir passée (bouton **Attester**, horodaté et nominatif). Le
-connecteur remplacera cette étape manuelle :
-
-```python
-subprocess.run(
-    ["ssh", "-i", "/etc/nexus/mikrotik_ed25519",
-     "-o", "StrictHostKeyChecking=yes",
-     f"nexus-soar@{MIKROTIK_HOST}", commande],
-    timeout=10, check=True)
-```
+Tant qu'aucun connecteur n'est raccordé, la console affiche l'appel et
+enregistre qui déclare l'avoir passé, avec le bouton **Attester**, horodaté et
+nominatif. Le connecteur `Lot4_SOAR/connecteurs/opnsense.py` remplace cette
+étape manuelle.
 
 Trois précautions au moment de le brancher :
 
-1. **`StrictHostKeyChecking=yes`** avec l'empreinte du routeur pré-enregistrée.
-   Un SOAR qui accepte n'importe quelle clé d'hôte se fait détourner par la
-   première attaque active sur le lien.
-2. **Réconciliation au démarrage** — NEXUS est la source de vérité. Au lancement,
-   il repousse l'intégralité de ses listes : un redémarrage du routeur ne doit
-   pas lever silencieusement une quarantaine.
-3. **Le statut d'exécution ne passe à `automatique` que si la commande a rendu
-   un code 0.** Un connecteur qui journalise un succès qu'il n'a pas obtenu
-   reproduit exactement le défaut qu'on vient de corriger.
+1. **Empreinte du certificat épinglée.** Le connecteur refuse une autorité
+   inconnue plutôt que de faire confiance au réseau.
+2. **Réconciliation au démarrage.** NEXUS est la source de vérité : au
+   lancement, il relit les alias et repousse ce qui manque. Un redémarrage du
+   pare-feu ne doit pas lever une quarantaine en silence.
+3. **`execution` ne passe à `automatique` qu'après relecture vérifiée.** Un code
+   HTTP 200 ne prouve pas que l'adresse figure dans l'alias. Le connecteur relit
+   `alias_util/list` et compare. Un connecteur qui journalise un succès qu'il n'a
+   pas obtenu reproduit exactement le défaut que la migration
+   `06_schema_soar_cible.sql` a corrigé.
+
+Variables d'environnement correspondantes :
+
+```
+OPNSENSE_URL=https://10.50.0.1
+OPNSENSE_KEY=…
+OPNSENSE_SECRET=…
+OPNSENSE_CA=/etc/nexus/opnsense-ca.pem
+OPNSENSE_ALIAS_BLOCK=nexus_block
+OPNSENSE_ALIAS_QUARANTAINE=nexus_quarantaine
+SOAR_CONNECTEURS_ACTIFS=0     # 0 conserve le comportement actuel
+```
 
 ---
 
 ## 7. Ce que cela ne règle pas
 
-Le gel de compte. Aucune topologie réseau ne suspend une identité — c'est un
-autre plan. Il faut un annuaire, voir
+Le gel de compte. Aucune topologie réseau ne suspend une identité : un routeur
+transporte, un annuaire authentifie. Voir
 [04-annuaire-vm-app-gov.md](04-annuaire-vm-app-gov.md).

@@ -8,7 +8,7 @@
         <mxCell id="99" value="Securisation de NEXUS SOC - defense en profondeur (7 couches)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="290" y="5" width="600" height="24" as="geometry"/></mxCell>
 
         <!-- Couche 7 gouvernance (exterieur) -->
-        <mxCell id="7" value="7. GOUVERNANCE&#xa;politiques, audit soar_audit, conformite CEMAC / ISO 27001" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="60" y="40" width="1050" height="760" as="geometry"/></mxCell>
+        <mxCell id="7" value="7. GOUVERNANCE&#xa;politiques, audit soar_audit, dossiers d&#39;enquete IRIS, conformite CEMAC / ISO 27001" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="60" y="40" width="1050" height="760" as="geometry"/></mxCell>
         <!-- Couche 6 detection -->
         <mxCell id="6" value="6. DETECTION - le SOC se surveille lui-meme (Wazuh sur serveurs SOC, journal immuable)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="110" y="95" width="950" height="655" as="geometry"/></mxCell>
         <!-- Couche 5 donnees -->
@@ -18,11 +18,12 @@
         <!-- Couche 3 hote/OS -->
         <mxCell id="3" value="3. HOTE / OS - durcissement systemd (NoNewPrivileges, ProtectSystem), SSH par cle, mises a jour" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="260" y="260" width="650" height="330" as="geometry"/></mxCell>
         <!-- Couche 2 reseau -->
-        <mxCell id="2" value="2. RESEAU - segmentation 6 zones VLAN + air-gap zone sensible + pfSense/MikroTik ACL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="310" y="315" width="550" height="220" as="geometry"/></mxCell>
+        <mxCell id="2" value="2. RESEAU - segmentation 6 zones + air-gap zone sensible + OPNsense (ACL refus par defaut, Suricata, sortie par zone)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontSize=11;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="310" y="315" width="550" height="220" as="geometry"/></mxCell>
         <!-- Couche 1 physique (interieur) -->
         <mxCell id="10" value="1. PHYSIQUE&#xa;datacenter controle, badge + biometrie,&#xa;chiffrement disque LUKS, ports USB desactives" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=middle;align=center;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="360" y="380" width="450" height="90" as="geometry"/></mxCell>
 
         <mxCell id="80" value="Chaque couche : menace -&gt; mesure -&gt; preuve. Une compromission doit franchir les 7 couches successives pour atteindre les donnees." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#555555;" vertex="1" parent="1"><mxGeometry x="185" y="805" width="800" height="20" as="geometry"/></mxCell>
+        <mxCell id="81" value="Couches 3 a 7 effectives sur le deploiement. Couche 2 (OPNsense) = architecture cible, phase 1. Couche 1 : LUKS simule dans le lab." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#b85450;" vertex="1" parent="1"><mxGeometry x="185" y="822" width="800" height="18" as="geometry"/></mxCell>
       </root>
     </mxGraphModel>
   </diagram>

@@ -4,7 +4,7 @@
 # =============================================================================
 # Crée les réseaux du datacenter CENADI simulé. TOUS isolés (pas de <forward>) :
 # aucune zone n'a de route Internet. Le routage inter-zone + les ACL (dont
-# l'air-gap de la zone sensible) sont gérés par le pare-feu pfSense + MikroTik
+# l'air-gap de la zone sensible) sont gérés par OPNsense, qui route entre les
 # dans GNS3 (voir 00-architecture-cenadi.md).
 #
 #   nexus-cenadi-mgmt  (10.50.0.0/24)   — Cœur SOC (HÔTE = 10.50.0.1)
@@ -80,7 +80,7 @@ for net in "${!NETWORKS[@]}"; do
 <network>
   <name>${net}</name>
   <bridge name='${bridge}' stp='on' delay='0'/>
-  <!-- ISOLÉ : aucune route Internet ; routage inter-zone par pfSense/MikroTik -->
+  <!-- ISOLÉ : ni DHCP ni passerelle côté libvirt ; OPNsense fournit les deux -->
   <domain name='cenadi.local' localOnly='yes'/>
   <ip address='${gateway}' netmask='255.255.255.0'>
     <dhcp>

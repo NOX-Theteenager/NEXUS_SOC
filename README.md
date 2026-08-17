@@ -80,6 +80,7 @@ console opérateur, socle technique) :
 │                            │                                                  │
 │  ┌─────────────────────────▼─────────────────────────────────────────────┐   │
 │  │  SOAR — Lot 4 (playbooks + garde-fous + validation humaine + rollback) │   │
+│  │  Connecteurs : OPNsense (blocage, quarantaine) · LDAP (gel de compte)  │   │
 │  └─────────────────────────┬─────────────────────────────────────────────┘   │
 │                            │                                                  │
 │       ┌────────────────────┼─────────────────────┐                           │
@@ -88,6 +89,9 @@ console opérateur, socle technique) :
 │  │ Notif.   │      │ Portail        │    │ Console opérateur     │            │
 │  │ in-app   │      │ périmètre (L5) │    │ CENADI (Lot 7 + L9)   │            │
 │  └──────────┘      └────────────────┘    └──────────────────────┘            │
+│                                                                               │
+│  ── Enquête et collaboration ──────────────────────────────────────────────  │
+│  DFIR-IRIS (LGPL-3.0) · Mattermost · cloisonnement par périmètre              │
 │                                                                               │
 │  ── Stockage ──────────────────────────────────────────────────────────────  │
 │  TimescaleDB · Wazuh Indexer (OpenSearch) · RLS par périmètre · RBAC          │
@@ -134,7 +138,9 @@ NEXUS_SOC/
 │   └── model_monitor.py                 ← détection de dérive PSI + σ-drift
 │
 ├── Lot4_SOAR/
-│   ├── soar_engine.py                   ← 9 connecteurs · 4 playbooks · rollback
+│   ├── soar_engine.py                   ← démonstrateur : playbooks + garde-fous
+│   ├── connecteurs/                     ← OPNsense (alias) · LDAP (ppolicy)
+│   └── dossiers/                        ← adaptateur DFIR-IRIS + file de sortie
 │   └── audit_log.csv
 │
 ├── Lot5_Restitution/

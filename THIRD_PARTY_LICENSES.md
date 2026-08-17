@@ -26,6 +26,35 @@ licence ; cette page ne fait que les recenser.
 | **Moteur SOAR** (interne) | Playbooks, garde-fous, rollback (Lot 4) | Code interne — GPL-3.0-or-later |
 | **Docker / Docker Compose** | Orchestration de la pile | Apache License 2.0 |
 | **OpenTofu** | Déploiement souverain (infrastructure-as-code) | MPL 2.0 |
+| **OPNsense** | Pare-feu : routage inter-zone, ACL, API de réponse (blocage, quarantaine) | BSD 2-Clause |
+| **Suricata** | Détection d'intrusion réseau sur le pare-feu | GPL v2 |
+| **DFIR-IRIS** (`iris-web`) | Gestion des dossiers d'enquête, observables, timeline | LGPL 3.0 |
+| **iris-webhooks-module** | Notification d'ouverture de dossier vers la messagerie | LGPL 3.0 |
+| **iris-misp-module** | Enrichissement des indicateurs depuis MISP | licence du dépôt amont |
+| **Mattermost Team Edition** | Canal de discussion par incident | AGPL 3.0 (serveur) |
+| **MISP** | Base de renseignement sur les menaces auto-hébergée | AGPL 3.0 |
+| **RabbitMQ** | File de tâches de DFIR-IRIS | MPL 2.0 |
+| **OpenLDAP** | Annuaire souverain, gel de compte via `ppolicy` | OpenLDAP Public License |
+
+## Composants écartés, et pourquoi
+
+Deux outils courants du domaine ont été examinés puis écartés, pour des raisons
+qui tiennent à la licence et non à la fonction.
+
+**TheHive 5** est la solution de gestion de dossiers la plus répandue dans les
+centres opérationnels de sécurité. Son code n'est pas publié, sa licence est
+propriétaire, et son édition gratuite se limite à deux utilisateurs et une
+organisation. Retenir cet outil aurait introduit dans la chaîne de réponse le
+seul composant que le CENADI n'aurait pu ni auditer ni modifier, ce qui
+contredit la raison d'être de la plateforme. DFIR-IRIS remplit la même fonction
+sous LGPL-3.0, sans plafond d'utilisateurs.
+
+**Cortex** est l'orchestrateur d'analyseurs et de répondeurs conçu pour TheHive.
+Il est publié sous AGPL-3.0, donc libre, mais il perd son objet ici : aucun
+module ne le relie à DFIR-IRIS, ses analyseurs interrogent pour l'essentiel des
+services externes que la politique de sortie n'autorise pas, et NEXUS SOC assure
+déjà la fonction de répondeur avec son propre journal d'exécution. L'ajouter
+aurait créé un second journal susceptible de diverger du premier.
 
 ## Notes de compatibilité
 

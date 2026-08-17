@@ -3,7 +3,7 @@
 # CENADI : setup vm-menace (10.50.50.50) — poste bureautique compromis (Kali)
 # =============================================================================
 # Outils pour démontrer que même un poste interne compromis NE PEUT PAS
-# atteindre la zone sensible (air-gap ANTILOPE), grâce aux ACL MikroTik.
+# atteindre la zone sensible (air-gap ANTILOPE), grâce aux règles OPNsense.
 # =============================================================================
 set -euo pipefail
 

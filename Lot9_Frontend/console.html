@@ -2808,7 +2808,7 @@ function wireSoarButtons() {
     const id = ev.currentTarget.dataset.executed;
     const note = await promptDialog('Attester l’exécution',
       'Vous déclarez avoir passé la commande vous-même',
-      'Ex. : règle posée sur MikroTik-CENADI à 14 h 20, vérifiée par un ping.');
+      'Ex. : adresse ajoutée à l’alias sur OPNsense-CENADI à 14 h 20, alias relu pour vérification.');
     if (note === null) return;
     try {
       await NexusAPI.markActionExecuted(id, (NexusAPI.user || {}).email || 'operateur', note);

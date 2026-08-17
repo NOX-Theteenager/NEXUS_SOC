@@ -1,100 +1,58 @@
-<mxfile host="65bd71144e">
-    <diagram id="topo-cenadi-1" name="Topologie reseau souveraine">
-        <mxGraphModel dx="942" dy="359" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
-            <root>
-                <mxCell id="0"/>
-                <mxCell id="1" parent="0"/>
-                <mxCell id="90" value="Architecture reseau souveraine CENADI - plan 10.50.0.0/16" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#333333;" parent="1" vertex="1">
-                    <mxGeometry x="300" y="10" width="580" height="30" as="geometry"/>
-                </mxCell>
-                <mxCell id="2" value="Internet" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.cloud;" parent="1" vertex="1">
-                    <mxGeometry x="960" y="60" width="120" height="80" as="geometry"/>
-                </mxCell>
-                <mxCell id="3" value="Aucune patte physique&#xa;(WAN pfSense desactive)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#b85450;fontStyle=2;" parent="1" vertex="1">
-                    <mxGeometry x="930" y="150" width="180" height="30" as="geometry"/>
-                </mxCell>
-                <mxCell id="4" value="Coeur SOC - HOTE 10.50.0.1&#xa;NEXUS SOC + PKI + Wazuh&#xa;(zone mgmt 10.50.0.0/24)" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.server;" parent="1" vertex="1">
-                    <mxGeometry x="500" y="60" width="90" height="90" as="geometry"/>
-                </mxCell>
-                <mxCell id="5" value="pfSense-CENADI&#xa;pare-feu de perimetre&#xa;WAN DESACTIVE" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.firewall;" parent="1" vertex="1">
-                    <mxGeometry x="510" y="220" width="70" height="70" as="geometry"/>
-                </mxCell>
-                <mxCell id="6" value="MikroTik-CENADI&#xa;routage inter-zone + ACL&#xa;(matrice de flux)" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.router;" parent="1" vertex="1">
-                    <mxGeometry x="515" y="379" width="70" height="70" as="geometry"/>
-                </mxCell>
-                <mxCell id="10" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef7ff;strokeColor=#6c8ebf;verticalAlign=top;fontSize=11;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="20" y="560" width="200" height="200" as="geometry"/>
-                </mxCell>
-                <mxCell id="11" value="DMZ interne&#xa;10.50.10.0/24" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="30" y="568" width="180" height="34" as="geometry"/>
-                </mxCell>
-                <mxCell id="12" value="Reverse-proxy&#xa;SMTP interne" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.server;" parent="1" vertex="1">
-                    <mxGeometry x="85" y="620" width="70" height="70" as="geometry"/>
-                </mxCell>
-                <mxCell id="20" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef7ff;strokeColor=#6c8ebf;verticalAlign=top;fontSize=11;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="245" y="560" width="200" height="200" as="geometry"/>
-                </mxCell>
-                <mxCell id="21" value="Applicatif&#xa;10.50.20.0/24" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="255" y="568" width="180" height="34" as="geometry"/>
-                </mxCell>
-                <mxCell id="22" value="vm-app-gov&#xa;10.50.20.20" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.server;" parent="1" vertex="1">
-                    <mxGeometry x="310" y="620" width="70" height="70" as="geometry"/>
-                </mxCell>
-                <mxCell id="30" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbe0e0;strokeColor=#b85450;strokeWidth=2;verticalAlign=top;fontSize=11;fontStyle=1;dashed=1;dashPattern=8 4;" parent="1" vertex="1">
-                    <mxGeometry x="470" y="560" width="200" height="200" as="geometry"/>
-                </mxCell>
-                <mxCell id="31" value="SENSIBLE - AIR-GAP&#xa;10.50.30.0/24" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;fontColor=#b85450;" parent="1" vertex="1">
-                    <mxGeometry x="480" y="568" width="180" height="34" as="geometry"/>
-                </mxCell>
-                <mxCell id="32" value="vm-antilope (solde)&#xa;10.50.30.30" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.server;" parent="1" vertex="1">
-                    <mxGeometry x="535" y="620" width="70" height="70" as="geometry"/>
-                </mxCell>
-                <mxCell id="40" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef7ff;strokeColor=#6c8ebf;verticalAlign=top;fontSize=11;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="695" y="560" width="200" height="200" as="geometry"/>
-                </mxCell>
-                <mxCell id="41" value="Admin RSSI/DSI&#xa;10.50.40.0/24" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="705" y="568" width="180" height="34" as="geometry"/>
-                </mxCell>
-                <mxCell id="42" value="vm-rssi&#xa;10.50.40.40" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.pc;" parent="1" vertex="1">
-                    <mxGeometry x="765" y="620" width="60" height="70" as="geometry"/>
-                </mxCell>
-                <mxCell id="50" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontSize=11;fontStyle=1;" parent="1" vertex="1">
-                    <mxGeometry x="920" y="560" width="200" height="200" as="geometry"/>
-                </mxCell>
-                <mxCell id="51" value="Menace (simulation)&#xa;10.50.50.0/24" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;fontColor=#996f00;" parent="1" vertex="1">
-                    <mxGeometry x="930" y="568" width="180" height="34" as="geometry"/>
-                </mxCell>
-                <mxCell id="52" value="vm-menace&#xa;10.50.50.50" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.pc;" parent="1" vertex="1">
-                    <mxGeometry x="990" y="620" width="60" height="70" as="geometry"/>
-                </mxCell>
-                <mxCell id="60" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=none;html=1;strokeColor=#666666;strokeWidth=2;" parent="1" source="4" target="5" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="61" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=none;html=1;strokeColor=#666666;strokeWidth=2;" parent="1" source="5" target="6" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="62" value="X" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=none;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;dashPattern=6 6;fontColor=#b85450;fontSize=14;fontStyle=1;" parent="1" source="5" target="2" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="70" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;html=1;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" source="6" target="10" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="71" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;html=1;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" source="6" target="20" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="72" value="telemetrie sortante&#xa;-&gt; SOC uniquement" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;html=1;strokeColor=#b85450;strokeWidth=2;fontColor=#b85450;fontSize=10;" parent="1" source="6" target="30" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="73" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;html=1;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" source="6" target="40" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="74" value="confinee : SOC only" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;html=1;strokeColor=#d6b656;strokeWidth=2;fontColor=#996f00;fontSize=10;" parent="1" source="6" target="50" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="80" value="Isole d&#39;Internet : les 6 zones sont sans route sortante. La zone Sensible (air-gap) n&#39;emet que sa telemetrie vers le SOC ; aucune zone n&#39;entre dans la Sensible. Filtrage inter-zone par ACL MikroTik." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#555555;" parent="1" vertex="1">
-                    <mxGeometry x="20" y="775" width="1100" height="30" as="geometry"/>
-                </mxCell>
-            </root>
-        </mxGraphModel>
-    </diagram>
+<mxfile host="app.diagrams.net" agent="Claude" version="24.7.17">
+  <diagram id="topologie-souveraine" name="Topologie reseau souveraine">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="ARCHITECTURE CIBLE — non deployee au 17 aout 2026 (phase 1)" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#b85450;" vertex="1" parent="1"><mxGeometry x="340" y="10" width="500" height="20" as="geometry"/></mxCell>
+
+        <mxCell id="3" value="Topologie reseau souveraine CENADI — plan 10.50.0.0/16" style="text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="340" y="32" width="500" height="30" as="geometry"/></mxCell>
+
+        <mxCell id="4" value="Internet" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontSize=13;" vertex="1" parent="1"><mxGeometry x="490" y="80" width="180" height="80" as="geometry"/></mxCell>
+
+        <mxCell id="5" value="Sortie filtree&#xa;liste blanche journalisee" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#7b1fa2;" vertex="1" parent="1"><mxGeometry x="680" y="100" width="160" height="40" as="geometry"/></mxCell>
+
+        <mxCell id="6" value="OPNsense-CENADI&#xa;&#xa;routage inter-zone + ACL (refus par defaut)&#xa;Suricata + API de reponse (alias nexus_block / nexus_quarantaine)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="330" y="200" width="500" height="90" as="geometry"/></mxCell>
+
+        <mxCell id="7" value="WAN" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;strokeColor=#7b1fa2;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="4" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="10" value="ZONE — COEUR SOC&#xa;10.50.0.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;verticalAlign=top;" vertex="1" parent="1"><mxGeometry x="40" y="400" width="170" height="230" as="geometry"/></mxCell>
+        <mxCell id="11" value="HOTE 10.50.0.2&#xa;NEXUS SOC&#xa;PostgreSQL / TimescaleDB&#xa;Wazuh&#xa;DFIR-IRIS&#xa;Mattermost&#xa;PKI interne" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="10"><mxGeometry x="15" y="45" width="140" height="165" as="geometry"/></mxCell>
+
+        <mxCell id="20" value="ZONE — DMZ INTERNE&#xa;10.50.10.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;verticalAlign=top;" vertex="1" parent="1"><mxGeometry x="225" y="400" width="170" height="230" as="geometry"/></mxCell>
+        <mxCell id="21" value="Relais applicatif&#xa;SMTP interne" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="20"><mxGeometry x="15" y="45" width="140" height="60" as="geometry"/></mxCell>
+
+        <mxCell id="30" value="ZONE — APPLICATIF&#xa;10.50.20.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;verticalAlign=top;" vertex="1" parent="1"><mxGeometry x="410" y="400" width="170" height="230" as="geometry"/></mxCell>
+        <mxCell id="31" value="vm-app-gov&#xa;10.50.20.20&#xa;annuaire LDAP&#xa;(gel de compte)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="30"><mxGeometry x="15" y="45" width="140" height="80" as="geometry"/></mxCell>
+        <mxCell id="32" value="Agent NEXUS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="30"><mxGeometry x="15" y="140" width="140" height="30" as="geometry"/></mxCell>
+
+        <mxCell id="40" value="ZONE — SENSIBLE&#xa;10.50.30.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;verticalAlign=top;" vertex="1" parent="1"><mxGeometry x="595" y="400" width="170" height="230" as="geometry"/></mxCell>
+        <mxCell id="41" value="vm-antilope&#xa;10.50.30.30&#xa;ANTILOPE / SIGIPES&#xa;solde de l&#39;Etat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="40"><mxGeometry x="15" y="45" width="140" height="80" as="geometry"/></mxCell>
+        <mxCell id="42" value="AIR-GAP&#xa;telemetrie vers le SOC&#xa;et rien d&#39;autre" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontStyle=1;" vertex="1" parent="40"><mxGeometry x="15" y="140" width="140" height="60" as="geometry"/></mxCell>
+
+        <mxCell id="50" value="ZONE — ADMINISTRATION&#xa;10.50.40.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;verticalAlign=top;" vertex="1" parent="1"><mxGeometry x="780" y="400" width="170" height="230" as="geometry"/></mxCell>
+        <mxCell id="51" value="vm-rssi&#xa;10.50.40.40&#xa;console NEXUS&#xa;validation des actions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#f57c00;fontSize=10;" vertex="1" parent="50"><mxGeometry x="15" y="45" width="140" height="80" as="geometry"/></mxCell>
+
+        <mxCell id="60" value="ZONE — MENACE&#xa;10.50.50.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;verticalAlign=top;" vertex="1" parent="1"><mxGeometry x="965" y="400" width="170" height="230" as="geometry"/></mxCell>
+        <mxCell id="61" value="KaliPrime&#xa;10.50.50.50&#xa;poste compromis&#xa;(simulation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="60"><mxGeometry x="15" y="45" width="140" height="80" as="geometry"/></mxCell>
+        <mxCell id="62" value="Canal de commande&#xa;simule en interne" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;dashed=1;" vertex="1" parent="60"><mxGeometry x="15" y="140" width="140" height="45" as="geometry"/></mxCell>
+
+        <mxCell id="70" value="LAN_MGMT" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;strokeColor=#666666;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="6" target="10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="71" value="LAN_DMZ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;strokeColor=#666666;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="6" target="20"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="72" value="LAN_APP" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;strokeColor=#666666;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="6" target="30"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="73" value="LAN_SENS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;strokeColor=#b85450;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="6" target="40"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="74" value="LAN_ADM" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;strokeColor=#666666;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="6" target="50"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="75" value="LAN_MEN" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;strokeColor=#666666;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="6" target="60"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="80" value="Politique de sortie Internet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="40" y="660" width="530" height="130" as="geometry"/></mxCell>
+        <mxCell id="81" value="Coeur SOC        sortie autorisee, liste blanche journalisee (depots, MISP, regles Wazuh)&#xa;Administration   sortie filtree (poste de travail reel)&#xa;DMZ / Applicatif  aucune sortie&#xa;Sensible         JAMAIS de sortie — air-gap, telemetrie vers le SOC uniquement&#xa;Menace           aucune sortie — le canal de commande reste simule en interne&#xa;&#xa;Le WAN est actif et filtre. Une politique se prouve ; une absence de cable ne prouve rien." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontFamily=Courier New;spacingLeft=4;" vertex="1" parent="80"><mxGeometry x="10" y="26" width="510" height="100" as="geometry"/></mxCell>
+
+        <mxCell id="90" value="Un seul equipement" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="600" y="660" width="535" height="130" as="geometry"/></mxCell>
+        <mxCell id="91" value="La version precedente empilait pfSense en perimetre et MikroTik en routage&#xa;inter-zone. Le trafic lateral (menace vers app, app vers sensible) ne remontait&#xa;jamais jusqu&#39;a pfSense : bloquer une adresse sur le pare-feu de perimetre coupait&#xa;la machine du coeur SOC sans la couper de ses voisines.&#xa;&#xa;OPNsense porte les deux roles. Une adresse ajoutee a un alias est bloquee sur&#xa;tous les chemins, y compris entre deux zones internes." style="text;html=1;align=left;verticalAlign=top;fontSize=10;spacingLeft=4;" vertex="1" parent="90"><mxGeometry x="10" y="26" width="515" height="100" as="geometry"/></mxCell>
+
+        <mxCell id="95" value="Refus par defaut : tout flux non liste dans la matrice inter-zone est rejete et journalise." style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="330" y="300" width="500" height="20" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
 </mxfile>

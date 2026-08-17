@@ -674,18 +674,35 @@ def list_pending_soar(db=Depends(get_analyst_db), _=Depends(require_analyst)):
 # commande exacte à passer et enregistre qui déclare l'avoir passée.
 #
 # Les commandes visent l'architecture cible documentée dans
-# lab-cenadi/00-architecture-cenadi.md : MikroTik porte le routage inter-zone et
-# les ACL, pfSense filtre le périmètre interne.
+# lab-cenadi/00-architecture-cenadi.md : OPNsense porte le routage inter-zone,
+# les ACL et le filtrage de périmètre. Un seul équipement, donc un seul point
+# d'application : une adresse ajoutée à un alias est bloquée sur tous les
+# chemins, y compris entre deux zones internes.
 LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "dc=cenadi,dc=local")
 LDAP_SOAR_DN = os.getenv("LDAP_SOAR_DN", f"cn=nexus-soar,ou=services,{LDAP_BASE_DN}")
 
+OPNSENSE_URL = os.getenv("OPNSENSE_URL", "https://10.50.0.1")
+OPNSENSE_CA = os.getenv("OPNSENSE_CA", "/etc/nexus/opnsense-ca.pem")
+OPNSENSE_ALIAS_BLOCK = os.getenv("OPNSENSE_ALIAS_BLOCK", "nexus_block")
+OPNSENSE_ALIAS_QUARANTAINE = os.getenv("OPNSENSE_ALIAS_QUARANTAINE",
+                                       "nexus_quarantaine")
+
+# L'identifiant d'audit ne rentre pas dans l'appel : `alias_util` ne porte pas
+# de commentaire par entrée. La traçabilité reste dans soar_audit, et la
+# relecture de l'alias sert de preuve d'application.
+_OPN_AJOUT = (
+    "curl -sS -u \"$OPNSENSE_KEY:$OPNSENSE_SECRET\" --cacert " + OPNSENSE_CA + " \\\n"
+    "  -X POST " + OPNSENSE_URL + "/api/firewall/alias_util/add/{alias} \\\n"
+    "  -H 'Content-Type: application/json' \\\n"
+    "  -d '{{\"address\": \"{cible}\"}}'\n"
+    "# audit {audit_id} — vérifier ensuite :\n"
+    "# curl -sS -u \"$OPNSENSE_KEY:$OPNSENSE_SECRET\" --cacert " + OPNSENSE_CA + " \\\n"
+    "#   " + OPNSENSE_URL + "/api/firewall/alias_util/list/{alias}"
+)
+
 SOAR_COMMANDES = {
-    "block_ip": (
-        "/ip firewall address-list add list=NEXUS_BLOCK address={cible} "
-        "comment=\"NEXUS {audit_id}\""),
-    "isolate_host": (
-        "/ip firewall address-list add list=NEXUS_QUARANTAINE address={cible} "
-        "comment=\"NEXUS {audit_id}\""),
+    "block_ip": _OPN_AJOUT.replace("{alias}", OPNSENSE_ALIAS_BLOCK),
+    "isolate_host": _OPN_AJOUT.replace("{alias}", OPNSENSE_ALIAS_QUARANTAINE),
     # OpenLDAP + surcouche ppolicy (lab-cenadi/scripts/vm-app-gov-annuaire.sh).
     # 000001010000Z est la valeur conventionnelle d'un verrouillage sans date de
     # levée. Le compte reste présent et lisible : on suspend un accès, on ne

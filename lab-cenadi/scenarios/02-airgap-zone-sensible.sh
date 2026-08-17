@@ -31,7 +31,7 @@ echo "→ curl $SOC:8000/health (doit répondre) :"
 if curl -s --max-time 3 "http://$SOC:8000/health" | grep -q '"status":"ok"'; then
     echo -e "${GREEN}✓ Le SOC accepte la télémétrie d'ANTILOPE${RESET}"
 else
-    echo -e "${RED}✗ SOC injoignable — vérifier l'ACL MikroTik zone30→mgmt${RESET}"
+    echo -e "${RED}✗ SOC injoignable — vérifier la règle OPNsense LAN_SENS→mgmt${RESET}"
 fi
 pause
 

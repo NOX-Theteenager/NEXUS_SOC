@@ -11,6 +11,12 @@ sont les sources éditables (icônes réseau natives) si tu veux retoucher dans 
 - `figures/topologie-reseau-souveraine.png`   (source : `.drawio`)
 - `figures/airgap-zone-sensible.png`          (source : `.drawio`)
 - `figures/defense-en-profondeur-7-couches.png` (source : `.drawio`)
+- `figures/chaine-reponse-collaborative.png`  (source : `.drawio`) — **nouveau**
+
+> **Mise à jour du 17 août 2026.** Les sources `.drawio` ont été refaites après
+> la décision de remplacer pfSense et MikroTik par OPNsense et d'ajouter DFIR-IRIS
+> (voir `Decision_Reponse_Collaborative.md`). **Les PNG sont à réexporter depuis
+> draw.io avant de les coller dans le mémoire.**
 
 ---
 
@@ -57,13 +63,22 @@ ou à insérer comme fin de §3.2.1.
 > ANTILOPE ; une zone d'administration (`10.50.40.0/24`) est réservée aux postes du
 > RSSI et de la DSI ; une zone menace (`10.50.50.0/24`) simule un poste compromis.
 >
-> Aucune de ces zones ne dispose d'une route vers Internet. Cette absence de sortie
-> est un choix de souveraineté : le pare-feu de périmètre pfSense a son interface
-> WAN désactivée, et ne fait donc que du filtrage interne. Le routage entre zones
-> et les règles d'accès sont portés par un routeur MikroTik, qui applique la
-> matrice de flux du tableau Y. Cette matrice se lit par ligne source vers colonne
-> destination : le SOC atteint toutes les zones pour la collecte, mais chaque zone
-> supervisée ne parle qu'au SOC.
+> Le routage entre zones, les règles d'accès et le filtrage de périmètre sont
+> portés par un équipement unique, un pare-feu OPNsense, qui applique la matrice
+> de flux du tableau Y en refus par défaut. Cette matrice se lit par ligne source
+> vers colonne destination : le SOC atteint toutes les zones pour la collecte,
+> mais chaque zone supervisée ne parle qu'au SOC. Le choix d'un équipement unique
+> répond à une contrainte de conception : un pare-feu de périmètre placé en amont
+> d'un routeur interne ne voit pas le trafic latéral, de sorte qu'une adresse
+> bloquée en périmètre reste joignable par ses voisines de zone.
+>
+> La sortie vers Internet n'est pas supprimée, elle est régie par zone. Le cœur
+> SOC dispose d'une sortie sortante restreinte à une liste blanche journalisée,
+> nécessaire aux correctifs de sécurité et à l'alimentation de la base de
+> renseignement locale ; la zone d'administration bénéficie d'une sortie filtrée ;
+> les zones applicative, DMZ et menace n'en ont aucune. Cette gradation constitue
+> une politique vérifiable, là où une simple absence de raccordement ne
+> démontrerait rien.
 >
 > La zone sensible obéit à une règle plus stricte encore. Le serveur ANTILOPE ne
 > peut émettre que sa télémétrie, vers le seul cœur SOC, sur les ports de collecte ;
@@ -74,24 +89,24 @@ ou à insérer comme fin de §3.2.1.
 > §3.2.5.
 >
 > Les six zones sont créées de façon reproductible par un script libvirt versionné,
-> chaque réseau étant défini sans routage sortant. L'ensemble constitue une maquette
-> souveraine, montée sous GNS3 avec les images pfSense et MikroTik, qui reproduit
-> l'organisation réseau visée au CENADI sans dépendre de son infrastructure de
-> production.
+> chaque réseau étant défini en mode isolé, sans service d'adressage ni passerelle,
+> ces deux fonctions étant fournies par le pare-feu. L'ensemble constitue une
+> maquette souveraine qui reproduit l'organisation réseau visée au CENADI sans
+> dépendre de son infrastructure de production.
 
 **FIGURE X** → `figures/topologie-reseau-souveraine.png`
-Légende : `Topologie réseau souveraine : six zones du plan 10.50.0.0/16 isolées d'Internet, filtrées par pfSense (WAN désactivé) et MikroTik.`
+Légende : `Topologie réseau souveraine : six zones du plan 10.50.0.0/16 routées et filtrées par OPNsense, avec une politique de sortie Internet différenciée par zone.`
 
 **TABLEAU Y** — Matrice des flux inter-zone autorisés (à créer comme tableau Word)
-Légende : `Matrice des flux inter-zone (✓ autorisé, ✗ bloqué par ACL MikroTik).`
+Légende : `Matrice des flux inter-zone (✓ autorisé, ✗ bloqué par OPNsense, refus par défaut).`
 
 | De \ Vers | SOC (mgmt) | DMZ | App | Sensible | Admin | Menace | Internet |
 |-----------|:---------:|:---:|:---:|:--------:|:-----:|:------:|:--------:|
-| **SOC** | — | ✓ | ✓ | ✓ (collecte) | ✓ | ✓ | ✗ |
+| **SOC** | — | ✓ | ✓ | ✓ (collecte) | ✓ | ✓ | ✓ (liste blanche) |
 | **DMZ** | ✓ | — | ✗ | ✗ | ✗ | ✗ | ✗ |
 | **App** | ✓ (télémétrie) | ✗ | — | ✗ | ✗ | ✗ | ✗ |
 | **Sensible** | ✓ (télémétrie seule) | ✗ | ✗ | — | ✗ | ✗ | ✗ |
-| **Admin** | ✓ | ✓ | ✗ | ✗ | — | ✗ | ✗ |
+| **Admin** | ✓ | ✓ | ✗ | ✗ | — | ✗ | ✓ (filtrée) |
 | **Menace** | ✓ (télémétrie) | ✗ | ✗ | ✗ | ✗ | — | ✗ |
 
 ---
@@ -108,7 +123,7 @@ avant le paragraphe RLS existant.
 > par un scénario dédié. Depuis le serveur ANTILOPE, une tentative de connexion
 > vers Internet (`ping 8.8.8.8`) échoue, de même qu'une tentative vers la zone
 > applicative voisine (`ping 10.50.20.20`) ; seul l'appel de collecte vers le cœur
-> SOC (`curl 10.50.0.1:8000/health`) aboutit (figure Z). Le poste sensible n'a donc
+> SOC (`curl 10.50.0.2:8000/health`) aboutit (figure Z). Le poste sensible n'a donc
 > aucun chemin latéral ni aucune sortie : il n'émet que sa télémétrie, exactement
 > comme le prescrit la matrice de flux.
 
@@ -174,12 +189,63 @@ Légende : `Défense en profondeur : menace, mesure et preuve par couche.`
 | Couche | Menace | Mesure | Preuve |
 |--------|--------|--------|--------|
 | 1. Physique | Accès physique, vol de disque | Datacenter contrôlé, LUKS, USB désactivés | Statut LUKS `cryptsetup` |
-| 2. Réseau | Déplacement latéral, exfiltration | Segmentation 6 zones, air-gap, ACL MikroTik | Scénario air-gap (figure Z) |
+| 2. Réseau | Déplacement latéral, exfiltration | Segmentation 6 zones, air-gap, ACL OPNsense en refus par défaut, sortie par zone | Scénario air-gap (figure Z) |
 | 3. Hôte/OS | Élévation de privilèges | Durcissement systemd, SSH par clé | `systemd-analyze security` |
 | 4. Application | Accès non autorisé | RBAC 4 rôles, JWT signés, RLS | Un responsable reçoit 403 sur `/admin/*` |
 | 5. Données | Lecture au repos / en transit | LUKS, TLS via PKI interne, pseudonymisation HMAC | Config `PSEUDO_ENABLED`, certificats internes |
 | 6. Détection | Compromission du SOC | Wazuh sur les serveurs SOC, journal d'audit immuable | Table `soar_audit` consultable |
 | 7. Gouvernance | Perte de souveraineté, non-conformité | Traçabilité, séparation des devoirs, réversibilité | Capture réseau (scénario souveraineté) |
+
+---
+
+## Item 4 bis — Nouvelle sous-section §4.2.y « Réponse collaborative aux incidents »
+
+**Emplacement :** dans §4.2, juste après la sous-section « Sécurisation de la
+plateforme », avant §4.3.
+
+**Titre (Heading 3) :** `De la décision à la réponse collaborative`
+
+> Détecter une anomalie et l'expliquer ne suffit pas : encore faut-il que la
+> réponse soit exécutée, tracée et conduite à son terme par une équipe. La
+> plateforme sépare pour cela trois responsabilités que rien n'oblige à confondre.
+> La décision revient au moteur de réponse de NEXUS SOC, qui propose une action à
+> partir du type d'incident et de la nature de la cible. L'exécution revient aux
+> connecteurs, qui s'adressent au pare-feu pour un blocage ou une mise en
+> quarantaine, et à l'annuaire pour la suspension d'un compte. La conduite de
+> l'enquête revient à un gestionnaire de dossiers distinct.
+>
+> Le statut d'exécution obéit à une règle stricte : il ne passe à « automatique »
+> qu'après relecture vérifiée de l'état visé, entrée présente dans la liste du
+> pare-feu ou attribut positionné dans l'annuaire. Un code de retour favorable ne
+> suffit pas. En cas d'échec, la plateforme conserve le statut « non exécutée »,
+> enregistre le motif, et affiche la commande à passer manuellement. Une
+> plateforme de sécurité qui affirmerait un acte qu'elle n'a pas commis
+> tromperait précisément ceux qu'elle est censée outiller.
+>
+> La gestion des dossiers s'appuie sur DFIR-IRIS, publié sous licence LGPL-3.0.
+> Chaque alerte dont le risque dépasse le seuil retenu est transmise à IRIS, avec
+> ses indicateurs observés, ses techniques ATT&CK et un lien de retour vers
+> l'écran d'explication de la console. L'escalade d'une alerte en dossier reste un
+> geste d'analyste : la plateforme mesure et propose, l'humain qualifie. La
+> transmission passe par une file persistée, de sorte qu'une indisponibilité du
+> gestionnaire de dossiers ne fasse perdre aucune alerte ni ne ralentisse
+> l'ingestion. L'ouverture d'un dossier déclenche enfin la création d'un canal de
+> discussion dédié dans une messagerie interne, où les intervenants se coordonnent
+> sans quitter le système d'information.
+>
+> Le cloisonnement par périmètre supervisé se prolonge dans cet outillage : chaque
+> dossier est rattaché au périmètre dont provient l'alerte, et les droits d'accès
+> suivent ce découpage. La validation d'une action à fort impact demeure toutefois
+> dans la console de NEXUS SOC, au même écran que les écarts mesurés et la chaîne
+> d'attaque reconstituée, afin que la justification reste sous les yeux de celui
+> qui décide (figure V).
+
+**FIGURE V** → `figures/chaine-reponse-collaborative.png`
+Légende : `Chaîne de réponse collaborative : détection et décision par NEXUS SOC, enquête dans DFIR-IRIS, discussion en messagerie interne, exécution par un point unique.`
+
+*Note de rédaction : cette sous-section décrit une architecture cible dont les
+phases 2 à 4 restent à déployer. Le formuler au futur ou en préciser l'état
+d'avancement, selon le parti pris du mémoire.*
 
 ---
 
@@ -194,6 +260,10 @@ Texte proposé (remplace le paragraphe H2 existant) :
 > plateforme s'appuie exclusivement sur des logiciels libres, hébergeables
 > localement, et se déploie de façon automatisée par infrastructure-as-code ; aucun
 > composant propriétaire ni aucune licence commerciale n'entre dans sa composition.
+> Cette exigence a directement orienté un choix d'outillage : la gestion des
+> dossiers d'incident s'appuie sur DFIR-IRIS, publié sous licence LGPL-3.0, et non
+> sur la solution la plus répandue du domaine, dont le code n'est pas publié et
+> dont l'édition gratuite limite le nombre d'utilisateurs.
 > La maîtrise interne ne tient pas qu'au code : le déploiement est cloisonné en six
 > zones réseau sans route vers Internet, la zone sensible est isolée en air-gap, et
 > le service lui-même est durci au niveau du système. L'État conserve ainsi le plein
@@ -239,10 +309,10 @@ perimeters. », ajouter :
 **§6.2 « Délimitation thématique »** — ajouter aux limites déjà listées :
 
 > Enfin, l'architecture réseau est éprouvée sous la forme d'une maquette souveraine
-> reproductible (réseaux libvirt et routage pfSense/MikroTik sous GNS3), et le
-> chiffrement de disque y est simulé. La transposition sur l'infrastructure de
-> production du CENADI prolonge le présent travail, au même titre que la validation
-> des modèles sur les données réelles.
+> reproductible (réseaux libvirt isolés et pare-feu OPNsense), et le chiffrement de
+> disque y est simulé. La transposition sur l'infrastructure de production du
+> CENADI prolonge le présent travail, au même titre que la validation des modèles
+> sur les données réelles.
 
 **Liste des sigles et abréviations** — ajouter :
 
@@ -262,7 +332,8 @@ perimeters. », ajouter :
 
 ## Récapitulatif de l'impact
 
-- Figures nouvelles : 3 (topologie, air-gap, défense en profondeur) — côté réseau/sécurité.
+- Figures nouvelles : 4 (topologie, air-gap, défense en profondeur, chaîne de réponse collaborative).
 - Tableaux nouveaux : 2 (matrice de flux, synthèse défense en profondeur) + 2 lignes optionnelles au Tableau 1.
-- Sous-sections nouvelles : 2 (§3.2 réseau souverain, §4.2 défense en profondeur) + 3 extensions.
-- Volume estimé : +5 à 7 pages.
+- Sous-sections nouvelles : 3 (§3.2 réseau souverain, §4.2 défense en profondeur, §4.2 réponse collaborative) + 3 extensions.
+- Volume estimé : +7 à 9 pages.
+- Sigles à ajouter : IRIS, LDAP, MISP, SOAR, IOC.

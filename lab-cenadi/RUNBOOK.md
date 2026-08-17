@@ -116,7 +116,7 @@ docker exec nexus-postgres psql -U nexus -d nexus_soc -c \
 ```
 
 ## En cas de panne
-- SOC injoignable depuis une zone → vérifier l'ACL MikroTik zone→mgmt (voir
+- SOC injoignable depuis une zone → vérifier la règle OPNsense zone→mgmt (voir
   `SECURISATION.md` couche 2) et `ufw status`.
 - Firefox refuse le certificat → l'AC racine CENADI n'a pas été importée sur
   vm-rssi (relancer `vm-rssi-setup.sh` après scp du `cenadi-root-ca.crt`).

@@ -1,0 +1,81 @@
+# =============================================================================
+#  NEXUS SOC — Pile de réponse collaborative
+#
+#      docker compose -f Lot0_Socle/docker-compose.reponse.yml up -d
+#
+#  Ce fichier ne déploie QUE Mattermost. DFIR-IRIS se déploie avec sa propre
+#  composition, à une version figée : voir lab-cenadi/06-reponse-collaborative.md.
+#
+#  POURQUOI IRIS N'EST PAS ICI
+#  ---------------------------
+#  La composition officielle d'IRIS utilise `extends` sur un fichier de base.
+#  En recopier une version partielle ici la ferait diverger en silence à la
+#  première mise à jour, et personne ne s'en apercevrait avant une panne.
+#  On clone le dépôt sur une étiquette de version, et on garde la nôtre pour ce
+#  que nous maîtrisons.
+#
+#  BASE DE DONNÉES
+#  ---------------
+#  Mattermost réutilise `nexus-postgres`, avec un rôle et une base dédiés. À
+#  créer AVANT le premier démarrage :
+#
+#      docker exec -i nexus-postgres psql -U nexus -d postgres <<'SQL'
+#      CREATE ROLE mattermost LOGIN PASSWORD '…';
+#      CREATE DATABASE mattermost OWNER mattermost;
+#      SQL
+# =============================================================================
+name: nexus-reponse
+
+services:
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:9.11
+    container_name: nexus-mattermost
+    restart: unless-stopped
+    depends_on: []
+    environment:
+      # Le mot de passe vient de l'environnement du shell, jamais du fichier.
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: >-
+        postgres://mattermost:${MATTERMOST_DB_PASSWORD:?mot de passe requis}@nexus-postgres:5432/mattermost?sslmode=disable&connect_timeout=10
+      MM_SERVICESETTINGS_SITEURL: ${MATTERMOST_URL:-http://10.50.0.2:8065}
+      # Souveraineté : aucun appel sortant. Ces trois réglages coupent la
+      # télémétrie produit, la vérification de version et le service de
+      # diagnostic, qui sont actifs par défaut.
+      MM_LOGSETTINGS_ENABLEDIAGNOSTICS: "false"
+      MM_SERVICESETTINGS_ENABLESECURITYFIXALERT: "false"
+      MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: "false"
+      # Le SOC n'ouvre pas ses canaux au premier venu.
+      MM_TEAMSETTINGS_ENABLEOPENSERVER: "false"
+      MM_TEAMSETTINGS_ENABLEUSERCREATION: "false"
+      # Les robots publient les messages d'incident.
+      MM_SERVICESETTINGS_ENABLEBOTACCOUNTCREATION: "true"
+      MM_SERVICESETTINGS_ENABLEINCOMINGWEBHOOKS: "true"
+      TZ: Africa/Douala
+    ports:
+      # Écoute sur le cœur SOC uniquement. La zone Admin y accède par la
+      # matrice de flux, aucune autre zone ne doit joindre ce port.
+      - "127.0.0.1:8065:8065"
+    volumes:
+      - mattermost_data:/mattermost/data
+      - mattermost_logs:/mattermost/logs
+      - mattermost_config:/mattermost/config
+      - mattermost_plugins:/mattermost/plugins
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8065/api/v4/system/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks: [nexus]
+
+volumes:
+  mattermost_data:
+  mattermost_logs:
+  mattermost_config:
+  mattermost_plugins:
+
+networks:
+  nexus:
+    external: true
+    name: nexus
