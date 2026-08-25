@@ -8,7 +8,7 @@
 # =============================================================================
 set -euo pipefail
 
-SOC=${SOC:-10.50.0.1}
+SOC=${SOC:-10.50.0.2}
 export SOC_URL="http://${SOC}:8000"
 AGENT_HOSTNAME=${AGENT_HOSTNAME:-SRV-APP-GOV-01}
 PERIMETRE=${PERIMETRE:-SIGIPES}        # périmètre supervisé existant (voir seed)

@@ -137,7 +137,7 @@ Objectif : reproduire l'architecture souveraine réelle (zones, air-gap, PKI) et
 faire tes tests avec de vrais agents.
 
 Topologie (voir `lab-cenadi/00-architecture-cenadi.md`) :
-- **HÔTE** = cœur SOC (10.50.0.1) : la pile NEXUS.
+- **HÔTE** = cœur SOC (10.50.0.2) : la pile NEXUS.
 - **vm-app-gov** (10.50.20.20) → périmètre **SIGIPES**.
 - **vm-antilope** (10.50.30.30, air-gap) → périmètre **ANTILOPE**.
 - **vm-rssi** (10.50.40.40) : poste analyste (Firefox → console/portail).

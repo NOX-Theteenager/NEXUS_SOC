@@ -82,7 +82,7 @@ démontre, une absence de câble ne démontre rien : depuis le cœur SOC, une
 destination sur liste blanche répond et une autre est rejetée puis journalisée.
 
 **Règle d'or de l'air-gap (zone 30) :** un serveur ANTILOPE peut *émettre* sa
-télémétrie vers le SOC (flux sortant unidirectionnel vers 10.50.0.1), mais **ne
+télémétrie vers le SOC (flux sortant unidirectionnel vers 10.50.0.2), mais **ne
 peut initier aucune autre connexion** — ni Internet, ni latéralement vers une
 autre zone.
 
@@ -151,7 +151,7 @@ C'est la couche du code NEXUS SOC lui-même.
 **Preuve :** un `dsi_client` reçoit **403** sur `/admin/*`.
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $DSI" \
-  http://10.50.0.1:8000/admin/tenants     # → 403
+  http://10.50.0.2:8000/admin/tenants     # → 403
 ```
 
 ### 4.2 JWT signés HMAC-SHA256

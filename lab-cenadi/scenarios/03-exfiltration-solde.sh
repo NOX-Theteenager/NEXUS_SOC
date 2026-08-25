@@ -9,7 +9,7 @@
 # collecteur NEXUS est déjà installé (vm-*-setup.sh).
 # =============================================================================
 set -uo pipefail
-SOC=${SOC:-10.50.0.1}
+SOC=${SOC:-10.50.0.2}
 AGENT=/opt/nexus-agent/nexus_collector.py
 export SOC_URL="http://${SOC}:8000"
 export NEXUS_AGENT_DIR=/etc/nexus-agent

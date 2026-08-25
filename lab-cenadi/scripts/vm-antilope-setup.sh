@@ -11,7 +11,7 @@
 # =============================================================================
 set -euo pipefail
 
-SOC=${SOC:-10.50.0.1}
+SOC=${SOC:-10.50.0.2}
 export SOC_URL="http://${SOC}:8000"
 AGENT_HOSTNAME=${AGENT_HOSTNAME:-SRV-ANTILOPE-01}
 PERIMETRE=${PERIMETRE:-ANTILOPE}
@@ -19,7 +19,7 @@ INSTALL_DIR=/opt/nexus-agent
 
 echo "═══ 0/4 Connectivité SOC (seul flux autorisé en air-gap) ═══"
 if ! curl -s --max-time 3 "${SOC_URL}/health" | grep -q '"status":"ok"'; then
-    echo "✗ SOC injoignable. En air-gap, SEUL 10.50.0.1 doit être joignable."
+    echo "✗ SOC injoignable. En air-gap, SEUL 10.50.0.2 doit être joignable."
     echo "  Vérifier la règle OPNsense : LAN_SENS → 10.50.0.2 autorisé, reste rejeté."
     exit 1
 fi

@@ -4,13 +4,13 @@
 # -----------------------------------------------------------------------------
 # Complète le collecteur NEXUS (télémétrie -> IA) par la couche SIEM par règles
 # (logs SSH/sudo, intégrité de fichiers, rootcheck, MITRE, conformité).
-# À lancer SUR chaque VM à superviser. Manager = HÔTE (10.50.0.1).
+# À lancer SUR chaque VM à superviser. Manager = HÔTE (10.50.0.2).
 #
 #   WAZUH_AGENT_NAME=SRV-APP-GOV-01 sudo -E bash wazuh-agent-setup.sh
 # =============================================================================
 set -euo pipefail
 
-MANAGER=${WAZUH_MANAGER:-10.50.0.1}
+MANAGER=${WAZUH_MANAGER:-10.50.0.2}
 NAME=${WAZUH_AGENT_NAME:-$(hostname)}
 VERSION=${WAZUH_VERSION:-4.9.0-1}   # aligné sur le manager 4.9.0
 

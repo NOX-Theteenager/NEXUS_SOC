@@ -26,7 +26,7 @@ cp ~/Documents/Projets/NEXUS_SOC/.env.cenadi ~/Documents/Projets/NEXUS_SOC/.env
 sudo systemctl restart nexus-soc
 
 # 3. Vérifs
-curl -s http://10.50.0.1:8000/health          # {"status":"ok",...}
+curl -s http://10.50.0.2:8000/health          # {"status":"ok",...}
 openssl x509 -in ~/pki-cenadi/soc.cenadi.local.crt -noout -issuer   # CENADI Root CA
 ```
 

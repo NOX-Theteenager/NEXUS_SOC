@@ -1,38 +1,74 @@
-<mxfile host="app.diagrams.net" agent="Claude" version="24.7.17">
-  <diagram id="airgap-1" name="Air-gap zone sensible">
-    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="700" math="0" shadow="0">
-      <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-
-        <mxCell id="90" value="Air-gap de la zone Sensible (ANTILOPE) - flux autorise vs flux bloques" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="230" y="20" width="700" height="30" as="geometry"/></mxCell>
-
-        <!-- ANTILOPE au centre gauche -->
-        <mxCell id="2" value="vm-antilope&#xa;zone Sensible 10.50.30.30&#xa;(solde de l'Etat)" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.server;" vertex="1" parent="1"><mxGeometry x="120" y="300" width="90" height="90" as="geometry"/></mxCell>
-
-        <!-- SOC autorise -->
-        <mxCell id="3" value="Coeur SOC 10.50.0.2&#xa;ingestion telemetrie" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.server;" vertex="1" parent="1"><mxGeometry x="700" y="80" width="90" height="90" as="geometry"/></mxCell>
-
-        <!-- Internet bloque -->
-        <mxCell id="4" value="Internet" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#999999;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.cloud;" vertex="1" parent="1"><mxGeometry x="710" y="260" width="110" height="70" as="geometry"/></mxCell>
-
-        <!-- Zone App bloque -->
-        <mxCell id="5" value="Zone Applicatif&#xa;10.50.20.20" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#999999;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.server;" vertex="1" parent="1"><mxGeometry x="715" y="410" width="80" height="80" as="geometry"/></mxCell>
-
-        <!-- Zone Admin bloque -->
-        <mxCell id="6" value="Zone Admin&#xa;10.50.40.40" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#999999;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.networks.pc;" vertex="1" parent="1"><mxGeometry x="725" y="560" width="60" height="70" as="geometry"/></mxCell>
-
-        <!-- Flux autorise -->
-        <mxCell id="10" value="AUTORISE : tcp 8000/443, sortant uniquement" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=classic;endFill=1;html=1;strokeColor=#82b366;strokeWidth=3;fontColor=#5a8a3a;fontSize=11;fontStyle=1;" edge="1" parent="1" source="2" target="3"><mxGeometry relative="1" as="geometry"/></mxCell>
-
-        <!-- Flux bloques -->
-        <mxCell id="11" value="BLOQUE (drop)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=cross;endFill=0;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;dashPattern=6 6;fontColor=#b85450;fontSize=11;" edge="1" parent="1" source="2" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="12" value="BLOQUE (drop)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=cross;endFill=0;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;dashPattern=6 6;fontColor=#b85450;fontSize=11;" edge="1" parent="1" source="2" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="13" value="BLOQUE (drop)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=cross;endFill=0;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1;dashPattern=6 6;fontColor=#b85450;fontSize=11;" edge="1" parent="1" source="2" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
-
-        <!-- Preuve -->
-        <mxCell id="20" value="Preuve (scenario 02) : depuis vm-antilope, ping 8.8.8.8 echoue, ping 10.50.20.20 echoue,&#xa;mais curl 10.50.0.2:8000/health reussit. Regle OPNsense : accept vers 10.50.0.2 (tcp 8000/443), drop pour tout le reste.&#xa;ARCHITECTURE CIBLE — la segmentation n'est pas deployee au 17 aout 2026 (phase 1)." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=middle;fontSize=10;fontColor=#444444;spacingLeft=10;" vertex="1" parent="1"><mxGeometry x="80" y="470" width="600" height="80" as="geometry"/></mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
+<mxfile host="65bd71144e">
+    <diagram id="airgap-1" name="Air-gap zone sensible">
+        <mxGraphModel dx="942" dy="359" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="700" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="10" value="AUTORISE&#xa;tcp 8000 et 443, sortant seul" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;endFill=1;strokeColor=#82b366;strokeWidth=3;fontColor=#4f7a35;fontSize=11;fontStyle=1;fontFamily=Segoe UI;labelBackgroundColor=#ffffff;" parent="1" source="2" target="3" edge="1">
+                    <mxGeometry x="0.1493" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="90" value="Air-gap de la zone Sensible (ANTILOPE)" style="text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#333333;fontFamily=Segoe UI;" parent="1" vertex="1">
+                    <mxGeometry x="235" y="18" width="700" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="91" value="Un seul flux autorise, tous les autres rejetes" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#555555;fontFamily=Segoe UI;" parent="1" vertex="1">
+                    <mxGeometry x="235" y="44" width="700" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="ZONE SENSIBLE 10.50.30.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbe9e7;strokeColor=#b85450;strokeWidth=2;dashed=1;dashPattern=8 4;fontSize=11;fontStyle=1;fontFamily=Segoe UI;fontColor=#8b3a30;verticalAlign=top;spacingTop=6;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="220" width="260" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="vm-antilope&#xa;10.50.30.30&#xa;solde de l&#39;Etat" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;labelPosition=center;align=center;fontSize=11;fontFamily=Segoe UI;fillColor=#f8cecc;strokeColor=#b85450;shape=mxgraph.networks.mainframe;" parent="30" vertex="1">
+                    <mxGeometry x="85" y="45" width="90" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Coeur SOC&#xa;10.50.0.2&#xa;ingestion de la telemetrie" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;labelPosition=center;align=center;fontSize=11;fontFamily=Segoe UI;fillColor=#d5e8d4;strokeColor=#82b366;shape=mxgraph.networks.supercomputer;" parent="1" vertex="1">
+                    <mxGeometry x="750" y="110" width="90" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Internet" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;fontFamily=Segoe UI;fontColor=#777777;" parent="1" vertex="1">
+                    <mxGeometry x="740" y="255" width="130" height="75" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="Zone Applicatif&#xa;10.50.20.20" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;labelPosition=center;align=center;fontSize=11;fontFamily=Segoe UI;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#777777;shape=mxgraph.networks.server;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="375" width="72" height="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Zone Admin&#xa;10.50.40.40" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;labelPosition=center;align=center;fontSize=11;fontFamily=Segoe UI;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#777777;shape=mxgraph.networks.pc;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="510" width="72" height="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="REJETE" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=cross;endFill=0;strokeColor=#b85450;strokeWidth=2;dashed=1;dashPattern=6 6;fontColor=#b85450;fontSize=11;fontStyle=1;fontFamily=Segoe UI;labelBackgroundColor=#ffffff;entryX=0.07;entryY=0.4;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="2" target="4" edge="1">
+                    <mxGeometry x="-0.1963" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="450" y="310"/>
+                            <mxPoint x="450" y="280"/>
+                            <mxPoint x="749" y="280"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="12" value="REJETE" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=cross;endFill=0;strokeColor=#b85450;strokeWidth=2;dashed=1;dashPattern=6 6;fontColor=#b85450;fontSize=11;fontStyle=1;fontFamily=Segoe UI;labelBackgroundColor=#ffffff;" parent="1" source="2" target="5" edge="1">
+                    <mxGeometry x="-0.0575" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="13" value="REJETE" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=cross;endFill=0;strokeColor=#b85450;strokeWidth=2;dashed=1;dashPattern=6 6;fontColor=#b85450;fontSize=11;fontStyle=1;fontFamily=Segoe UI;labelBackgroundColor=#ffffff;" parent="1" source="2" target="6" edge="1">
+                    <mxGeometry x="0.1958" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="40" value="Regles OPNsense sur l&#39;interface LAN_SENS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9e6;strokeColor=#d6b656;fontSize=11;fontStyle=1;fontFamily=Segoe UI;verticalAlign=top;align=left;spacingLeft=12;spacingTop=6;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="620" width="390" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="41" value="1.  Autoriser  LAN_SENS net -&gt; 10.50.0.2  tcp 8000,443&#xa;2.  Rejeter    LAN_SENS net -&gt; tout&#xa;&#xa;Sur chaque autre interface : rejeter vers LAN_SENS net.&#xa;Le suivi d&#39;etat gere les reponses, sans regle explicite." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontFamily=Courier New;" parent="40" vertex="1">
+                    <mxGeometry x="12" y="28" width="368" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="Preuve — scenario 02" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;fontSize=11;fontStyle=1;fontFamily=Segoe UI;verticalAlign=top;align=left;spacingLeft=12;spacingTop=6;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="620" width="430" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="Depuis vm-antilope :&#xa;&#xa;  ping 8.8.8.8                  echoue&#xa;  ping 10.50.20.20              echoue&#xa;  curl 10.50.0.2:8000/health    repond" style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontFamily=Courier New;" parent="20" vertex="1">
+                    <mxGeometry x="12" y="28" width="408" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="50" value="Le serveur de la solde emet sa telemetrie de supervision et n&#39;initie aucune autre connexion.&#xa;Il reste surveille sans jamais pouvoir servir de point de rebond." style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;fontFamily=Segoe UI;fontColor=#555555;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="770" width="800" height="34" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
 </mxfile>

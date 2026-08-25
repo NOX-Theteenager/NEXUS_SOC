@@ -1,30 +1,58 @@
-<mxfile host="app.diagrams.net" agent="Claude" version="24.7.17">
-  <diagram id="defense-1" name="Defense en profondeur">
-    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
-      <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-
-        <mxCell id="99" value="Securisation de NEXUS SOC - defense en profondeur (7 couches)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#333333;" vertex="1" parent="1"><mxGeometry x="290" y="5" width="600" height="24" as="geometry"/></mxCell>
-
-        <!-- Couche 7 gouvernance (exterieur) -->
-        <mxCell id="7" value="7. GOUVERNANCE&#xa;politiques, audit soar_audit, dossiers d&#39;enquete IRIS, conformite CEMAC / ISO 27001" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="60" y="40" width="1050" height="760" as="geometry"/></mxCell>
-        <!-- Couche 6 detection -->
-        <mxCell id="6" value="6. DETECTION - le SOC se surveille lui-meme (Wazuh sur serveurs SOC, journal immuable)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="110" y="95" width="950" height="655" as="geometry"/></mxCell>
-        <!-- Couche 5 donnees -->
-        <mxCell id="5" value="5. DONNEES - chiffrement au repos (LUKS) + transit (TLS/PKI interne) + pseudonymisation HMAC + backups GPG" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="160" y="150" width="850" height="550" as="geometry"/></mxCell>
-        <!-- Couche 4 application -->
-        <mxCell id="4" value="4. APPLICATION - RBAC (4 roles) + JWT HMAC-SHA256 + Row-Level Security + gestion des secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0e8f2;strokeColor=#3d85c6;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="210" y="205" width="750" height="440" as="geometry"/></mxCell>
-        <!-- Couche 3 hote/OS -->
-        <mxCell id="3" value="3. HOTE / OS - durcissement systemd (NoNewPrivileges, ProtectSystem), SSH par cle, mises a jour" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;fontSize=12;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="260" y="260" width="650" height="330" as="geometry"/></mxCell>
-        <!-- Couche 2 reseau -->
-        <mxCell id="2" value="2. RESEAU - segmentation 6 zones + air-gap zone sensible + OPNsense (ACL refus par defaut, Suricata, sortie par zone)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontSize=11;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="310" y="315" width="550" height="220" as="geometry"/></mxCell>
-        <!-- Couche 1 physique (interieur) -->
-        <mxCell id="10" value="1. PHYSIQUE&#xa;datacenter controle, badge + biometrie,&#xa;chiffrement disque LUKS, ports USB desactives" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=middle;align=center;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="360" y="380" width="450" height="90" as="geometry"/></mxCell>
-
-        <mxCell id="80" value="Chaque couche : menace -&gt; mesure -&gt; preuve. Une compromission doit franchir les 7 couches successives pour atteindre les donnees." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontColor=#555555;" vertex="1" parent="1"><mxGeometry x="185" y="805" width="800" height="20" as="geometry"/></mxCell>
-        <mxCell id="81" value="Couches 3 a 7 effectives sur le deploiement. Couche 2 (OPNsense) = architecture cible, phase 1. Couche 1 : LUKS simule dans le lab." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#b85450;" vertex="1" parent="1"><mxGeometry x="185" y="822" width="800" height="18" as="geometry"/></mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
+<mxfile host="65bd71144e">
+    <diagram id="defense-1" name="Defense en profondeur">
+        <mxGraphModel dx="942" dy="359" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="99" value="Securisation de NEXUS SOC — defense en profondeur" style="text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#333333;fontFamily=Segoe UI;" parent="1" vertex="1">
+                    <mxGeometry x="285" y="6" width="600" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="7. GOUVERNANCE&#xa;politiques, journal soar_audit, dossiers d&#39;enquete IRIS, conformite CEMAC et ISO 27001" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;verticalAlign=top;fontSize=12;fontStyle=1;fontFamily=Segoe UI;fontColor=#5b3a6b;spacingTop=8;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="40" width="1050" height="740" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="6. DETECTION&#xa;le SOC se surveille lui-meme : Wazuh sur les serveurs SOC, journal d&#39;audit immuable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;verticalAlign=top;fontSize=12;fontStyle=1;fontFamily=Segoe UI;fontColor=#4f7a35;spacingTop=8;" parent="1" vertex="1">
+                    <mxGeometry x="110" y="100" width="950" height="620" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="5. DONNEES&#xa;chiffrement au repos (LUKS) et en transit (TLS via PKI interne), pseudonymisation HMAC, sauvegardes chiffrees" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;verticalAlign=top;fontSize=12;fontStyle=1;fontFamily=Segoe UI;fontColor=#3d5a80;spacingTop=8;" parent="1" vertex="1">
+                    <mxGeometry x="160" y="160" width="850" height="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="4. APPLICATION&#xa;RBAC a 4 roles, JWT HMAC-SHA256, isolation au niveau des lignes, gestion des secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0e8f2;strokeColor=#3d85c6;strokeWidth=2;verticalAlign=top;fontSize=12;fontStyle=1;fontFamily=Segoe UI;fontColor=#2a5f8f;spacingTop=8;" parent="1" vertex="1">
+                    <mxGeometry x="210" y="220" width="750" height="380" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="3. HOTE et SYSTEME&#xa;durcissement systemd (NoNewPrivileges, ProtectSystem), SSH par cle, correctifs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;verticalAlign=top;fontSize=12;fontStyle=1;fontFamily=Segoe UI;fontColor=#8a6100;spacingTop=8;" parent="1" vertex="1">
+                    <mxGeometry x="260" y="280" width="650" height="260" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="2. RESEAU&#xa;six zones, air-gap de la zone sensible, OPNsense en refus par defaut, Suricata, sortie par zone" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;verticalAlign=top;fontSize=12;fontStyle=1;fontFamily=Segoe UI;fontColor=#7a6a1f;spacingTop=8;" parent="1" vertex="1">
+                    <mxGeometry x="310" y="340" width="550" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="1. PHYSIQUE&#xa;datacenter controle, badge et biometrie&#xa;chiffrement de disque LUKS, ports USB desactives" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;verticalAlign=middle;align=center;fontSize=12;fontStyle=1;fontFamily=Segoe UI;fontColor=#8b3a30;" parent="1" vertex="1">
+                    <mxGeometry x="380" y="395" width="410" height="75" as="geometry"/>
+                </mxCell>
+                <mxCell id="i7" value="" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;fillColor=#e1d5e7;strokeColor=#9673a6;shape=mxgraph.networks.users;" parent="1" vertex="1">
+                    <mxGeometry x="68" y="393" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="i6" value="" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;fillColor=#d5e8d4;strokeColor=#82b366;shape=mxgraph.networks.security_camera;" parent="1" vertex="1">
+                    <mxGeometry x="118" y="393" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="i5" value="" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;fillColor=#dae8fc;strokeColor=#6c8ebf;shape=mxgraph.networks.storage;" parent="1" vertex="1">
+                    <mxGeometry x="168" y="393" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="i4" value="" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;fillColor=#d0e8f2;strokeColor=#3d85c6;shape=mxgraph.networks.secured;" parent="1" vertex="1">
+                    <mxGeometry x="218" y="393" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="i3" value="" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;fillColor=#ffe6cc;strokeColor=#d79b00;shape=mxgraph.networks.server;" parent="1" vertex="1">
+                    <mxGeometry x="268" y="393" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="i2" value="" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;fillColor=#fff2cc;strokeColor=#d6b656;shape=mxgraph.networks.firewall;" parent="1" vertex="1">
+                    <mxGeometry x="325" y="393" width="34" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="i1" value="" style="html=1;outlineConnect=0;gradientColor=none;gradientDirection=north;strokeWidth=2;fillColor=#f8cecc;strokeColor=#b85450;shape=mxgraph.networks.biometric_reader;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="411" width="26" height="42" as="geometry"/>
+                </mxCell>
+                <mxCell id="80" value="Chaque couche associe une menace, une mesure et une preuve. Une compromission doit franchir les sept couches pour atteindre les donnees." style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontFamily=Segoe UI;fontColor=#555555;" parent="1" vertex="1">
+                    <mxGeometry x="185" y="788" width="800" height="18" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
 </mxfile>

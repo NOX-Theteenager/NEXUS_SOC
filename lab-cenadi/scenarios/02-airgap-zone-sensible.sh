@@ -9,7 +9,7 @@
 # À exécuter DEPUIS vm-antilope (10.50.30.30).
 # =============================================================================
 set -uo pipefail
-SOC=10.50.0.1
+SOC=10.50.0.2
 BOLD="\033[1m"; GREEN="\033[32m"; RED="\033[31m"; YELLOW="\033[33m"; RESET="\033[0m"
 banner(){ echo; echo -e "${BOLD}═══ $1 ═══${RESET}"; }
 pause(){ echo; echo -e "${YELLOW}[Entrée]${RESET}"; read -r; }
@@ -37,7 +37,7 @@ pause
 
 banner "PREUVE 4/4 — Émission de télémétrie ANTILOPE vers le SOC"
 if [[ -f /opt/nexus-agent/nexus_collector.py ]]; then
-    SOC_URL="http://${SOC:-10.50.0.1}:8000" NEXUS_AGENT_DIR=/etc/nexus-agent \
+    SOC_URL="http://${SOC:-10.50.0.2}:8000" NEXUS_AGENT_DIR=/etc/nexus-agent \
       sudo -E python3 /opt/nexus-agent/nexus_collector.py --once >/dev/null 2>&1 \
       && echo -e "${GREEN}✓ Télémétrie réelle envoyée (flux SORTANT unidirectionnel autorisé)${RESET}" \
       || echo -e "${YELLOW}⚠ collecteur en échec (agent configuré ?)${RESET}"
@@ -51,7 +51,7 @@ cat <<EOF
   La zone sensible (solde de l'État) est hermétiquement cloisonnée :
     ✗ Internet        → INJOIGNABLE
     ✗ Autres zones    → INJOIGNABLES (pas de mouvement latéral)
-    ✓ SOC (10.50.0.1) → joignable UNIQUEMENT en sortie (télémétrie)
+    ✓ SOC (10.50.0.2) → joignable UNIQUEMENT en sortie (télémétrie)
 
   Modèle de flux : UNIDIRECTIONNEL. ANTILOPE "parle" au SOC, mais personne
   ne peut "entrer" dans ANTILOPE, ni ANTILOPE sortir ailleurs.

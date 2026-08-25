@@ -6,7 +6,7 @@
 # alerte), configure /etc/hosts et un raccourci vers la console SOC.
 # =============================================================================
 set -euo pipefail
-SOC=10.50.0.1
+SOC=10.50.0.2
 
 echo "═══ 1/3 /etc/hosts (résolution interne) ═══"
 if ! grep -q "soc.cenadi.local" /etc/hosts; then

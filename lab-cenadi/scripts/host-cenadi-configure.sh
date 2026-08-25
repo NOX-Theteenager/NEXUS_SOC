@@ -7,7 +7,7 @@
 #      certificat serveur pour soc.cenadi.local (PAS Let's Encrypt/Cloudflare)
 #   2) .env souverain : aucune dépendance Internet (SMTP interne, VT off,
 #      secrets régénérés, CORS interne)
-#   3) uvicorn en écoute sur 10.50.0.1 (mgmt) uniquement — pas d'exposition
+#   3) uvicorn en écoute sur 10.50.0.2 (mgmt) uniquement — pas d'exposition
 #      Internet
 #   4) Caddy TLS avec le certificat de l'AC interne
 #
@@ -19,7 +19,7 @@
 set -euo pipefail
 
 PROJECT_DIR=/home/noxtheteenager/Documents/Projets/NEXUS_SOC
-HOST_IP="10.50.0.1"
+HOST_IP="10.50.0.2"
 PKI_DIR=~/pki-cenadi
 ENV_CENADI="$PROJECT_DIR/.env.cenadi"
 

@@ -111,17 +111,45 @@ ce qui laisse une marge matérielle si le besoin apparaît.
 | Poste | Mio | Nature |
 |---|---:|---|
 | Disponible, VMs éteintes | 14 409 | mesuré |
-| OPNsense (Suricata activé) | −4 096 | recommandation éditeur |
-| KaliPrime, sans session graphique | −2 048 | décidé |
+| OPNsense (Suricata activé) | −4 096 | recommandation éditeur, à créer |
+| KaliPrime, sans session graphique | −2 048 | **appliqué le 17 août** |
 | vm-rssi (bureau) | −2 048 | inchangé |
-| vm-app-gov | −1 536 | ajusté |
-| vm-antilope | −1 024 | ajusté |
+| vm-app-gov | −1 536 | **appliqué le 17 août** |
+| vm-antilope | −1 024 | **appliqué le 17 août** |
 | iris-web + worker + RabbitMQ | −1 250 | estimé |
 | Mattermost (base dans nexus-postgres) | −400 | estimé |
 | **Marge restante** | **≈ 2 000** | |
 
 La pile TheHive aurait consommé environ 6 000 Mio, soit la totalité de cette
 marge plus Suricata. Le choix d'IRIS finance l'inspection réseau du pare-feu.
+
+### Application des allocations
+
+Les trois ajustements sont inscrits dans la configuration persistante des
+machines et prennent effet **au prochain démarrage** de chacune :
+
+```bash
+virsh -c qemu:///system setmem    KaliPrime   2097152KiB --config
+virsh -c qemu:///system setmaxmem KaliPrime   2097152KiB --config
+virsh -c qemu:///system setmem    vm-app-gov  1572864KiB --config
+virsh -c qemu:///system setmaxmem vm-app-gov  1572864KiB --config
+virsh -c qemu:///system setmem    vm-antilope 1048576KiB --config
+virsh -c qemu:///system setmaxmem vm-antilope 1048576KiB --config
+```
+
+KaliPrime démarre désormais sans session graphique
+(`systemctl set-default multi-user.target`, cible relue et constatée). Deux
+gigaoctets suffisent aux scripts de scénario ; ils ne suffiraient pas à XFCE
+accompagné d'un outil Java. Pour revenir au bureau, `systemctl set-default
+graphical.target` et remonter la mémoire à 3 Go.
+
+Contrôle après redémarrage :
+
+```bash
+for v in KaliPrime vm-app-gov vm-antilope vm-rssi; do
+    virsh -c qemu:///system dominfo "$v" | awk -F: '/Used memory/{print "'"$v"' :"$2}'
+done
+```
 
 ---
 
@@ -158,7 +186,7 @@ chaque figure porte sa mention cible/déployé.*
 - Suricata sur les interfaces internes.
 
 *Recette : depuis vm-antilope, `ping 8.8.8.8` et `ping 10.50.20.20` échouent,
-`curl 10.50.0.1:8000/health` répond. Depuis le cœur SOC, le miroir de paquets
+`curl 10.50.0.2:8000/health` répond. Depuis le cœur SOC, le miroir de paquets
 répond, un domaine hors liste blanche non.*
 
 ### Phase 2 — Connecteurs réels
