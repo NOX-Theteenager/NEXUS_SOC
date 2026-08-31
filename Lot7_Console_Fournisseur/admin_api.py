@@ -741,8 +741,15 @@ def approve_action_by_id(action_id: int, body: dict = None,
                          db=Depends(get_analyst_db), _=Depends(require_analyst)):
     """Approuve une action SOAR (clé = soar_audit.id) — appelé par la console.
 
-    N'exécute rien : aucun connecteur n'est raccordé. Enregistre la décision et
-    renvoie la commande à passer pour la réaliser.
+    N'exécute toujours RIEN, et c'est délibéré : approuver et appliquer restent
+    deux gestes. Depuis la phase 2 les connecteurs existent, mais l'exécution
+    passe par `POST /analyst/execute/{id}`. Séparer la décision de son
+    application laisse une fenêtre pour se raviser, et rend l'audit lisible —
+    on voit qui a décidé, puis quand la mesure a réellement pris effet.
+
+    La commande manuelle reste renvoyée : elle sert de repli quand l'équipement
+    ne répond pas, et de vérification pour l'opérateur qui veut savoir ce que la
+    plateforme s'apprête à faire en son nom.
     """
     actor = (body or {}).get("approved_by", "analyste_soc")
     with db.cursor() as cur:
@@ -761,8 +768,9 @@ def approve_action_by_id(action_id: int, body: dict = None,
     cmd = _commande_manuelle(updated["action"], updated["cible"],
                              updated["cible_type"], updated["id"])
     return {
-        "message": "Décision enregistrée. L'action n'est pas exécutée : "
-                   "aucun connecteur n'est raccordé.",
+        "message": "Décision enregistrée. L'action n'est pas encore appliquée : "
+                   "appeler POST /analyst/execute/{id} pour l'exécuter, ou "
+                   "passer la commande ci-dessous à la main.",
         "audit_id": str(updated["id"]),
         "action": updated["action"],
         "cible": updated["cible"],
@@ -799,6 +807,293 @@ def mark_action_executed(action_id: int, body: dict = None,
     return {"message": "Exécution manuelle enregistrée",
             "audit_id": str(updated["id"]), "action": updated["action"],
             "cible": updated["cible"], "execute_par": actor}
+
+
+# ───────────────────────────────────────────────────────────────────────────
+#  Exécution automatique — phase 2
+# ───────────────────────────────────────────────────────────────────────────
+#  Jusqu'ici la console affichait une commande et enregistrait qui déclarait
+#  l'avoir passée. Ces deux endpoints l'exécutent — sous trois conditions qui
+#  ne se négocient pas.
+#
+#  1. UNE DÉCISION HUMAINE D'ABORD. On n'exécute que ce qui a été approuvé.
+#     `decision = 'APPROUVÉE'` est dans la clause WHERE, pas dans un test qu'on
+#     pourrait oublier.
+#  2. RELECTURE AVANT DE DIRE « FAIT ». `execution` ne passe à `automatique`
+#     qu'après que le connecteur a RELU l'équipement. Un HTTP 200 ne suffit
+#     pas : OPNsense accepte une adresse dans un alias inutilisé, OpenLDAP
+#     accepte un attribut qu'il ignore.
+#  3. UN ÉCHEC NE MENT PAS. Si la mesure n'est pas constatée, `execution` reste
+#     `non_executee`, le motif part dans `execution_note`, et la réponse porte
+#     la commande manuelle — exactement comme avant les connecteurs. La
+#     plateforme dégradée doit se comporter comme la plateforme d'hier, pas
+#     comme une plateforme qui a réussi.
+
+def _adresse_de_lhote(db, hostname: str) -> str | None:
+    """Adresse apprise de la télémétrie de l'agent.
+
+    L'audit porte un NOM de machine ; l'alias du pare-feu attend une ADRESSE.
+    La conversion se fait ici, avec ce que la plateforme a réellement observé
+    (`agents.derniere_ip`, écrite à chaque lot ingéré) plutôt qu'avec une table
+    de correspondance qui dériverait au premier changement d'adressage.
+    """
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT host(derniere_ip) AS ip FROM agents "
+            " WHERE hostname = %s AND derniere_ip IS NOT NULL "
+            " ORDER BY vu_le DESC LIMIT 1", (hostname,))
+        ligne = cur.fetchone()
+    return ligne["ip"] if ligne else None
+
+
+def _cible_pour_equipement(db, action: str, cible: str, cible_type: str) -> str:
+    """Traduit la cible d'audit en ce que l'équipement sait manipuler."""
+    if action == "isolate_host":
+        ip = _adresse_de_lhote(db, cible)
+        if not ip:
+            raise HTTPException(
+                409,
+                detail=f"Aucune adresse connue pour « {cible} ». La plateforme "
+                       f"apprend l'adresse d'un agent de sa télémétrie : un hôte "
+                       f"qui n'a jamais émis ne peut pas être isolé automatiquement. "
+                       f"Passer par la commande manuelle.")
+        return ip
+    return cible
+
+
+def _charger_registre():
+    try:
+        from connecteurs import (ActionNonPilotable, connecteur_pour,  # noqa: F401
+                                 verifier_cible_autorisee)
+        return connecteur_pour, ActionNonPilotable, verifier_cible_autorisee
+    except ImportError as e:
+        raise HTTPException(
+            503,
+            detail=f"Connecteurs indisponibles ({e}). L'action reste à exécuter "
+                   f"manuellement.")
+
+
+@analyst_router.post("/execute/{action_id}", summary="Exécuter une action SOAR approuvée")
+def execute_action(action_id: int, body: dict = None,
+                   db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    """Applique réellement la mesure sur l'équipement, puis la relit."""
+    acteur = (body or {}).get("executed_by", "nexus-soar")
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, action, cible, cible_type FROM soar_audit "
+            " WHERE id = %s AND decision = 'APPROUVÉE' AND execution = 'non_executee'",
+            (action_id,))
+        ligne = cur.fetchone()
+    if not ligne:
+        raise HTTPException(
+            404, detail="Action approuvée non exécutée introuvable (déjà exécutée ?)")
+
+    connecteur_pour, ActionNonPilotable, verifier_cible_autorisee = _charger_registre()
+    manuelle = _commande_manuelle(ligne["action"], ligne["cible"],
+                                  ligne["cible_type"], ligne["id"])
+    try:
+        connecteur = connecteur_pour(ligne["action"], ligne["cible"],
+                                     ligne["cible_type"])
+    except ActionNonPilotable as e:
+        _noter_echec(db, action_id, f"non pilotable : {e}")
+        return {"execute": False, "audit_id": str(action_id),
+                "motif": str(e), **manuelle}
+
+    adresse = _cible_pour_equipement(db, ligne["action"], ligne["cible"],
+                                     ligne["cible_type"])
+    # Dernier filet avant d'écrire sur l'équipement : le cœur SOC émet sa propre
+    # télémétrie, le moteur peut donc proposer de l'isoler en toute logique. On
+    # ne laisse pas la plateforme se couper elle-même.
+    try:
+        verifier_cible_autorisee(adresse)
+    except ActionNonPilotable as e:
+        _noter_echec(db, action_id, f"cible protégée : {e}")
+        return {"execute": False, "audit_id": str(action_id),
+                "motif": str(e), "cible_equipement": adresse, **manuelle}
+    resultat = connecteur.appliquer(adresse)
+
+    if not (resultat.verifie and resultat.applique):
+        _noter_echec(db, action_id, resultat.resume())
+        return {"execute": False, "audit_id": str(action_id),
+                "motif": resultat.resume(), "connecteur": connecteur.nom,
+                "cible_equipement": adresse, **manuelle}
+
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE soar_audit SET execution = 'automatique', execute_le = now(), "
+            "       execute_par = %s, execution_note = %s, "
+            "       statut = 'EXÉCUTÉE (automatique)' "
+            " WHERE id = %s RETURNING id",
+            (acteur, f"[{connecteur.nom}] {resultat.resume()}", action_id))
+        db.commit()
+    return {"execute": True, "audit_id": str(action_id),
+            "action": ligne["action"], "cible": ligne["cible"],
+            "cible_equipement": adresse, "connecteur": connecteur.nom,
+            "note": resultat.resume(), "reserves": resultat.reserves}
+
+
+@analyst_router.post("/revert/{action_id}", summary="Lever une action SOAR exécutée")
+def revert_action(action_id: int, body: dict = None,
+                  db=Depends(get_analyst_db), _=Depends(require_analyst)):
+    """Retire la mesure, puis relit pour confirmer qu'elle n'est plus en vigueur.
+
+    La réversibilité n'est pas un confort : elle est ce qui rend une réponse
+    automatique acceptable. Une mesure qu'on ne sait pas lever, on hésite à la
+    poser — et on répond trop tard.
+    """
+    acteur = (body or {}).get("reverted_by", "analyste_soc")
+    motif = (body or {}).get("reason", "")
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, action, cible, cible_type FROM soar_audit "
+            " WHERE id = %s AND execution = 'automatique'", (action_id,))
+        ligne = cur.fetchone()
+    if not ligne:
+        raise HTTPException(
+            404, detail="Action exécutée automatiquement introuvable "
+                        "(exécution manuelle : la lever à la main aussi)")
+
+    connecteur_pour, ActionNonPilotable, verifier_cible_autorisee = _charger_registre()
+    try:
+        connecteur = connecteur_pour(ligne["action"], ligne["cible"],
+                                     ligne["cible_type"])
+    except ActionNonPilotable as e:
+        raise HTTPException(409, detail=str(e))
+
+    adresse = _cible_pour_equipement(db, ligne["action"], ligne["cible"],
+                                     ligne["cible_type"])
+    resultat = connecteur.lever(adresse)
+
+    if not resultat.verifie or resultat.applique:
+        # La mesure est peut-être encore en vigueur : on NE marque pas levé.
+        with db.cursor() as cur:
+            cur.execute(
+                "UPDATE soar_audit SET execution_note = %s WHERE id = %s",
+                (f"[{connecteur.nom}] levée refusée — {resultat.resume()}", action_id))
+            db.commit()
+        raise HTTPException(
+            409, detail=f"La levée n'a pas pu être constatée : {resultat.resume()}")
+
+    # L'ORDRE COMPTE. On retire d'abord de l'équipement, on enregistre ensuite :
+    # l'inverse ferait dire « levée » à une mesure encore en vigueur. Mais si
+    # l'écriture échoue ici, la base croira la quarantaine active alors qu'elle
+    # ne l'est plus — et la réconciliation la reposerait sur une machine qu'un
+    # analyste vient de libérer. On refuse donc de rester silencieux là-dessus.
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                # « annulee » et non « levee » : le schéma porte déjà ce
+                # vocabulaire dans sa contrainte CHECK. Inventer un cinquième
+                # état ferait échouer l'écriture après coup, exactement au
+                # mauvais moment.
+                "UPDATE soar_audit SET execution = 'annulee', statut = 'LEVÉE', "
+                "       execution_note = %s WHERE id = %s",
+                (f"[{connecteur.nom}] levée par {acteur}"
+                 + (f" — {motif}" if motif else "")
+                 + f" · {resultat.resume()}", action_id))
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            500,
+            detail=f"La mesure a bien été RETIRÉE de {connecteur.nom} "
+                   f"({adresse}) mais l'audit n'a pas pu être mis à jour : {e}. "
+                   f"L'action reste marquée « automatique » : la corriger à la "
+                   f"main avant la prochaine réconciliation, sinon la mesure "
+                   f"sera reposée.")
+    return {"leve": True, "audit_id": str(action_id), "action": ligne["action"],
+            "cible": ligne["cible"], "cible_equipement": adresse,
+            "connecteur": connecteur.nom, "note": resultat.resume()}
+
+
+def _noter_echec(db, action_id: int, motif: str) -> None:
+    """Écrit le motif sans jamais faire passer l'action pour exécutée."""
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE soar_audit SET execution_note = %s WHERE id = %s",
+            (motif[:500], action_id))
+        db.commit()
+
+
+def mesures_attendues(db) -> tuple:
+    """Ce que l'audit dit être en vigueur, et ce qu'on ne sait pas retrouver.
+
+    Renvoie (attendues, insolubles). La seconde liste compte autant que la
+    première : une action marquée « exécutée » dont on ne sait plus désigner la
+    cible est une mesure que la plateforme croit en vigueur sans pouvoir le
+    vérifier. La taire reviendrait à afficher « isolée » sur une machine dont
+    plus personne ne sait si elle l'est.
+    """
+    with db.cursor() as cur:
+        cur.execute(
+            "SELECT id, action, cible, cible_type FROM soar_audit "
+            " WHERE execution = 'automatique' ORDER BY id")
+        lignes = cur.fetchall()
+    attendues: dict = {}
+    insolubles: list = []
+    for l in lignes:
+        try:
+            cible = _cible_pour_equipement(db, l["action"], l["cible"],
+                                           l["cible_type"])
+        except HTTPException as e:
+            # On ne devine pas une adresse : la reposer au hasard viserait
+            # peut-être une autre machine. On signale, c'est tout.
+            insolubles.append(
+                f"action {l['id']} ({l['action']} {l['cible']}) : cible "
+                f"introuvable — {getattr(e, 'detail', e)}")
+            continue
+        attendues.setdefault(l["action"], []).append(cible)
+    return attendues, insolubles
+
+
+def reconcilier_mesures() -> list:
+    """Repose sur les équipements ce que la plateforme croit avoir décidé.
+
+    POURQUOI CE N'EST PAS UN LUXE
+    -----------------------------
+    Les listes `alias_util` vivent dans la table pf, en mémoire. OPNsense 26 les
+    réécrit après un rechargement du filtre — vérifié — mais une purge de la
+    table les efface sans laisser de trace côté plateforme. La machine
+    redeviendrait libre sans qu'aucune décision ne l'ait levée, pendant que la
+    console continuerait d'afficher « isolée ».
+
+    Le SOAR ne se contente donc pas d'écrire : il revient vérifier. C'est la
+    différence entre une action et une politique.
+    """
+    try:
+        from connecteurs import reconcilier
+    except ImportError as e:
+        return [f"connecteurs indisponibles : {e}"]
+    db = None
+    try:
+        db = psycopg2.connect(DB_DSN_ANALYST,
+                              cursor_factory=psycopg2.extras.RealDictCursor)
+        attendues, insolubles = mesures_attendues(db)
+        # On appelle la réconciliation MÊME si rien n'est attendu. Un retour
+        # anticipé ici rendrait la plateforme aveugle au cas le plus grave :
+        # aucune décision en base, et des machines pourtant isolées sur
+        # l'équipement. C'est ce qui s'est produit le 29 août.
+        return reconcilier(attendues) + insolubles
+    except Exception as e:
+        # Un équipement éteint ne doit pas empêcher le cœur SOC de démarrer.
+        return [f"réconciliation impossible : {e}"]
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+
+@analyst_router.post("/reconcile", summary="Repousser les mesures en vigueur vers les équipements")
+def reconcilier_endpoint(_=Depends(require_analyst)):
+    """Rejoue la réconciliation à la demande.
+
+    Utile après un redémarrage du pare-feu, et pendant une démonstration : on
+    vide l'alias à la main, on appelle cet endpoint, et la mesure revient.
+    """
+    ecarts = reconcilier_mesures()
+    return {"ecarts_corriges": len(ecarts), "detail": ecarts}
 
 
 @analyst_router.post("/reject/{action_id}", summary="Refuser une action SOAR")

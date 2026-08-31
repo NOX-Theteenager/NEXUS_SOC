@@ -2210,7 +2210,7 @@ function soarCard(p) {
   const cmd = p.commande
     ? `<div style="margin-top:10px">
          <div class="mono" style="font-size:9.5px;color:var(--text-3);letter-spacing:.08em;margin-bottom:4px">
-           COMMANDE À PASSER — AUCUN CONNECTEUR N'EST RACCORDÉ</div>
+           COMMANDE ÉQUIVALENTE — REPLI SI L'ÉQUIPEMENT NE RÉPOND PAS</div>
          <div class="code" style="white-space:pre-wrap;word-break:break-all">${esc(p.commande)}</div>
          <button class="btn btn-sm" style="margin-top:6px"
            data-copycmd="${esc(encodeURIComponent(p.commande))}">Copier la commande</button>
@@ -2241,7 +2241,7 @@ function soarCard(p) {
       ${p.alert_id ? `<button class="btn btn-sm" data-fp="${esc(p.alert_id)}"${disabled}>Marquer faux positif</button>` : ''}
       <span class="note">${S.offline ? 'Hors ligne — validation impossible tant que l’API ne répond pas.'
         : bloque ? 'Requalifiez ou refusez : cette action n’a pas de cible exploitable.'
-        : 'Approuver enregistre la décision. L’exécution reste manuelle.'}</span>
+        : 'Approuver enregistre la décision. L’exécution se déclenche ensuite, et n’est notée « exécutée » qu’après relecture de l’équipement.'}</span>
     </div>
   </div>`;
 }
@@ -2791,8 +2791,10 @@ function wireSoarButtons() {
       `Impact ${p ? p.impact : '—'} · ${rev.label}.\n\n` +
       (p && p.blocage
         ? `⚠ ${p.blocage}\n\nApprouver ne fera qu'enregistrer votre décision.`
-        : "La décision est enregistrée et horodatée. Aucun connecteur n'étant " +
-          "raccordé, l'exécution reste manuelle : la commande vous sera affichée."),
+        : "La décision est enregistrée et horodatée. L'exécution est un geste " +
+          "distinct : elle n'est notée « exécutée » qu'après relecture de " +
+          "l'équipement. Si celui-ci ne répond pas, la commande équivalente " +
+          "vous est affichée, à passer à la main."),
       'Approuver');
     if (!ok) return;
     try {

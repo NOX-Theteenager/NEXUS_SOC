@@ -123,7 +123,7 @@ def ecrire_alias(racine):
 
 def regle(filtre, interface, action, descr, *,
           source="any", destination="any", ports=None, direction="in",
-          proto=None, quick=True):
+          proto=None, quick=True, journal=False):
     r = sous(filtre, "rule")
     sous(r, "type", action)                      # pass | block
     sous(r, "interface", interface)
@@ -134,6 +134,8 @@ def regle(filtre, interface, action, descr, *,
         sous(r, "protocol", proto)
     if quick:
         sous(r, "quick", 1)
+    if journal:
+        sous(r, "log", 1)
     sous(r, "descr", descr)
 
     s = sous(r, "source")
@@ -149,6 +151,9 @@ def regle(filtre, interface, action, descr, *,
         sous(d, "any", 1)
     elif destination.endswith("net"):
         sous(d, "network", destination[:-3])
+    elif destination.endswith("ip"):
+        # notation OPNsense pour « l'adresse portée par cette interface »
+        sous(d, "network", destination)
     else:
         sous(d, "address", destination)
     if ports:
@@ -171,14 +176,19 @@ def ecrire_regles(racine):
         regle(f, i, "pass", "NEXUS quarantaine : telemetrie vers le SOC autorisee",
               source="nexus_quarantaine", destination=SOC,
               ports=PORTS_COLLECTE, proto="tcp"); n += 1
+        # Ces quatre rejets sont JOURNALISÉS. Une décision de réponse qui ne
+        # laisse pas de trace n'est pas auditable : le RSSI doit pouvoir
+        # montrer, ligne par ligne, ce que la quarantaine a effectivement
+        # empêché. C'est aussi ce qui alimente la vue temps réel pendant une
+        # démonstration.
         regle(f, i, "block", "NEXUS quarantaine : tout le reste rejete",
-              source="nexus_quarantaine"); n += 1
+              source="nexus_quarantaine", journal=True); n += 1
         regle(f, i, "block", "NEXUS quarantaine : personne n'entre",
-              destination="nexus_quarantaine"); n += 1
+              destination="nexus_quarantaine", journal=True); n += 1
         regle(f, i, "block", "NEXUS blocage IOC : destination rejetee",
-              destination="nexus_block"); n += 1
+              destination="nexus_block", journal=True); n += 1
         regle(f, i, "block", "NEXUS blocage IOC : source rejetee",
-              source="nexus_block"); n += 1
+              source="nexus_block", journal=True); n += 1
 
     # ── 2. Matrice de flux, interface par interface ─────────────────────────
     # Coeur SOC : atteint toutes les zones (collecte) et sort sur liste blanche.
@@ -188,6 +198,16 @@ def ecrire_regles(racine):
     regle(f, "lan", "pass", "SOC vers Internet : liste blanche journalisee",
           source="lannet", destination="soc_sortie_autorisee"); n += 1
     regle(f, "lan", "block", "SOC : tout autre flux rejete", source="lannet"); n += 1
+
+    # Résolution de noms : chaque zone interroge sa propre passerelle, où
+    # OPNsense fait tourner un résolveur. La zone sensible en est exclue —
+    # l'air-gap ne souffre aucune exception, et un hôte cloisonné n'a rien à
+    # résoudre. Son serveur SSH est configuré sans résolution inverse.
+    for i in ("lan", "opt1", "opt2", "opt4", "opt5"):
+        for proto in ("udp", "tcp"):
+            regle(f, i, "pass", "Resolution de noms vers la passerelle de zone",
+                  source=f"{i}net", destination=f"{i}ip", ports="53",
+                  proto=proto); n += 1
 
     # DMZ et Applicatif : ne parlent qu'au SOC.
     for i, nom in (("opt1", "DMZ"), ("opt2", "Applicatif")):

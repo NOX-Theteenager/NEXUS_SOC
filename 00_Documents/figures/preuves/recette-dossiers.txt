@@ -1,0 +1,23 @@
+Preuve de la file vers l'outil d'enquête
+
+  1. Une alerte, une entrée en file
+    ◦ l'alerte produit une entrée                       agrégation anti-doublon : aucun incident neuf, relancer après ALERT_DEDUP_MIN
+    ✓ toute entrée pointe une alerte réelle            0
+    ✓ aucune référence en double dans la file          0
+
+  2. IRIS arrêté — la collecte continue, la file garde
+trée abandonnée pendant la panne        0
+    ✓ l'ingestion répond toujours                       200
+    ✓ les tentatives sont reportées, pas martelées     1
+
+  3. IRIS redémarre — la file se vide toute seule
+    attente de la remise en service…
+    ✓ des entrées sont parties                          8
+    ✓ plus rien n'attend                                 0
+    ✓ chaque envoi porte un identifiant IRIS             0
+
+  4. Rejouer un envoi ne crée pas de second dossier
+    ✓ l'entrée rejouée est repartie                    envoye
+    ✓ elle a retrouvé le MÊME dossier, pas un nouveau  9
+
+  Recette complète : l'ingestion ne dépend pas d'IRIS, et rien ne se perd.

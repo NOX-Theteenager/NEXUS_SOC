@@ -216,6 +216,44 @@ Trois garde-fous, repris des exigences déjà écrites dans le dépôt :
 l'alias OPNsense ; la machine cible perd le contact latéral et reste observée.
 Couper OPNsense fait échouer l'exécution sans jamais mentir sur son résultat.*
 
+> **Réalisée le 28 août 2026.** `bash lab-cenadi/scenarios/08-preuve-connecteurs.sh`
+> — **22 contrôles sur 22**, transcription dans
+> `00_Documents/figures/preuves/recette-connecteurs.txt`. Tout passe par
+> `/analyst` : la recette n'appelle jamais un équipement directement.
+>
+> Quatre choses ont dû être ajoutées en chemin, qui ne figuraient pas au plan et
+> qui comptent davantage que le code prévu.
+>
+> **L'audit portait un nom de machine, l'alias attend une adresse.** Personne ne
+> stockait l'adresse des agents. La plateforme l'apprend désormais de sa propre
+> télémétrie : `/ingest` écrit `agents.derniere_ip` à chaque lot. Une table de
+> correspondance figée aurait dérivé au premier changement d'adressage.
+>
+> **Le cœur SOC est dans son propre inventaire.** `NoxTheMachine` résout en
+> 10.50.0.2 : le moteur peut proposer, très logiquement, de l'isoler. Appliquer
+> cette décision couperait la plateforme qui l'exécute, et plus personne ne
+> serait là pour la lever. Une liste d'adresses protégées refuse désormais ce
+> cas, et le refuse *avant* d'écrire sur l'équipement.
+>
+> **La levée écrivait un état que le schéma interdisait.** `execution = 'levee'`
+> violait une contrainte `CHECK` — après que la mesure avait été retirée du
+> pare-feu. La base croyait la quarantaine active alors qu'elle ne l'était plus,
+> et la réconciliation l'aurait reposée sur une machine qu'un analyste venait de
+> libérer. Le schéma disait déjà `annulee` : il fallait lire, pas inventer.
+>
+> **Une affirmation du plan était fausse.** « Un `configctl filter reload` vide
+> les tables » : vérifié sur l'appliance, OPNsense 26 les réécrit. Ce qui les
+> perd, c'est une purge (`pfctl -T flush`, le bouton « Flush » de l'interface).
+> La réconciliation reste indispensable, pour une autre raison que celle
+> annoncée — et la recette éprouve la vraie.
+>
+> **Une réserve assumée.** Le compte de service n'a pas le privilège
+> `page-diagnostics-showstates`, donc le connecteur ne peut pas purger les
+> sessions déjà établies : l'isolation ne vaut que pour les nouvelles
+> connexions. La réserve est écrite dans `soar_audit.execution_note` à chaque
+> exécution plutôt que passée sous silence. Élargir le compte est une décision
+> à prendre en connaissance de cause — voir §Arbitrage en attente.
+
 ### Phase 3 — Dossiers d'enquête (IRIS)
 **28 août au 2 septembre.**
 
@@ -254,6 +292,37 @@ du projet : la plateforme mesure et propose, l'humain qualifie.
 *Recette : arrêter IRIS pendant dix minutes de collecte ne perd aucune alerte ;
 la file se vide au redémarrage ; un rejeu ne crée pas de doublon.*
 
+> **Livrée le 29 août 2026.** IRIS tourne, le compte de service est cloisonné,
+> les alertes NEXUS y arrivent de bout en bout. Journal ci-dessous.
+>
+> **(28 août — écrite et branchée, IRIS pas encore levé.)** Le schéma est
+> appliqué, les trois modules sont en place, l'ouvrier tourne dans le cœur SOC.
+> Deux alertes réelles, produites par le pipeline signé depuis KaliPrime, sont
+> entrées en file et y attendent avec un report exponentiel : **la propriété
+> visée est donc déjà démontrée**, l'ingestion ne dépend pas d'IRIS.
+>
+> Ce qui manque est matériel : l'image `iriswebapp_app` pèse près d'un
+> gigaoctet et la liaison de la machine n'a pas tenu le téléchargement. Le code
+> n'attend qu'elle. Reprendre par `cd /opt/nexus-iris && docker compose pull`
+> sur une meilleure liaison, puis suivre `lab-cenadi/06-reponse-collaborative.md`
+> §11.3.
+>
+> **Deux défauts corrigés en chemin.** Une correspondance de périmètre absente
+> était traitée comme un refus définitif : l'incident était jeté alors qu'il
+> suffisait d'attendre une minute de configuration. Et le titre de chaque dépôt
+> affichait `[CENADI]` pour tous les périmètres, le nom ne circulant pas dans
+> l'objet alerte — il est désormais lu en base.
+>
+> **Une version figée.** `.env.model` d'IRIS livre `APP_IMAGE_TAG=latest`, qui
+> écrase la version épinglée de sa propre composition. Ramené à `v2.4.20` :
+> une image qui change sous les pieds est ce qui casse une démonstration le
+> matin où elle doit avoir lieu.
+>
+> **Tests de phase 6 pris d'avance.** `Lot6_Tests/test_dossiers.py` (7) et
+> `test_connecteurs.py` (14) s'exécutent sans réseau ni équipement. Une logique
+> vérifiable seulement les jours où l'outil tiers fonctionne n'est jamais
+> vérifiée le jour où ça compte. **35 tests au total, tous au vert.**
+
 ### Phase 4 — Discussion d'incident
 **3 au 4 septembre.**
 
@@ -264,6 +333,27 @@ la file se vide au redémarrage ; un rejeu ne crée pas de doublon.*
   NEXUS le passage en investigation.
 
 *Recette : un échec Mattermost ne bloque ni l'escalade ni l'alerte.*
+
+> **Livrée le 29 août 2026.** Mattermost tourne, le robot publie, la veille
+> ouvre les canaux. Deux écarts au plan, assumés et documentés en
+> [06-reponse-collaborative.md §13](../lab-cenadi/06-reponse-collaborative.md) :
+>
+> **Une veille plutôt qu'un module IRIS.** IRIS n'expose ses accroches qu'à des
+> modules Python installés dans son conteneur. Faire dépendre l'ouverture d'un
+> canal du cadriciel d'un tiers, c'est accepter qu'elle cesse un jour sans que
+> personne ne s'en aperçoive. NEXUS interroge donc IRIS toutes les trente
+> secondes — une escalade est un geste humain délibéré, le délai est sans
+> conséquence.
+>
+> **Deux défauts trouvés dans la composition déjà écrite.** Mattermost était
+> publié sur `127.0.0.1`, inatteignable depuis vm-rssi où travaille le RSSI,
+> sous un commentaire annonçant le contraire. Et la composition référençait un
+> réseau `nexus` inexistant : le conteneur n'aurait jamais trouvé la base.
+>
+> **Un piège de mon propre script.** Le contrôle de création de compte cherchait
+> un champ `id` dans la réponse — or une réponse d'ERREUR de Mattermost en
+> contient un aussi. L'échec s'affichait comme un succès. On demande désormais
+> au serveur si le compte existe : la seule question qui tranche.
 
 ### Phase 5 — Enrichissement souverain (optionnel)
 **5 au 6 septembre.** À faire seulement si les phases 1 à 4 sont recettées.
@@ -311,3 +401,45 @@ plat. La phase 1 existe pour cela.
 | D17 | Cortex retiré | NEXUS reste le seul exécutant |
 | D18 | MISP primaire, VirusTotal sous condition explicite | applique la souveraineté à l'enrichissement |
 | D19 | Un seul point d'exécution, deux points d'entrée | IRIS renvoie vers la console pour valider |
+
+---
+
+## 7. Journal du 29 août 2026 — IRIS en service
+
+DFIR-IRIS v2.4.20 tourne sur le cœur SOC, écoute sur `10.50.0.2:4443` et rien
+d'autre. Cinq alertes réelles y sont déposées, chacune avec sa gravité résolue
+par nom, son périmètre et ses étiquettes MITRE.
+
+**Un compte de service qui ne peut faire qu'une chose.** Groupe dédié, trois
+droits : `standard_user`, `alerts_read`, `alerts_write`. Il ne peut ni
+administrer IRIS, ni supprimer une alerte, ni toucher aux dossiers. L'escalade
+d'une alerte en dossier d'enquête reste un geste d'analyste — garanti ici par
+une permission absente, pas par une convention.
+
+IRIS cloisonne d'ailleurs à deux niveaux : les droits d'un côté, l'habilitation
+par périmètre de l'autre. Le compte est habilité aux trois périmètres
+supervisés, et à eux seuls.
+
+**Le défaut qui comptait.** La recette a montré qu'IRIS n'impose **aucune**
+unicité sur `alert_source_ref` : rejouer un envoi créait un second dossier. Le
+cas réel n'est pas théorique — on poste, IRIS crée l'alerte, l'ouvrier tombe
+avant d'enregistrer l'identifiant, et à la reprise l'analyste trouve deux
+dossiers pour un incident. La vérification a été déplacée **avant** l'écriture,
+au prix d'un appel supplémentaire par dépôt. C'est le prix d'une garantie qui,
+autrement, n'existe pas.
+
+Le filtre de recherche portait d'ailleurs deux erreurs qui se compensaient en
+silence : la méthode (GET, pas POST) et le nom du paramètre (`source_reference`,
+pas `alert_source_ref`). Un filtre inconnu ne provoque aucune erreur côté IRIS —
+il renvoie simplement tout le catalogue. Le code revérifie donc la référence sur
+chaque ligne reçue, plutôt que de faire confiance au serveur.
+
+**Deux tests de non-régression** couvrent désormais ce point précis.
+
+**Ce que la recette a aussi appris.** La plateforme agrège les alertes
+identiques (`ALERT_DEDUP_MIN`) : rejouer le même scénario ne produit pas une
+seconde alerte. C'était ma recette qui postulait le contraire, pas la plateforme
+qui se trompait. La recette essaie maintenant les trois scénarios, et lorsque
+tout est agrégé elle le signale comme **non éprouvé** — ni réussi, ni échoué.
+Compter une sonde non exécutée comme réussie serait le pire des mensonges dans
+un dossier de soutenance.

@@ -20,8 +20,16 @@ ExecStartPre=-/usr/bin/docker rm -f nexus-postgres
 # Lance TimescaleDB (image = même que celle du docker-compose Lot 0).
 # --rm car on relance à chaque restart ; les données sont persistées dans
 # le volume Docker `nexus_postgres_data` qui survit aux restarts du conteneur.
+# Le réseau « nexus » doit exister avant le conteneur : Mattermost et les
+# autres compositions y joignent la base PAR SON NOM. Sans lui, un
+# « docker network connect » à chaud rétablit le lien — mais ne survit pas au
+# redémarrage suivant, et Mattermost repart en boucle sur « lookup
+# nexus-postgres : server misbehaving ».
+ExecStartPre=-/usr/bin/docker network create nexus
+
 ExecStart=/usr/bin/docker run --rm \
     --name nexus-postgres \
+    --network nexus \
     -e POSTGRES_USER=nexus \
     -e POSTGRES_PASSWORD=change_me \
     -e POSTGRES_DB=nexus_soc \

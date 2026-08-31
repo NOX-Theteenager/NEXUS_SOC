@@ -1,0 +1,24 @@
+Preuve de la discussion d'incident
+    alerte IRIS #15 · référence 6fd71c2c-7492…
+
+  1. Mattermost arrêté — l'escalade passe quand même
+    ✓ IRIS accepte l'escalade sans Mattermost            200
+    ✓ l'ingestion répond toujours                       200
+    ✓ l'escalade est notée, le canal reste à ouvrir    a_ouvrir
+    ✓ l'échec est consigné, pas tu                     OUI
+
+  2. Mattermost redémarre — le canal s'ouvre sans intervention
+    attente de la remise en service…
+    ✓ le canal a été ouvert                            ouvert
+    ✓ son nom porte la date de l'incident                OUI
+
+  3. Le message d'ouverture se suffit à lui-même
+    ✓ le lien vers l'explicabilité NEXUS                présent
+    ✓ le lien vers le dossier d'enquête                 présent
+    ✓ l'entité concernée                               présent
+
+  4. Rejouer la veille ne rouvre pas un second canal
+    ✓ le même canal est retrouvé, pas un nouveau       184zy6jbjpdx7r8igwc9icwxky
+    ✓ une seule ligne pour cet incident                  1
+
+  Recette complète : le canal s'ouvre, et la messagerie ne bloque rien.

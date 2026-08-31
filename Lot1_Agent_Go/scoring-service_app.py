@@ -425,6 +425,147 @@ def _proposer_soar(alert_id, alert: dict) -> None:
         except Exception:
             pass
         print(f"[soar] proposition non créée : {e}")
+    # Chaînon enquête : l'alerte part vers l'outil d'enquête. Voir _ouvrir_dossier.
+    _ouvrir_dossier(alert_id, alert, cible, cible_type)
+
+
+# ---------------------------------------------------------------------------
+# Chaînon enquête — mise en file vers DFIR-IRIS
+# ---------------------------------------------------------------------------
+# CE QUI N'EST PAS FAIT ICI : aucun appel HTTP.
+#
+# `/ingest` est le chemin le plus chaud de la plateforme. Y placer un appel vers
+# IRIS ferait dépendre l'INGESTION de la disponibilité d'un outil d'enquête :
+# IRIS redémarre, et le SOC cesse de voir. On écrit une ligne dans
+# `dossier_sortie`, en transaction séparée, et on rend la main. Un ouvrier vide
+# la file en arrière-plan.
+#
+# Ce que NEXUS dépose est une ALERTE, pas un dossier. L'escalade en dossier
+# d'enquête reste un geste d'analyste, dans IRIS : la plateforme mesure et
+# propose, l'humain qualifie.
+
+# Correspondance risque mesuré → nom de gravité. Un NOM, pas un numéro : la
+# table des gravités est propre à chaque instance d'IRIS, et un numéro codé en
+# dur déposerait un incident critique en « Faible » après une réinstallation.
+def _gravite_pour(risque) -> str:
+    try:
+        r = int(risque)
+    except (TypeError, ValueError):
+        return "Medium"
+    if r >= 85:
+        return "Critical"
+    if r >= 70:
+        return "High"
+    if r >= 40:
+        return "Medium"
+    return "Low"
+
+
+def _ouvrir_dossier(alert_id, alert: dict, cible=None, cible_type=None) -> None:
+    """Met l'alerte en file vers l'outil d'enquête. Ne lève jamais."""
+    if not STATE["db"] or os.getenv("DOSSIERS_ACTIFS", "1").lower() in ("0", "false", "no"):
+        return
+    try:
+        from dossiers import enfiler
+    except ImportError:
+        return                      # phase 3 non déployée : rien à faire
+    try:
+        entite = alert.get("entite") or "entité inconnue"
+        # Le nom du périmètre ne circule pas dans l'alerte : on le lit. Un titre
+        # qui affiche « CENADI » pour tout le monde ne dit rien à l'analyste qui
+        # ouvre sa file le matin — le périmètre est la première chose qu'il
+        # cherche.
+        perimetre = ""
+        try:
+            with STATE["db"].cursor() as cur:
+                cur.execute("SELECT nom FROM tenants WHERE id = %s::uuid",
+                            (alert.get("tenant"),))
+                ligne = cur.fetchone()
+            if ligne:
+                perimetre = ligne[0] if not isinstance(ligne, dict) else ligne.get("nom", "")
+        except Exception:
+            pass
+        titre = f"[{perimetre or 'CENADI'}] {alert.get('type', 'Anomalie')} — {entite}"
+
+        # La description reprend les écarts mesurés, rédigés. Un analyste doit
+        # comprendre POURQUOI sans rouvrir la console.
+        raisons = alert.get("raisons") or []
+        lignes = [str(r.get("texte") or r.get("label") or r)
+                  for r in raisons if r][:12]
+        description = "\n".join(f"· {l}" for l in lignes) or "Aucun détail fourni."
+
+        etiquettes = [t.strip() for t in str(alert.get("mitre") or "").split(",") if t.strip()]
+        if perimetre:
+            etiquettes.append(f"perimetre:{perimetre}")
+
+        actifs = []
+        if cible and cible_type == "hote":
+            actifs.append({"asset_name": cible, "asset_type_id": 9})
+        elif entite:
+            actifs.append({"asset_name": entite, "asset_type_id": 9})
+
+        # ── Observables ────────────────────────────────────────────────────
+        # Tirés de la chaîne RECONSTITUÉE, donc de ce que la plateforme a
+        # réellement vu. On ne remonte pas d'hypothèse au rang de fait : une
+        # adresse déduite ou un condensat supposé n'a rien à faire dans un
+        # dossier d'enquête, où chaque observable sera recherché ailleurs.
+        #
+        # Les identifiants de type sont ceux de CETTE instance d'IRIS, relus
+        # sur `/manage/ioc-types/list` : 37 nom de fichier, 69 nom d'hôte,
+        # 79 adresse source, 96 autre.
+        indicateurs = []
+        vus = set()
+
+        def _observable(valeur, type_id, description):
+            v = str(valeur or "").strip()
+            if not v or v in vus or len(indicateurs) >= 25:
+                return
+            vus.add(v)
+            indicateurs.append({"ioc_value": v, "ioc_type_id": type_id,
+                                "ioc_description": description,
+                                "ioc_tlp_id": 2})      # TLP:AMBER par défaut
+
+        if entite:
+            _observable(entite, 69, "Entité concernée par l'alerte NEXUS")
+        for etape in (alert.get("chaine") or [])[:40]:
+            if not isinstance(etape, dict):
+                continue
+            detail = str(etape.get("detail") or "").strip()
+            if not detail:
+                continue
+            technique = etape.get("technique") or etape.get("technique_id") or ""
+            if detail.startswith("/") or "\\" in detail:
+                _observable(detail, 37, f"Artefact observé — {technique}")
+            elif detail.count(".") == 3 and detail.replace(".", "").isdigit():
+                _observable(detail, 79, f"Adresse observée — {technique}")
+            else:
+                _observable(detail[:250], 96, f"Élément observé — {technique}")
+
+        charge = {
+            "titre": titre,
+            "description": description,
+            "gravite": _gravite_pour(alert.get("risque")),
+            "lien_retour": (os.getenv("NEXUS_SERVER_URL", "https://soc.cenadi.local:8443")
+                            + f"/app/console.html#alerte={alert_id}"),
+            "contenu": {
+                "risque": alert.get("risque"),
+                "type": alert.get("type"),
+                "source_modele": alert.get("source_modele"),
+                "score_parts": alert.get("score_parts"),
+                "chaine": alert.get("chaine"),
+                "raisons": raisons,
+                "cible": cible,
+                "cible_type": cible_type,
+            },
+            "etiquettes": etiquettes,
+            "actifs": actifs,
+            "indicateurs": indicateurs,
+        }
+        enfiler(STATE["db"], str(alert_id), str(alert.get("tenant")),
+                str(alert_id), charge)
+    except Exception as e:
+        # Le chaînon enquête ne doit jamais faire échouer l'ingestion.
+        print(f"[dossiers] mise en file impossible : {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -1378,12 +1519,19 @@ async def ingest(request: Request):
                 # La version n'est écrite que si le lot en porte une : un agent
                 # ancien continue de fonctionner, sa colonne reste simplement
                 # NULL et la console l'affiche comme « version inconnue ».
+                # L'adresse source est enregistrée à chaque lot. Sans elle, une
+                # décision « isoler cet hôte » n'a rien à donner au pare-feu :
+                # l'audit porte un NOM de machine, l'alias attend une ADRESSE.
+                # La plateforme apprend donc l'adresse de chacun de sa propre
+                # télémétrie, plutôt que d'une table statique qui dériverait au
+                # premier changement d'adressage.
                 cur.execute(
                     "UPDATE agents SET vu_le = now(), "
                     "       statut = CASE WHEN statut = 'isole' THEN 'isole' ELSE 'actif' END, "
-                    "       version_agent = COALESCE(%s, version_agent) "
+                    "       version_agent = COALESCE(%s, version_agent), "
+                    "       derniere_ip = %s "
                     " WHERE token_hash = %s",
-                    (batch.get("version"), token_hash)
+                    (batch.get("version"), ip or None, token_hash)
                 )
             STATE["db"].commit()
         except Exception:

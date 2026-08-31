@@ -48,6 +48,14 @@ services:
       # Le SOC n'ouvre pas ses canaux au premier venu.
       MM_TEAMSETTINGS_ENABLEOPENSERVER: "false"
       MM_TEAMSETTINGS_ENABLEUSERCREATION: "false"
+      # Conséquence de la ligne précédente : l'API refuse de créer le PREMIER
+      # administrateur, et l'instance reste inutilisable. Le mode local ouvre
+      # une prise UNIX à l'intérieur du conteneur, que `mmctl --local` utilise
+      # pour l'administration. Elle n'est exposée sur aucun réseau : y accéder
+      # suppose déjà d'être dans le conteneur, c'est-à-dire d'avoir gagné bien
+      # davantage. C'est le compromis correct — l'inverse serait d'ouvrir
+      # l'inscription à tous pour pouvoir créer un compte.
+      MM_SERVICESETTINGS_ENABLELOCALMODE: "true"
       # Les robots publient les messages d'incident.
       MM_SERVICESETTINGS_ENABLEBOTACCOUNTCREATION: "true"
       MM_SERVICESETTINGS_ENABLEINCOMINGWEBHOOKS: "true"
@@ -55,7 +63,13 @@ services:
     ports:
       # Écoute sur le cœur SOC uniquement. La zone Admin y accède par la
       # matrice de flux, aucune autre zone ne doit joindre ce port.
-      - "127.0.0.1:8065:8065"
+      #
+      # 10.50.0.2 et non 127.0.0.1 : la boucle locale n'est joignable que
+      # depuis l'hôte, et le RSSI travaille depuis vm-rssi. Le commentaire
+      # ci-dessus annonçait un accès que la liaison interdisait — corrigé le
+      # 29 août 2026. Ce n'est pas une ouverture : le pare-feu reste le seul
+      # chemin, et il ne l'ouvre qu'à la zone d'administration.
+      - "10.50.0.2:8065:8065"
     volumes:
       - mattermost_data:/mattermost/data
       - mattermost_logs:/mattermost/logs

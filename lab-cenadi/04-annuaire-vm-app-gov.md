@@ -112,7 +112,7 @@ Reporter dans `.env`, puis redémarrer `nexus-soc.service` :
 LDAP_URI=ldap://10.50.20.20:389
 LDAP_BASE_DN=dc=cenadi,dc=local
 LDAP_SOAR_DN=cn=nexus-soar,ou=services,dc=cenadi,dc=local
-LDAP_SOAR_PW=<affiché par le script>
+LDAP_SOAR_PASSWORD=<affiché par le script>
 ```
 
 `LDAP_BASE_DN` et `LDAP_SOAR_DN` alimentent la commande affichée par la console.
@@ -134,3 +134,69 @@ passée. Le connecteur remplacera cette étape, avec deux règles :
    `automatique`.
 2. **Ne jamais élargir les droits du compte de service.** Si une action réclame
    plus que `pwdAccountLockedTime`, c'est l'action qu'il faut revoir.
+
+---
+
+## 7. Déployé le 28 août 2026
+
+L'annuaire tourne sur vm-app-gov et répond au cœur SOC. Les identifiants
+générés à l'installation sont dans le `.env` de la racine (`LDAP_URI`,
+`LDAP_BASE_DN`, `LDAP_SOAR_DN`, `LDAP_SOAR_PASSWORD`), fichier ignoré par git.
+
+> **Nom de variable.** Le gabarit versionné `.env.example` dit
+> `LDAP_SOAR_PASSWORD` ; ce document disait `LDAP_SOAR_PW`. Deux noms pour la
+> même chose finissent toujours par diverger : tout est aligné sur celui du
+> gabarit. Le script d'installation et la recette acceptent encore l'ancien nom
+> en repli.
+
+### 7.1 Installer sans Internet, sans percer la matrice de flux
+
+La zone applicative n'a pas de sortie — sa matrice n'autorise que la résolution
+de noms vers sa passerelle et la télémétrie vers le cœur SOC. `apt-get install
+slapd` ne pouvait donc pas aboutir.
+
+Ouvrir une sortie pour la commodité d'un installateur aurait défait
+l'architecture que ce lab existe pour démontrer. Le cœur SOC sert de point de
+distribution logicielle, comme dans tout système d'information cloisonné :
+
+```bash
+bash lab-cenadi/scripts/paquets-hors-ligne.sh noxtheteenager@10.50.20.20 slapd ldap-utils
+scp lab-cenadi/scripts/vm-app-gov-annuaire.sh noxtheteenager@10.50.20.20:/tmp/
+ssh noxtheteenager@10.50.20.20 'sudo bash /tmp/vm-app-gov-annuaire.sh'
+```
+
+Le calcul des dépendances mérite un mot : l'hôte est en 24.04, la machine cible
+en 22.04. Résoudre sur l'hôte aurait produit les mauvaises versions. Le script
+récupère donc l'état dpkg **réel** de la cible et fait résoudre `apt` contre lui,
+dans une racine séparée pointant sur les dépôts de la cible. Six paquets, deux
+mégaoctets : uniquement ce qui manquait.
+
+Le script d'annuaire installe depuis `/tmp/nexus-debs` s'il y trouve des paquets,
+et retombe sur `apt-get` sinon. Il reste donc utilisable tel quel dans une zone
+qui aurait une sortie.
+
+### 7.2 La recette
+
+```bash
+export LDAP_SOAR_PASSWORD=…
+bash lab-cenadi/scenarios/07-preuve-gel-annuaire.sh
+```
+
+**7 contrôles sur 7.** Elle ne conclut jamais sur le code de retour de
+`ldapmodify` — un attribut peut être accepté puis ignoré, c'est exactement le
+piège de `nsAccountLock` sur OpenLDAP. Elle rejoue une authentification.
+
+| Étape | Authentification | Lecture du compte |
+|---|---|---|
+| Avant | passe | passe |
+| **Gelé** | **refusée, code 49** | **passe** |
+| Après dégel | passe | passe |
+
+La deuxième colonne compte autant que la première : le compte gelé reste lisible.
+On suspend un accès, on ne détruit pas une trace d'enquête.
+
+La recette porte aussi un **contrôle négatif**, et c'est peut-être le plus utile
+à l'oral : avec les identifiants du compte de service, supprimer un compte et
+changer un mot de passe échouent tous deux en **code 50, accès insuffisant**. Le
+périmètre du SOAR n'est pas une intention écrite dans un document, c'est une ACL
+qui refuse.

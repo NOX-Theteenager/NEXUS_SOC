@@ -1,0 +1,39 @@
+Preuve des connecteurs de réponse
+  tout passe par http://10.50.0.2:8000/analyst — aucun appel direct à l'équipement
+
+  1. Approuver, puis exécuter
+    action 104 créée sur SRV-APP-GOV-01
+    ✓ l'exécution est refusée avant approbation      OUI
+    ✓ exécution rapportée réussie                   True
+    ✓ nom d'hôte résolu en adresse                   10.50.20.20
+    ✓ audit marqué exécuté automatiquement          automatique
+
+  2. Effet réel sur la machine
+    ✓ SOC → SRV-APP-GOV-01 joignable                 NON
+    ✓ SOC → vm-rssi joignable (témoin)              OUI
+    ✓ la machine isolée émet toujours sa télémétrie OUI
+
+  3. La mesure survit à une purge de la table
+    ✓ après purge : la quarantaine est tombée        OUI
+    ✓ la réconciliation repose la mesure attendue     OUI
+    ✓ après réconciliation : quarantaine reposée    NON
+
+  4. Lever
+    ✓ levée rapportée réussie                       True
+    ✓ audit marqué annulé                            annulee
+    ✓ SOC → SRV-APP-GOV-01 de nouveau joignable      OUI
+
+  4 bis. Geler une identité, par la plateforme
+    ✓ gel rapporté réussi                            True
+    ✓ connecteur employé                              ldap
+    ✓ le compte gelé ne s'authentifie plus            NON
+    ✓ dégel rapporté réussi                         True
+    ✓ le compte s'authentifie de nouveau               OUI
+
+  5. Refus — c'est là que se juge une réponse automatique
+    ✓ isoler le cœur SOC lui-même : refusé          False
+    ✓ l'audit ne prétend pas l'avoir fait             non_executee
+    ✓ la commande manuelle est tout de même fournie   OUI
+    ✓ block_ip sur un nom d'hôte : refusé            False
+
+  Recette complète : la plateforme applique, vérifie, lève — et refuse ce qu'elle ne doit pas faire.

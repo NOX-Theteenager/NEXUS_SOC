@@ -43,8 +43,18 @@ slapd slapd/purge_database boolean false
 slapd slapd/move_old_database boolean true
 EOF
 
-apt-get update -qq
-apt-get install -y -qq slapd ldap-utils
+# La zone applicative n'a PAS d'accès Internet, et c'est la politique : sa
+# matrice de flux n'autorise que la résolution de noms et la télémétrie vers le
+# cœur SOC. On n'ouvre donc pas une sortie pour la commodité d'un apt — le SOC
+# sert de point de distribution, comme dans tout système d'information cloisonné.
+# Les paquets y sont déposés par lab-cenadi/scripts/paquets-hors-ligne.sh.
+if compgen -G "/tmp/nexus-debs/*.deb" > /dev/null; then
+    echo "→ Installation depuis le dépôt local (zone sans sortie Internet)."
+    dpkg -i /tmp/nexus-debs/*.deb
+else
+    apt-get update -qq
+    apt-get install -y -qq slapd ldap-utils
+fi
 
 # ── 2. Politique de mots de passe : c'est elle qui porte le gel ──────────────
 if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b cn=config -LLL \
@@ -109,7 +119,8 @@ done
 # ── 5. Compte de service pour NEXUS ─────────────────────────────────────────
 # Il peut modifier pwdAccountLockedTime, rien d'autre : le SOAR n'a pas besoin
 # de créer ni de supprimer des comptes, et ne doit pas pouvoir le faire.
-SOAR_PW="${LDAP_SOAR_PW:-$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | head -c 20)}"
+SOAR_PW="${LDAP_SOAR_PASSWORD:-${LDAP_SOAR_PW:-}}"
+SOAR_PW="${SOAR_PW:-$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | head -c 20)}"
 ldapadd -x -D "cn=admin,$BASE_DN" -w "$ADMIN_PW" <<EOF 2>/dev/null || true
 dn: cn=nexus-soar,ou=services,$BASE_DN
 objectClass: organizationalRole
@@ -158,7 +169,7 @@ cat <<EOF
       LDAP_URI=ldap://10.50.20.20:389
       LDAP_BASE_DN=$BASE_DN
       LDAP_SOAR_DN=cn=nexus-soar,ou=services,$BASE_DN
-      LDAP_SOAR_PW=$SOAR_PW
+      LDAP_SOAR_PASSWORD=$SOAR_PW
 
   Vérifier :
       ldapsearch -x -H ldap://10.50.20.20 -b ou=agents,$BASE_DN uid
